@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "Greek Ties",
+    "slug": "greek-ties-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "greekties",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#0A0A0B",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.greekties.app"
+    },
+    "android": {
+      "package": "com.greekties.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0A0A0B"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "@rnmapbox/maps",
+        {
+          "RNMapboxMapsDownloadToken": ""
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

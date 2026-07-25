@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { useChapter, updateChapter } from '@/lib/admin';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -32,6 +33,7 @@ export default function ChapterSettingsScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (chapter) {
@@ -40,8 +42,24 @@ export default function ChapterSettingsScreen() {
     }
   }, [chapter]);
 
-  // Invite link uses the chapter id, matching join/[code]'s fallback resolution.
-  const inviteLink = chapterId ? `greekties://join/${chapterId}` : '';
+  // Prefer a short server-side invite code (app-v2-invites.sql). Until that
+  // migration runs, fall back to the legacy chapter-id link that join/[code]
+  // still resolves.
+  useEffect(() => {
+    if (!chapterId) return;
+    let mounted = true;
+    supabase
+      .rpc('create_chapter_invite', { target_chapter_id: chapterId })
+      .then(({ data, error: rpcError }) => {
+        if (!mounted) return;
+        if (!rpcError && typeof data === 'string') setInviteCode(data);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [chapterId]);
+
+  const inviteLink = chapterId ? `greekties://join/${inviteCode ?? chapterId}` : '';
 
   async function save() {
     if (!chapterId) return;

@@ -3,13 +3,22 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import Mapbox from '@rnmapbox/maps';
 import { useAuth } from '@/lib/auth';
 import { useMapMembers } from '@/lib/queries';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { colors, spacing, typography } from '@/theme';
 
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
+
+// Lazy require: @rnmapbox/maps is a native module that isn't present in Expo
+// Go — a top-level import would throw before any in-component guard runs.
+let Mapbox: typeof import('@rnmapbox/maps').default | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  Mapbox = require('@rnmapbox/maps').default;
+} catch {
+  Mapbox = null;
+}
 
 export default function MapScreen() {
   const router = useRouter();
@@ -19,7 +28,7 @@ export default function MapScreen() {
 
   useEffect(() => {
     // Guarded so a missing native module / token never crashes startup.
-    if (!MAPBOX_TOKEN || MAPBOX_TOKEN.startsWith('PASTE_')) return;
+    if (!Mapbox || !MAPBOX_TOKEN || MAPBOX_TOKEN.startsWith('PASTE_')) return;
     try {
       Mapbox.setAccessToken(MAPBOX_TOKEN);
       setTokenReady(true);
@@ -38,16 +47,16 @@ export default function MapScreen() {
     return [sum[0] / members.length, sum[1] / members.length];
   }, [members]);
 
-  if (!MAPBOX_TOKEN || MAPBOX_TOKEN.startsWith('PASTE_') || !tokenReady) {
+  if (!Mapbox || !MAPBOX_TOKEN || MAPBOX_TOKEN.startsWith('PASTE_') || !tokenReady) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScreenHeader title="Alumni map" onBack={() => router.back()} />
         <View style={styles.center}>
           <Ionicons name="map-outline" size={44} color={colors.gold} />
-          <Text style={styles.fallbackTitle}>Map needs a Mapbox token</Text>
+          <Text style={styles.fallbackTitle}>Map isn’t available yet</Text>
           <Text style={styles.fallbackBody}>
-            Add EXPO_PUBLIC_MAPBOX_TOKEN to .env and run a custom dev client
-            (the map can’t render in Expo Go).
+            The map needs a development build and a Mapbox token — it can’t
+            render in Expo Go.
           </Text>
         </View>
       </SafeAreaView>
@@ -64,7 +73,7 @@ export default function MapScreen() {
         </View>
       ) : (
         <View style={styles.flex}>
-          <Mapbox.MapView style={styles.flex} styleURL={Mapbox.StyleURL.Dark}>
+          <Mapbox.MapView style={styles.flex} styleURL={Mapbox.StyleURL.Light}>
             <Mapbox.Camera
               zoomLevel={members.length > 1 ? 3 : 9}
               centerCoordinate={center}

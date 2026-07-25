@@ -9,14 +9,33 @@ const ExpoSecureStoreAdapter = {
   removeItem: (key: string) => SecureStore.deleteItemAsync(key),
 };
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    storage: ExpoSecureStoreAdapter,
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false, // not used in native
+/**
+ * Set when required env vars are missing so the app can show a readable
+ * config screen instead of crashing at module load (see app/_layout.tsx).
+ */
+export const supabaseConfigError: string | null =
+  !supabaseUrl && !supabaseAnonKey
+    ? 'EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY are missing.'
+    : !supabaseUrl
+      ? 'EXPO_PUBLIC_SUPABASE_URL is missing.'
+      : !supabaseAnonKey
+        ? 'EXPO_PUBLIC_SUPABASE_ANON_KEY is missing.'
+        : null;
+
+// Placeholders keep createClient from throwing when .env is unfilled; the
+// config-error screen prevents any real request from being made in that case.
+export const supabase = createClient(
+  supabaseUrl ?? 'https://placeholder.supabase.co',
+  supabaseAnonKey ?? 'public-anon-key-missing',
+  {
+    auth: {
+      storage: ExpoSecureStoreAdapter,
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false, // not used in native
+    },
   },
-});
+);

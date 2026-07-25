@@ -112,8 +112,16 @@ export default function HomeScreen() {
 
         {/* Quick actions */}
         <View style={styles.quickRow}>
-          <QuickAction icon="sparkles" label="Find a mentor" onPress={() => go('/people')} />
-          <QuickAction icon="briefcase" label="Browse jobs" onPress={() => go('/people')} />
+          <QuickAction
+            icon="sparkles"
+            label="Find a mentor"
+            onPress={() => go({ pathname: '/people', params: { filter: 'mentors' } })}
+          />
+          <QuickAction
+            icon="briefcase"
+            label="Browse jobs"
+            onPress={() => go({ pathname: '/people', params: { view: 'jobs' } })}
+          />
           <QuickAction icon="chatbubbles" label="Open chat" onPress={() => go('/chats')} />
         </View>
 

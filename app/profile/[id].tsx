@@ -5,7 +5,8 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
-  Linking,
+  Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -13,12 +14,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { findRequestBetween, createMentorshipRequest } from '@/lib/mentorship';
+import { reportContent, blockUser } from '@/lib/moderation';
+import { openExternalUrl } from '@/lib/url';
 import { Avatar } from '@/components/Avatar';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { TextField } from '@/components/TextField';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, spacing, typography } from '@/theme';
 import type { MentorshipRequest, Profile } from '@/lib/types';
 
 export default function ProfileScreen() {
@@ -36,6 +39,11 @@ export default function ProfileScreen() {
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Report composer (Android — iOS uses Alert.prompt).
+  const [reporting, setReporting] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -82,6 +90,75 @@ export default function ProfileScreen() {
       return;
     }
     if (newId) router.replace({ pathname: '/inbox/[requestId]', params: { requestId: newId } });
+  }
+
+  // ── Moderation (report / block) ────────────────────────────────────────────
+
+  async function submitReport(reason: string) {
+    if (!profile || !myUserId) return;
+    if (!reason.trim()) return;
+    setReportSubmitting(true);
+    const { error: reportError } = await reportContent({
+      reporterId: myUserId,
+      chapterId: me?.chapter_id ?? null,
+      targetType: 'profile',
+      targetId: profile.id,
+      reason: reason.trim(),
+    });
+    setReportSubmitting(false);
+    setReporting(false);
+    setReportReason('');
+    if (reportError) Alert.alert('Couldn’t submit report', reportError);
+    else Alert.alert('Report submitted', 'Thanks — our team will review it.');
+  }
+
+  function startReport() {
+    if (Platform.OS === 'ios') {
+      Alert.prompt(
+        'Report member',
+        'Tell us what’s wrong with this profile.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Report',
+            style: 'destructive',
+            onPress: (reason?: string) => void submitReport(reason ?? ''),
+          },
+        ],
+        'plain-text',
+      );
+    } else {
+      // Android has no Alert.prompt — show the inline reason composer.
+      setReporting(true);
+    }
+  }
+
+  function confirmBlock() {
+    if (!profile || !myUserId) return;
+    Alert.alert(
+      `Block ${profile.name ?? 'this member'}?`,
+      'You won’t see their profile or messages anymore.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            const { error: blockError } = await blockUser(myUserId, profile.user_id);
+            if (blockError) Alert.alert('Couldn’t block', blockError);
+            else router.back();
+          },
+        },
+      ],
+    );
+  }
+
+  function showModerationMenu() {
+    Alert.alert(profile?.name ?? 'Member', undefined, [
+      { text: 'Report member', style: 'destructive', onPress: startReport },
+      { text: 'Block member', style: 'destructive', onPress: confirmBlock },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   }
 
   function renderAction() {
@@ -138,7 +215,15 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="" onBack={() => router.back()} />
+      <ScreenHeader
+        title=""
+        onBack={() => router.back()}
+        right={
+          !isSelf && profile
+            ? { icon: 'ellipsis-horizontal', onPress: showModerationMenu }
+            : undefined
+        }
+      />
 
       {loading ? (
         <View style={styles.center}>
@@ -167,11 +252,31 @@ export default function ProfileScreen() {
 
           {renderAction()}
 
+          {reporting && (
+            <View style={styles.composer}>
+              <TextField
+                label="Report reason"
+                value={reportReason}
+                onChangeText={setReportReason}
+                placeholder="Tell us what’s wrong with this profile"
+                multiline
+                numberOfLines={3}
+                style={styles.multiline}
+              />
+              <Button
+                label="Submit report"
+                onPress={() => void submitReport(reportReason)}
+                loading={reportSubmitting}
+              />
+              <Button label="Cancel" variant="ghost" onPress={() => setReporting(false)} />
+            </View>
+          )}
+
           {!!profile.linkedin_url && (
             <Button
               label="View LinkedIn"
               variant="secondary"
-              onPress={() => Linking.openURL(profile.linkedin_url as string).catch(() => {})}
+              onPress={() => void openExternalUrl(profile.linkedin_url)}
             />
           )}
 

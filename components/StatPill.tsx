@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     alignSelf: 'flex-start',
   },
-  positivePill: { backgroundColor: 'rgba(74,222,128,0.12)' },
+  positivePill: { backgroundColor: 'rgba(31,138,76,0.12)' },
   icon: { marginRight: 4 },
   text: { ...typography.caption, color: colors.textSecondary },
   positiveText: { color: colors.green },

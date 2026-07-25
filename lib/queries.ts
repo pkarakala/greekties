@@ -19,6 +19,13 @@ export interface HomeData {
 
 const EMPTY_STATS: HomeStats = { members: 0, industries: 0, newThisMonth: 0 };
 
+// Directory/home/map reads deliberately exclude `email` (and anything else the
+// UI never shows) so member PII isn't shipped to every client. Email is only
+// fetched where it's actually rendered (own account, admin approvals).
+const MEMBER_COLUMNS =
+  'id, user_id, chapter_id, name, avatar_url, class_year, role, industry, city, company, job_title, open_to_mentor, is_hiring, status, admin_role, linkedin_url, bio, created_at';
+const MAP_COLUMNS = 'id, user_id, name, avatar_url, city, class_year, lat, lng';
+
 function startOfMonthISO(): string {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
@@ -46,7 +53,11 @@ export function useHomeData(chapterId: string | null, userId: string | null): Ho
     setError(null);
 
     const approved = () =>
-      supabase.from('profiles').select('*', { count: 'exact' }).eq('chapter_id', chapterId).eq('status', 'approved');
+      supabase
+        .from('profiles')
+        .select(MEMBER_COLUMNS, { count: 'exact' })
+        .eq('chapter_id', chapterId)
+        .eq('status', 'approved');
 
     Promise.all([
       // Total approved members (count only).
@@ -139,7 +150,7 @@ export function useChapterMembers(chapterId: string | null): MembersResult {
 
     supabase
       .from('profiles')
-      .select('*')
+      .select(MEMBER_COLUMNS)
       .eq('chapter_id', chapterId)
       .eq('status', 'approved')
       .order('name', { ascending: true })
@@ -177,7 +188,7 @@ export function useMapMembers(chapterId: string | null): MembersResult {
 
     supabase
       .from('profiles')
-      .select('*')
+      .select(MAP_COLUMNS)
       .eq('chapter_id', chapterId)
       .eq('status', 'approved')
       .not('lat', 'is', null)

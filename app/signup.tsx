@@ -11,6 +11,9 @@ import {
 import { Link, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
+import { storePendingInviteCode } from '@/lib/invite';
+import { TERMS_URL, PRIVACY_URL } from '@/lib/legal';
+import { openExternalUrl } from '@/lib/url';
 import { Wordmark } from '@/components/Wordmark';
 import { Button } from '@/components/Button';
 import { TextField } from '@/components/TextField';
@@ -35,8 +38,8 @@ export default function SignupScreen() {
       setError('Fill in your name, email, and a password.');
       return;
     }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
       return;
     }
 
@@ -53,8 +56,10 @@ export default function SignupScreen() {
       return;
     }
 
-    // Email confirmation enabled → no session until the user confirms.
+    // Email confirmation enabled → no session until the user confirms. Keep
+    // the invite code so the join flow resumes after they confirm + log in.
     if (!data.session) {
+      if (code) await storePendingInviteCode(code);
       setNotice('Check your email to confirm your account, then log in.');
       return;
     }
@@ -109,7 +114,7 @@ export default function SignupScreen() {
               label="Password"
               value={password}
               onChangeText={setPassword}
-              placeholder="At least 6 characters"
+              placeholder="At least 8 characters"
               secureTextEntry
               autoCapitalize="none"
               textContentType="newPassword"
@@ -121,6 +126,18 @@ export default function SignupScreen() {
             {!!notice && <Text style={styles.notice}>{notice}</Text>}
 
             <Button label="Sign up" onPress={handleSignup} loading={loading} />
+
+            <Text style={styles.terms}>
+              By signing up you agree to our{' '}
+              <Text style={styles.termsLink} onPress={() => openExternalUrl(TERMS_URL)}>
+                Terms
+              </Text>{' '}
+              and{' '}
+              <Text style={styles.termsLink} onPress={() => openExternalUrl(PRIVACY_URL)}>
+                Privacy Policy
+              </Text>
+              .
+            </Text>
           </View>
 
           <View style={styles.footer}>
@@ -170,4 +187,11 @@ const styles = StyleSheet.create({
   },
   footerText: { ...typography.body, color: colors.textSecondary },
   link: { ...typography.body, color: colors.gold, fontWeight: '600' },
+  terms: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    textAlign: 'center',
+    marginTop: spacing.lg,
+  },
+  termsLink: { color: colors.gold, fontWeight: '600' },
 });

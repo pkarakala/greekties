@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { useChapterMembers } from '@/lib/queries';
@@ -32,8 +32,16 @@ const TABS = [
 
 export default function PeopleScreen() {
   const { profile } = useAuth();
-  const [tab, setTab] = useState<Tab>('directory');
+  // Home quick actions deep-link here: ?view=jobs opens the Jobs segment,
+  // ?filter=mentors preselects the Mentors chip in the directory.
+  const { view, filter } = useLocalSearchParams<{ view?: string; filter?: string }>();
+  const [tab, setTab] = useState<Tab>(view === 'jobs' ? 'jobs' : 'directory');
   const chapterId = profile?.chapter_id ?? null;
+
+  useEffect(() => {
+    if (view === 'jobs') setTab('jobs');
+    else if (view === 'directory') setTab('directory');
+  }, [view]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -42,7 +50,7 @@ export default function PeopleScreen() {
         <SegmentedControl options={TABS} value={tab} onChange={setTab} />
       </View>
       {tab === 'directory' ? (
-        <DirectoryView chapterId={chapterId} />
+        <DirectoryView chapterId={chapterId} initialMentorsOnly={filter === 'mentors'} />
       ) : (
         <JobsView chapterId={chapterId} />
       )}
@@ -50,12 +58,18 @@ export default function PeopleScreen() {
   );
 }
 
-function DirectoryView({ chapterId }: { chapterId: string | null }) {
+function DirectoryView({
+  chapterId,
+  initialMentorsOnly = false,
+}: {
+  chapterId: string | null;
+  initialMentorsOnly?: boolean;
+}) {
   const router = useRouter();
   const { loading, error, members, reload } = useChapterMembers(chapterId);
 
   const [query, setQuery] = useState('');
-  const [mentorsOnly, setMentorsOnly] = useState(false);
+  const [mentorsOnly, setMentorsOnly] = useState(initialMentorsOnly);
   const [hiringOnly, setHiringOnly] = useState(false);
   const [industry, setIndustry] = useState<string | null>(null);
 

@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
   text: { ...typography.caption },
   goldBg: { backgroundColor: colors.goldSoft },
   goldText: { color: colors.gold },
-  greenBg: { backgroundColor: 'rgba(74,222,128,0.12)' },
+  greenBg: { backgroundColor: 'rgba(31,138,76,0.12)' },
   greenText: { color: colors.green },
   neutralBg: { backgroundColor: colors.surfaceHover },
   neutralText: { color: colors.textSecondary },

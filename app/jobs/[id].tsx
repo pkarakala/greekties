@@ -1,14 +1,28 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Linking, Pressable } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Pressable,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth';
 import { useJob } from '@/lib/jobs';
+import { reportContent } from '@/lib/moderation';
+import { openExternalUrl } from '@/lib/url';
+import { isAdmin } from '@/lib/types';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { Avatar } from '@/components/Avatar';
+import { TextField } from '@/components/TextField';
 import { timeAgoShort } from '@/lib/time';
 import { colors, radius, spacing, typography } from '@/theme';
 import type { Profile } from '@/lib/types';
@@ -16,8 +30,17 @@ import type { Profile } from '@/lib/types';
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { session, profile: me } = useAuth();
+  const myUserId = session?.user?.id ?? null;
   const { loading, job } = useJob(id ?? null);
   const [poster, setPoster] = useState<Profile | null>(null);
+
+  // Report composer (Android — iOS uses Alert.prompt).
+  const [reporting, setReporting] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     if (!job?.posted_by) return;
@@ -35,9 +58,95 @@ export default function JobDetailScreen() {
     };
   }, [job?.posted_by]);
 
+  const isOwner = !!job && !!myUserId && (job.posted_by === myUserId || isAdmin(me));
+
+  // ── Moderation (report posting) ────────────────────────────────────────────
+
+  async function submitReport(reason: string) {
+    if (!job || !myUserId) return;
+    if (!reason.trim()) return;
+    setReportSubmitting(true);
+    const { error: reportError } = await reportContent({
+      reporterId: myUserId,
+      chapterId: me?.chapter_id ?? null,
+      targetType: 'job',
+      targetId: job.id,
+      reason: reason.trim(),
+    });
+    setReportSubmitting(false);
+    setReporting(false);
+    setReportReason('');
+    if (reportError) Alert.alert('Couldn’t submit report', reportError);
+    else Alert.alert('Report submitted', 'Thanks — our team will review it.');
+  }
+
+  function startReport() {
+    if (Platform.OS === 'ios') {
+      Alert.prompt(
+        'Report posting',
+        'Tell us what’s wrong with this job posting.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Report',
+            style: 'destructive',
+            onPress: (reason?: string) => void submitReport(reason ?? ''),
+          },
+        ],
+        'plain-text',
+      );
+    } else {
+      // Android has no Alert.prompt — show the inline reason composer.
+      setReporting(true);
+    }
+  }
+
+  // ── Owner controls (close / delete) ────────────────────────────────────────
+
+  async function closePosting() {
+    if (!job) return;
+    setClosing(true);
+    // `is_open` may not exist yet in the live DB — degrade gracefully.
+    const { error } = await supabase
+      .from('job_postings')
+      .update({ is_open: false })
+      .eq('id', job.id);
+    setClosing(false);
+    if (error) {
+      Alert.alert('Not available yet', 'Closing postings isn’t supported yet. Check back soon.');
+      return;
+    }
+    Alert.alert('Posting closed', 'This job is no longer marked as open.');
+    router.back();
+  }
+
+  function confirmDelete() {
+    if (!job) return;
+    Alert.alert('Delete posting?', 'This permanently removes the job posting.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          const { error } = await supabase.from('job_postings').delete().eq('id', job.id);
+          if (error) Alert.alert('Couldn’t delete', 'Please try again.');
+          else router.back();
+        },
+      },
+    ]);
+  }
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="" onBack={() => router.back()} />
+      <ScreenHeader
+        title=""
+        onBack={() => router.back()}
+        right={
+          job && myUserId && !isOwner
+            ? { icon: 'ellipsis-horizontal', onPress: startReport }
+            : undefined
+        }
+      />
 
       {loading ? (
         <View style={styles.center}>
@@ -64,10 +173,27 @@ export default function JobDetailScreen() {
           </View>
 
           {!!job.apply_url && (
-            <Button
-              label="Apply"
-              onPress={() => Linking.openURL(job.apply_url as string).catch(() => {})}
-            />
+            <Button label="Apply" onPress={() => void openExternalUrl(job.apply_url)} />
+          )}
+
+          {reporting && (
+            <View style={styles.composer}>
+              <TextField
+                label="Report reason"
+                value={reportReason}
+                onChangeText={setReportReason}
+                placeholder="Tell us what’s wrong with this posting"
+                multiline
+                numberOfLines={3}
+                style={styles.multiline}
+              />
+              <Button
+                label="Submit report"
+                onPress={() => void submitReport(reportReason)}
+                loading={reportSubmitting}
+              />
+              <Button label="Cancel" variant="ghost" onPress={() => setReporting(false)} />
+            </View>
           )}
 
           {!!job.description && (
@@ -90,6 +216,19 @@ export default function JobDetailScreen() {
               <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
             </Pressable>
           )}
+
+          {isOwner && (
+            <View style={styles.ownerControls}>
+              <Text style={styles.sectionTitle}>Manage posting</Text>
+              <Button
+                label="Close posting"
+                variant="secondary"
+                onPress={closePosting}
+                loading={closing}
+              />
+              <Button label="Delete posting" variant="ghost" onPress={confirmDelete} />
+            </View>
+          )}
         </ScrollView>
       )}
     </SafeAreaView>
@@ -101,12 +240,14 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   muted: { ...typography.body, color: colors.textSecondary },
-  scroll: { padding: spacing.xl, gap: spacing.lg },
+  scroll: { padding: spacing.xl, gap: spacing.lg, paddingBottom: spacing.xxxl },
   title: { ...typography.h1, color: colors.textPrimary },
   company: { ...typography.h3, color: colors.textSecondary },
   meta: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaText: { ...typography.bodySmall, color: colors.textTertiary },
+  composer: { gap: spacing.sm },
+  multiline: { height: 96, textAlignVertical: 'top' },
   section: { gap: spacing.sm },
   sectionTitle: { ...typography.h3, color: colors.textPrimary },
   body: { ...typography.body, color: colors.textSecondary },
@@ -122,4 +263,5 @@ const styles = StyleSheet.create({
   },
   posterLabel: { ...typography.caption, color: colors.textTertiary },
   posterName: { ...typography.h3, color: colors.textPrimary },
+  ownerControls: { gap: spacing.sm, marginTop: spacing.sm },
 });

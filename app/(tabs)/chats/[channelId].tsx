@@ -29,13 +29,14 @@ export default function ChannelThreadScreen() {
   const { session } = useAuth();
   const myUserId = session?.user?.id ?? null;
 
-  const { loading, error, channel, messages, senders, send } = useChannelThread(
-    channelId ?? null,
-    myUserId,
-  );
+  const { loading, error, channel, messages, senders, hasMore, loadingEarlier, loadEarlier, send } =
+    useChannelThread(channelId ?? null, myUserId);
 
   const [draft, setDraft] = useState('');
   const listRef = useRef<FlatList<ChannelMessage>>(null);
+  // Last message id we auto-scrolled to — lets us skip the scroll-to-bottom when
+  // loadEarlier() prepends older messages (the newest message doesn't change).
+  const lastScrolledIdRef = useRef<string | null>(null);
 
   // Advance the local "last read" marker as messages load/arrive.
   useEffect(() => {
@@ -103,7 +104,32 @@ export default function ChannelThreadScreen() {
             renderItem={renderItem}
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
-            onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+            // Keep the viewport anchored when loadEarlier() prepends history.
+            maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+            onContentSizeChange={() => {
+              // Only auto-scroll when a *new* newest message arrives — not when
+              // loadEarlier() prepends history above the current scroll position.
+              const newestId = messages[messages.length - 1]?.id ?? null;
+              if (newestId && newestId !== lastScrolledIdRef.current) {
+                lastScrolledIdRef.current = newestId;
+                listRef.current?.scrollToEnd({ animated: true });
+              }
+            }}
+            ListHeaderComponent={
+              hasMore ? (
+                <Pressable
+                  onPress={loadEarlier}
+                  disabled={loadingEarlier}
+                  style={({ pressed }) => [styles.loadEarlier, pressed && styles.loadEarlierPressed]}
+                >
+                  {loadingEarlier ? (
+                    <ActivityIndicator size="small" color={colors.gold} />
+                  ) : (
+                    <Text style={styles.loadEarlierText}>Load earlier messages</Text>
+                  )}
+                </Pressable>
+              ) : null
+            }
             ListEmptyComponent={
               <View style={styles.center}>
                 <Text style={styles.emptyText}>
@@ -143,6 +169,9 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   emptyText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
   list: { padding: spacing.lg, gap: spacing.xs, flexGrow: 1 },
+  loadEarlier: { alignItems: 'center', paddingVertical: spacing.sm },
+  loadEarlierPressed: { opacity: 0.6 },
+  loadEarlierText: { ...typography.bodySmall, color: colors.gold, fontWeight: '600' },
 
   cluster: { gap: spacing.xs },
   clusterSpaced: { marginTop: spacing.md },

@@ -105,7 +105,7 @@ export default function ChannelListScreen() {
                 <Text style={styles.emptyText}>
                   {error
                     ? `Couldn’t load channels: ${error}`
-                    : 'No channels yet. Run the chat migration + seed to create the defaults.'}
+                    : 'No channels yet — your chapter admins can create one.'}
                 </Text>
               </View>
             )

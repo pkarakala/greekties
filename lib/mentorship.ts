@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
+import { fetchBlockedIds } from './moderation';
 import type { Message, MentorshipRequest, Profile, RequestStatus } from './types';
 
 /** Fetch profiles for a set of auth user ids, keyed by user_id. */
@@ -89,6 +90,9 @@ export function useThread(requestId: string | null, userId: string | null): Thre
   const [nonce, setNonce] = useState(0);
   const reload = useCallback(() => setNonce((n) => n + 1), []);
 
+  // Users this viewer has blocked — their messages are hidden (initial + realtime).
+  const blockedRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     if (!requestId) {
       setLoading(false);
@@ -99,6 +103,10 @@ export function useThread(requestId: string | null, userId: string | null): Thre
     setError(null);
 
     (async () => {
+      // Blocked ids first so the fetched messages can be filtered (empty set on any error).
+      if (userId) blockedRef.current = await fetchBlockedIds(userId);
+      if (!mounted) return;
+
       const reqRes = await supabase
         .from('mentorship_requests')
         .select('*')
@@ -126,7 +134,10 @@ export function useThread(requestId: string | null, userId: string | null): Thre
         ]);
         if (!mounted) return;
         if (msgRes.error) setError(msgRes.error.message);
-        else setMessages((msgRes.data as Message[]) ?? []);
+        else {
+          const msgs = (msgRes.data as Message[]) ?? [];
+          setMessages(msgs.filter((m) => !blockedRef.current.has(m.sender_id)));
+        }
         setOther(profMap[otherId] ?? null);
       }
       setLoading(false);
@@ -136,6 +147,47 @@ export function useThread(requestId: string | null, userId: string | null): Thre
       mounted = false;
     };
   }, [requestId, userId, nonce]);
+
+  // Realtime (mirrors lib/chat.ts): append new messages as they arrive (deduped by
+  // id, blocked filtered) and pick up status changes (pending → accepted/declined)
+  // so 'Waiting for a response…' flips live for the requester.
+  useEffect(() => {
+    if (!requestId) return;
+
+    const sub = supabase
+      .channel(`thread:${requestId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `request_id=eq.${requestId}`,
+        },
+        (payload) => {
+          const msg = payload.new as Message;
+          if (blockedRef.current.has(msg.sender_id)) return;
+          setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'mentorship_requests',
+          filter: `id=eq.${requestId}`,
+        },
+        (payload) => {
+          setRequest(payload.new as MentorshipRequest);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(sub);
+    };
+  }, [requestId]);
 
   return { loading, error, request, messages, other, reload };
 }

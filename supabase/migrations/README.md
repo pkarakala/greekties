@@ -1,14 +1,18 @@
 # Supabase Migrations — Greek Ties App
 
-New tables the mobile app needs. These **only ADD** tables — they never alter the existing live tables (`chapters`, `profiles`, `mentorship_requests`, `messages`), so they're safe to run against the production database.
+New tables, functions, and storage the mobile app needs. These **only ADD** objects — they never alter the existing live tables (`chapters`, `profiles`, `mentorship_requests`, `messages`), so they're safe to run against the production database. Every file is idempotent (`create ... if not exists` / `drop policy if exists` / `create or replace`), so re-running one is harmless.
 
 ## Run order
 
 Run these in the Supabase SQL Editor in this exact order:
 
-1. **`app-v1-chat.sql`** — creates `channels`, `channel_messages`, `channel_members` + RLS policies.
-2. **`app-v1-jobs.sql`** — creates `job_postings` + RLS policies.
+1. **`app-v1-chat.sql`** — creates `channels`, `channel_messages`, `channel_members` + RLS policies (split membership policies: self-join only into public channels; admins manage private-channel membership).
+2. **`app-v1-jobs.sql`** — creates `job_postings` (with `is_open`) + RLS policies (poster + chapter-admin update/delete, chapter pinned via `WITH CHECK`).
 3. **`app-v1-seed-channels.sql`** — seeds the 6 default channels for every existing chapter. Run AFTER #1.
+4. **`app-v2-invites.sql`** — creates `chapter_invites` + the `join_chapter(code)` and `create_chapter_invite(chapter_id)` SECURITY DEFINER RPCs. Replaces the "invite code = chapter UUID" flow.
+5. **`app-v2-moderation.sql`** — creates `content_reports` + `user_blocks` (report/block, App Store guideline 1.2).
+6. **`app-v2-account-deletion.sql`** — creates the `delete_own_account()` RPC (App Store guideline 5.1.1(v)). If your project blocks SQL writes to `auth.users`, deploy `../functions/delete-account/` instead — see that file's header.
+7. **`app-v2-avatars-storage.sql`** — creates the public `avatars` storage bucket with owner-scoped write policies.
 
 ## How to run
 
@@ -19,20 +23,24 @@ Run these in the Supabase SQL Editor in this exact order:
 
 ## Realtime
 
-For live chat, enable Realtime on `channel_messages` (Supabase Dashboard → Database →
-Replication → add `channel_messages` to the `supabase_realtime` publication). The app
-subscribes to INSERTs filtered by `channel_id`.
+For live chat:
 
-## After running — verify RLS
+1. Enable Realtime on `channel_messages` (Supabase Dashboard → Database → Replication → add `channel_messages` to the `supabase_realtime` publication). The app subscribes to INSERTs filtered by `channel_id`.
+2. **Private channels caveat:** classic `postgres_changes` subscriptions on Supabase **do respect RLS** — each subscriber only receives rows their policies allow — so exec/alumni messages won't leak to non-members. But verify it on this project: subscribe as an active member with a filter on the alumni channel's id and confirm no events arrive when an alum posts. If you later migrate to Realtime **Broadcast/Presence** channels (which do NOT read table RLS), you must add Realtime Authorization policies on `realtime.messages` before any private-channel traffic goes through them.
 
-The most important check: confirm alumni-only channels are actually private.
+## After running — RLS acceptance-test checklist
 
-1. Log in (in the app or via Supabase) as an **active member** (role ≠ 'Alumni').
-2. Query `select * from channels;` — you should NOT see the `alumni` channel.
-3. Log in as an **alumni** — you SHOULD see it.
+The DB is the only real enforcement layer (client checks are cosmetic). Walk this list after every migration run, using real logins (app or SQL editor impersonation):
 
-If an active member can see the alumni channel, the RLS policy didn't apply — re-check `app-v1-chat.sql` ran fully without errors.
+- [ ] **Alumni privacy** — as an **active member** (role ≠ 'Alumni'): `select * from channels;` must NOT include the `alumni` channel, and selecting that channel's `channel_messages` returns 0 rows. As an **alumni**, both are visible.
+- [ ] **Cross-chapter isolation** — as a member of chapter A: selects on chapter B's `channels`, `channel_messages`, and `job_postings` all return 0 rows.
+- [ ] **Exec membership lockdown** — as a **non-admin**: `insert into channel_members (channel_id, user_id) values ('<exec channel>', auth.uid());` must fail RLS. As an owner/manager it succeeds.
+- [ ] **Membership column pin** — as a member of a public channel: `update channel_members set channel_id = '<exec channel>' where user_id = auth.uid();` must fail with "permission denied" (only `last_read_at` is grantable). Updating `last_read_at` succeeds.
+- [ ] **Job pinning** — as the poster of a job: `update job_postings set chapter_id = '<other chapter>' where id = '<their job>';` must fail RLS (the `WITH CHECK` pin). Updating `is_open`/title in place succeeds.
+- [ ] **Invites** — a non-admin calling `create_chapter_invite(...)` errors; `select * from chapter_invites;` as a non-admin returns 0 rows; `join_chapter(...)` for a user who already has a profile errors.
+
+If any check fails, the corresponding migration didn't apply fully — re-run it and re-check.
 
 ## Full schema reference
 
-See `../../greek-ties-app-docs/docs/DATABASE.md` for every column's meaning and the complete data model (existing + new tables).
+See `../../greek-ties-app-docs/docs/DATABASE.md` for every column's meaning and the complete data model (existing + new tables). **Caveat:** that repo is currently missing from this machine and from GitHub (see `docs/PRODUCTION_ROADMAP.md` → "Ground truth") — until it's recovered, the live database is the only source of truth for the pre-existing tables (`chapters`, `profiles`, `mentorship_requests`, `messages`), and these files are the source of truth for everything they create.

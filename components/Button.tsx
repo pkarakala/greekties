@@ -53,7 +53,7 @@ export function Button({
         {loading && (
           <ActivityIndicator
             size="small"
-            color={variant === 'primary' ? colors.background : colors.textPrimary}
+            color={variant === 'primary' ? colors.cream : colors.textPrimary}
             style={styles.spinner}
           />
         )}
@@ -91,6 +91,6 @@ const styles = StyleSheet.create({
   content: { flexDirection: 'row', alignItems: 'center' },
   spinner: { marginRight: spacing.sm },
   label: { ...typography.h3 },
-  labelOnGold: { color: colors.background },
+  labelOnGold: { color: colors.cream },
   labelOnDark: { color: colors.textPrimary },
 });

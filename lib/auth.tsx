@@ -8,6 +8,7 @@ import {
 } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+import { unregisterPushToken } from './notifications';
 import type { Profile } from './types';
 
 interface AuthState {
@@ -75,8 +76,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshProfile = useCallback(() => loadProfileFor(session), [loadProfileFor, session]);
 
   const signOut = useCallback(async () => {
+    // Remove this device's push token first — the delete needs the user's
+    // RLS session, which is gone once signOut() completes.
+    const userId = session?.user?.id;
+    if (userId) await unregisterPushToken(userId);
     await supabase.auth.signOut();
-  }, []);
+  }, [session]);
 
   return (
     <AuthContext.Provider value={{ initializing, session, profile, refreshProfile, signOut }}>

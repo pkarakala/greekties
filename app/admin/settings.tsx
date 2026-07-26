@@ -13,9 +13,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { useChapter, updateChapter } from '@/lib/admin';
+import { fetchChapterInvite } from '@/lib/chapters';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextField } from '@/components/TextField';
 import { Button } from '@/components/Button';
@@ -48,12 +48,10 @@ export default function ChapterSettingsScreen() {
   useEffect(() => {
     if (!chapterId) return;
     let mounted = true;
-    supabase
-      .rpc('create_chapter_invite', { target_chapter_id: chapterId })
-      .then(({ data, error: rpcError }) => {
-        if (!mounted) return;
-        if (!rpcError && typeof data === 'string') setInviteCode(data);
-      });
+    fetchChapterInvite(chapterId).then(({ code }) => {
+      if (!mounted) return;
+      if (code) setInviteCode(code);
+    });
     return () => {
       mounted = false;
     };

@@ -1,9 +1,36 @@
 # App Store Submission Checklist
 
 *Everything that still has to happen — outside this repo — to get Greek Ties
-onto TestFlight and the App Store. Code-side blockers (account deletion,
-report/block, icon/splash, `eas.json`, infoPlist strings) are handled in-repo;
-this list is the operational remainder. Work top to bottom.*
+onto TestFlight and the App Store. This is Section D of
+`docs/LAUNCH_RUNBOOK.md`; do the runbook's backend/accounts/verification
+sections first. Work top to bottom.*
+
+## Status at a glance (updated 2026-07-25)
+
+**Satisfied by the codebase** (verify on-device, but no code work left):
+
+- ✅ Account deletion in-app (Me tab → `delete_own_account()` RPC with
+  `supabase/functions/delete-account` Edge Function fallback) — guideline 5.1.1(v)
+- ✅ UGC moderation: report content + block users (`lib/moderation.ts`, wired
+  into profiles/messages/jobs), terms acceptance at signup — guideline 1.2
+- ✅ App icon / adaptive icon / splash (`assets/`, cream/gold/navy brand)
+- ✅ Legal drafts (`docs/legal/PRIVACY_POLICY.md`, `docs/legal/TERMS.md`),
+  linked in-app at signup and in Me
+- ✅ `eas.json` (remote versioning + autoIncrement), `app.config.ts` with
+  infoPlist usage strings and env-driven secrets
+- ✅ Push notifications code (`lib/notifications.ts` via expo-notifications) and
+  events/calendar — pending their migrations + Edge Function deploy (runbook §A)
+
+**Still open — human/account tasks** (nothing in-repo can close these):
+
+- ⬜ Apple Developer Program membership + pending agreements accepted (§1)
+- ⬜ `eas init` → `extra.eas.projectId` committed into `app.config.ts` (§2)
+- ⬜ EAS env vars/secrets set; Mapbox `pk.*`/`sk.*` tokens created (§2, §4)
+- ⬜ Privacy nutrition labels questionnaire (§3)
+- ⬜ Age rating questionnaire (§3)
+- ⬜ Live support mailbox + privacy-policy URL confirmed reachable (§3)
+- ⬜ Demo chapter + demo account seeded, reviewer notes written (§6)
+- ⬜ Screenshots from the seeded demo chapter (§3)
 
 ---
 
@@ -101,14 +128,20 @@ Two distinct tokens (never commit either):
       `MAPBOX_DOWNLOAD_TOKEN` as an **EAS secret**; `app.config.ts` injects it
       into the `@rnmapbox/maps` plugin. Without it, iOS `pod install` fails.
 
-## 5. Push notifications — intentionally NOT enabled
+## 5. Push notifications — now enabled (Phase E landed)
 
-- [ ] Do **not** add the push notifications capability/entitlement (aps-environment)
-      to the app ID or ask EAS to configure push. The app has no push code;
-      shipping the entitlement unused invites App Review questions and an APNs
-      setup we can't exercise. Push is Phase E in `docs/PRODUCTION_ROADMAP.md`;
-      when it lands (expo-notifications + device tokens + Supabase Edge
-      Function), add the entitlement then.
+The app ships push code (`lib/notifications.ts` via expo-notifications +
+`device_tokens` table + `send-push` Edge Function), so the entitlement is now
+required and exercised:
+
+- [ ] Let EAS configure push credentials during the first production build
+      (APNs key + aps-environment entitlement) — accept when prompted, or run
+      `eas credentials` to set it up explicitly.
+- [ ] Backend side must be live before submission: `device_tokens` migration
+      applied, `send-push` deployed, Database Webhooks created — see
+      `docs/LAUNCH_RUNBOOK.md` §A.
+- [ ] Verify on a **physical device** (runbook §C3) — simulators cannot
+      receive push; App Review tests on real hardware.
 
 ## 6. Demo account + reviewer notes (required — UGC app behind a login)
 
@@ -127,9 +160,9 @@ App Review must be able to reach every feature without an invite:
       deletion (Me tab), and the terms-acceptance gate; and that content
       moderation reviews reports within 24 hours.
 - [ ] Verify the demo account can complete: browse directory → view alumni map
-      → send a channel message → report a message → block a user → post/view a
-      job → delete account (test on a *throwaway* clone account, not the demo
-      account itself).
+      → send a channel message → view/RSVP an event → report a message → block
+      a user → post/view a job → delete account (test on a *throwaway* clone
+      account, not the demo account itself).
 
 ## 7. Universal links (TODO — invite virality, post-V1)
 
@@ -148,8 +181,9 @@ does nothing if the app isn't installed:
 ## 8. Final pre-submission sweep
 
 - [ ] `supabase/migrations/` applied to prod (invites, moderation, deletion RPC,
-      avatars bucket) — the compliance features must actually work in the build
-      App Review sees.
+      avatars bucket, chapter creation, events, device tokens — run order in
+      `docs/LAUNCH_RUNBOOK.md` §A1) — the compliance features must actually
+      work in the build App Review sees.
 - [ ] Run through the demo-account flow (Section 6) on the exact build being
       submitted, on TestFlight.
 - [ ] Legal placeholders resolved: governing-law sections in

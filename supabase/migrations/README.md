@@ -14,6 +14,16 @@ Run these in the Supabase SQL Editor in this exact order:
 6. **`app-v2-account-deletion.sql`** — creates the `delete_own_account()` RPC (App Store guideline 5.1.1(v)). If your project blocks SQL writes to `auth.users`, deploy `../functions/delete-account/` instead — see that file's header.
 7. **`app-v2-avatars-storage.sql`** — creates the public `avatars` storage bucket with owner-scoped write policies.
 
+### V3 (run after ALL v2 files — any order among themselves)
+
+The v3 files are independent of each other, so run them in any order once every v2 file has been applied:
+
+- **`app-v3-events.sql`** — creates `events` + `event_rsvps` (the event calendar: chapter-scoped events with going/maybe/declined RSVPs). RLS: members read/create in their own chapter (chapter + creator pinned via `WITH CHECK`), creator or chapter admins update/delete; users manage only their own RSVP rows and only for in-chapter events. Backs `lib/events.ts` and the Events tab.
+- **`app-v3-push.sql`** — creates `device_tokens` (Expo push tokens per user/device). Backs `lib/notifications.ts`.
+- **`app-v3-chapters.sql`** — creates the `create_chapter(name, designation, university)` SECURITY DEFINER RPC so organic signups can found a chapter and become its owner.
+
+The app degrades gracefully before these run (empty calendar, push registration no-ops, create-chapter shows a friendly error) — but the features only work once they're applied.
+
 ## How to run
 
 1. Go to Supabase Dashboard → SQL Editor → New Query.

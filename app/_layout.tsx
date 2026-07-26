@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { supabaseConfigError } from '@/lib/supabase';
 import { consumePendingInviteCode } from '@/lib/invite';
+import { usePushRegistration } from '@/lib/notifications';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { colors, spacing, typography } from '@/theme';
 
@@ -59,6 +60,11 @@ function useAuthGate() {
 function RootNavigator() {
   const { initializing } = useAuth();
   useAuthGate();
+  // Registers the device for push once a session exists and routes
+  // notification taps. Auth gate check: /onboarding/* is NOT a public segment,
+  // so signed-in users reach it freely (the gate only bounces signed-in users
+  // off PUBLIC_SEGMENTS); signed-out users are correctly sent to login.
+  usePushRegistration();
 
   if (initializing) {
     return (

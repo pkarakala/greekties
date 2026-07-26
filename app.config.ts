@@ -55,6 +55,7 @@ const config: ConfigWithLegacyKeys = {
   plugins: [
     'expo-router',
     'expo-secure-store',
+    'expo-notifications',
     [
       '@rnmapbox/maps',
       {

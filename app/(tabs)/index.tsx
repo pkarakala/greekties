@@ -18,6 +18,8 @@ import { Card } from '@/components/Card';
 import { MemberCard } from '@/components/MemberCard';
 import { StatPill } from '@/components/StatPill';
 import { AnimatedNumber } from '@/components/AnimatedNumber';
+import { Button } from '@/components/Button';
+import { InviteCard } from '@/components/InviteCard';
 import { colors, radius, spacing, typography } from '@/theme';
 
 export default function HomeScreen() {
@@ -42,7 +44,7 @@ export default function HomeScreen() {
     [router],
   );
 
-  // No chapter yet → prompt to join via an invite link.
+  // No chapter yet → enter an invite code or start a new chapter.
   if (!profile?.chapter_id && !loading) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
@@ -52,6 +54,17 @@ export default function HomeScreen() {
           <Text style={styles.emptyBody}>
             Open an invite link from your chapter to join and unlock your network.
           </Text>
+          <View style={styles.emptyActions}>
+            <Button
+              label="Enter an invite code"
+              onPress={() => go('/onboarding/enter-code')}
+            />
+            <Button
+              label="Create your chapter"
+              variant="secondary"
+              onPress={() => go('/onboarding/create-chapter')}
+            />
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -124,6 +137,11 @@ export default function HomeScreen() {
           />
           <QuickAction icon="chatbubbles" label="Open chat" onPress={() => go('/chats')} />
         </View>
+
+        {/* Member invite loop — surfaced while the chapter is still small.
+            (InviteCard renders null until its invite fetch resolves, so a
+            brief mount while stats load shows nothing.) */}
+        {stats.members < 15 && <InviteCard />}
 
         {/* Map preview → full Mapbox alumni map */}
         <Card style={styles.mapCard} onPress={() => go('/map')}>
@@ -302,4 +320,5 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { ...typography.h2, color: colors.textPrimary, textAlign: 'center' },
   emptyBody: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+  emptyActions: { alignSelf: 'stretch', gap: spacing.md, marginTop: spacing.lg },
 });

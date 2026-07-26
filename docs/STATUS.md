@@ -1,7 +1,28 @@
 # Greek Ties — Working Status / Handoff
 
-*Updated 2026-07-25. If you're an AI assistant or a new contributor picking this up,
-read this file, then `docs/PRODUCTION_ROADMAP.md`, then `docs/SIMULATOR_SETUP.md`.*
+*Updated 2026-07-26. If you're an AI assistant or a new contributor picking this up,
+read this file, then `docs/LAUNCH_RUNBOOK.md`, then `docs/PRODUCTION_ROADMAP.md`.*
+
+## Latest change set (v3 — public-release features)
+
+- **Push notifications**: `lib/notifications.ts` (registration + tap routing, wired
+  in `_layout.tsx`; sign-out unregisters), `supabase/functions/send-push/` (webhook-
+  secret-gated Edge Function), `app-v3-push.sql`, runbook in `docs/PUSH_NOTIFICATIONS.md`.
+  Requires EAS projectId (`eas init`) + a dev build — no-ops in Expo Go/simulator.
+- **Onboarding escape hatch**: `/onboarding/enter-code` (paste code or full link) and
+  `/onboarding/create-chapter` (backed by the `create_chapter` RPC in
+  `app-v3-chapters.sql`, seeds default channels, founder becomes owner). Home's
+  no-chapter empty state now routes to both.
+- **Member invite loop**: `components/InviteCard.tsx` on Home when chapter < 15
+  members (share/copy the invite link).
+- **Event calendar**: Events tab (agenda grouped by day, category filters), create +
+  detail screens with RSVPs (`app-v3-events.sql`, `lib/events.ts`).
+- **Tests + lint**: jest-expo (4 suites / 38 tests, all passing), ESLint flat config
+  (0 errors), Prettier, CI runs typecheck + tests + lint.
+- **Launch guide**: `docs/LAUNCH_RUNBOOK.md` is now the end-to-end go-live checklist
+  (migrations → accounts → verification → submission → day-1 ops).
+
+Migrations now number 10 — run order in `supabase/migrations/README.md`.
 
 ## Context
 

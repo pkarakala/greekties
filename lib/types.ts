@@ -101,3 +101,47 @@ export interface JobPosting {
   apply_url: string | null;
   created_at: string;
 }
+
+// ── V2 tables (may not exist in the live DB yet — callers degrade gracefully) ──
+
+export type EventCategory = 'chapter' | 'alumni' | 'philanthropy' | 'social' | 'recruitment';
+
+export interface Event {
+  id: string;
+  chapter_id: string;
+  created_by: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  category: EventCategory;
+  starts_at: string;
+  ends_at: string | null;
+  created_at: string;
+}
+
+export type RsvpStatus = 'going' | 'maybe' | 'declined';
+
+export interface EventRsvp {
+  event_id: string;
+  user_id: string;
+  status: RsvpStatus;
+  created_at: string;
+}
+
+export interface DeviceToken {
+  user_id: string;
+  token: string;
+  platform: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChapterInvite {
+  id: string;
+  chapter_id: string;
+  code: string;
+  created_by: string | null;
+  expires_at: string | null;
+  revoked: boolean;
+  created_at: string;
+}

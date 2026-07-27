@@ -82,6 +82,119 @@ export async function fetchBlockedIds(userId: string): Promise<Set<string>> {
   }
 }
 
+// ── Admin report queue ───────────────────────────────────────────────────────
+// Chapter admins triage reports filed in their chapter (App Store guideline
+// 1.2 "timely responses"). RLS ("Admins read/update chapter reports" in
+// app-v2-moderation.sql) scopes both reads and writes server-side.
+
+export type ReportStatus = 'open' | 'resolved' | 'dismissed';
+
+/** A row from `content_reports` (see app-v2-moderation.sql). */
+export interface ContentReport {
+  id: string;
+  reporter_id: string;
+  chapter_id: string | null;
+  target_type: ReportTargetType;
+  target_id: string;
+  reason: string | null;
+  /** 'open' by default; admins move it to 'resolved' or 'dismissed'. */
+  status: string;
+  created_at: string;
+}
+
+export interface ChapterReportsData {
+  loading: boolean;
+  error: string | null;
+  reports: ContentReport[];
+  reload: () => void;
+}
+
+/** Open reports first, newest first within each group. */
+function sortReports(rows: ContentReport[]): ContentReport[] {
+  return [...rows].sort((a, b) => {
+    const aOpen = a.status === 'open' ? 0 : 1;
+    const bOpen = b.status === 'open' ? 0 : 1;
+    if (aOpen !== bOpen) return aOpen - bOpen;
+    return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
+  });
+}
+
+/**
+ * Reports filed in the given chapter, for the admin moderation queue.
+ * Empty list (no error) when the moderation migration hasn't run yet.
+ */
+export function useChapterReports(chapterId: string | null): ChapterReportsData {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reports, setReports] = useState<ContentReport[]>([]);
+  const [nonce, setNonce] = useState(0);
+  const reload = useCallback(() => setNonce((n) => n + 1), []);
+
+  useEffect(() => {
+    if (!chapterId) {
+      setReports([]);
+      setLoading(false);
+      return;
+    }
+    let mounted = true;
+    setLoading(true);
+    setError(null);
+
+    (async () => {
+      try {
+        const { data, error: err } = await supabase
+          .from('content_reports')
+          .select('id, reporter_id, chapter_id, target_type, target_id, reason, status, created_at')
+          .eq('chapter_id', chapterId)
+          .order('created_at', { ascending: false });
+        if (!mounted) return;
+        if (err) {
+          // Table missing (pre-migration) → behave like an empty queue.
+          if (!isMissingTable(err.message)) {
+            setError('Couldn’t load reports. Pull to refresh to try again.');
+          }
+          setReports([]);
+        } else {
+          setReports(sortReports((data as ContentReport[]) ?? []));
+        }
+      } catch {
+        if (!mounted) return;
+        setError('Couldn’t load reports. Pull to refresh to try again.');
+        setReports([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [chapterId, nonce]);
+
+  return { loading, error, reports, reload };
+}
+
+/** Admin action: mark a report open / resolved / dismissed. */
+export async function updateReportStatus(
+  reportId: string,
+  status: ReportStatus,
+): Promise<{ error: string | null }> {
+  try {
+    const { error } = await supabase
+      .from('content_reports')
+      .update({ status })
+      .eq('id', reportId);
+    if (!error) return { error: null };
+    return {
+      error: isMissingTable(error.message)
+        ? NOT_AVAILABLE
+        : 'Couldn’t update the report. Please try again.',
+    };
+  } catch {
+    return { error: 'Couldn’t update the report. Please try again.' };
+  }
+}
+
 /** The signed-in user's block list, for filtering feeds/directories. */
 export function useBlockedIds(): { blockedIds: Set<string>; refresh: () => Promise<void> } {
   const { session } = useAuth();

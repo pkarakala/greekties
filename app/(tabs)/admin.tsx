@@ -6,6 +6,7 @@ import { useCallback } from 'react';
 import { useAuth } from '@/lib/auth';
 import { isAdmin } from '@/lib/types';
 import { usePendingMembers } from '@/lib/admin';
+import { useChapterReports } from '@/lib/moderation';
 import { Card } from '@/components/Card';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -15,11 +16,14 @@ export default function AdminScreen() {
   const chapterId = profile?.chapter_id ?? null;
 
   const { members: pending, reload } = usePendingMembers(chapterId);
+  const { reports, reload: reloadReports } = useChapterReports(chapterId);
+  const openReports = reports.filter((r) => r.status === 'open').length;
 
   useFocusEffect(
     useCallback(() => {
       reload();
-    }, [reload]),
+      reloadReports();
+    }, [reload, reloadReports]),
   );
 
   // Defensive: the tab is already hidden for non-admins.
@@ -51,6 +55,17 @@ export default function AdminScreen() {
           }
           badge={pending.length}
           onPress={() => router.push('/admin/approvals')}
+        />
+        <NavRow
+          icon="flag-outline"
+          title="Reports"
+          subtitle={
+            openReports > 0
+              ? `${openReports} open ${openReports === 1 ? 'report' : 'reports'}`
+              : 'No open reports'
+          }
+          badge={openReports}
+          onPress={() => router.push('/admin/reports')}
         />
         <NavRow
           icon="chatbubbles"

@@ -37,15 +37,34 @@ export default function MapScreen() {
     }
   }, []);
 
-  // Center on the average of member coordinates.
+  // The signed-in user's own pin renders separately (distinct style), so it
+  // shows even before the members query includes them — the first user in a
+  // chapter still sees themselves on the map.
+  const selfLat = profile?.lat ?? null;
+  const selfLng = profile?.lng ?? null;
+  const selfCoordinate = useMemo<[number, number] | null>(() => {
+    if (selfLat == null || selfLng == null) return null;
+    return [selfLng, selfLat];
+  }, [selfLat, selfLng]);
+
+  const otherMembers = useMemo(
+    () => members.filter((m) => m.id !== profile?.id),
+    [members, profile?.id],
+  );
+
+  const pinCount = otherMembers.length + (selfCoordinate ? 1 : 0);
+
+  // Center on the average of all pin coordinates (members + self).
   const center = useMemo<[number, number]>(() => {
-    if (members.length === 0) return [-98.5795, 39.8283]; // continental US fallback
-    const sum = members.reduce(
-      (acc, m) => [acc[0] + (m.lng ?? 0), acc[1] + (m.lat ?? 0)],
-      [0, 0],
-    );
-    return [sum[0] / members.length, sum[1] / members.length];
-  }, [members]);
+    const coords: [number, number][] = otherMembers.map((m) => [
+      m.lng as number,
+      m.lat as number,
+    ]);
+    if (selfCoordinate) coords.push(selfCoordinate);
+    if (coords.length === 0) return [-98.5795, 39.8283]; // continental US fallback
+    const sum = coords.reduce((acc, c) => [acc[0] + c[0], acc[1] + c[1]], [0, 0]);
+    return [sum[0] / coords.length, sum[1] / coords.length];
+  }, [otherMembers, selfCoordinate]);
 
   if (!Mapbox || !MAPBOX_TOKEN || MAPBOX_TOKEN.startsWith('PASTE_') || !tokenReady) {
     return (
@@ -75,11 +94,11 @@ export default function MapScreen() {
         <View style={styles.flex}>
           <Mapbox.MapView style={styles.flex} styleURL={Mapbox.StyleURL.Light}>
             <Mapbox.Camera
-              zoomLevel={members.length > 1 ? 3 : 9}
+              zoomLevel={pinCount > 1 ? 3 : 9}
               centerCoordinate={center}
               animationDuration={0}
             />
-            {members.map((m) => (
+            {otherMembers.map((m) => (
               <Mapbox.PointAnnotation
                 key={m.id}
                 id={m.id}
@@ -91,11 +110,26 @@ export default function MapScreen() {
                 <View style={styles.pin} />
               </Mapbox.PointAnnotation>
             ))}
+            {selfCoordinate && profile && (
+              <Mapbox.PointAnnotation
+                key={profile.id}
+                id={profile.id}
+                coordinate={selfCoordinate}
+                onSelected={() =>
+                  router.push({ pathname: '/profile/[id]', params: { id: profile.id } })
+                }
+              >
+                <View style={styles.selfPin} />
+              </Mapbox.PointAnnotation>
+            )}
           </Mapbox.MapView>
 
           {!!error && <Text style={styles.error}>Couldn’t load pins: {error}</Text>}
-          {!error && members.length === 0 && (
-            <Text style={styles.overlayNote}>No members have shared a location yet.</Text>
+          {!error && pinCount === 0 && (
+            <Text style={styles.overlayNote}>
+              No members have shared a location yet. Add your city in Edit profile to
+              put yourself on the map.
+            </Text>
           )}
         </View>
       )}
@@ -122,6 +156,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
     borderWidth: 2,
     borderColor: colors.background,
+  },
+  // The signed-in user's own pin — slightly larger with a navy border.
+  selfPin: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.gold,
+    borderWidth: 3,
+    borderColor: colors.navy,
   },
   error: { ...typography.bodySmall, color: colors.red, padding: spacing.lg },
   overlayNote: {

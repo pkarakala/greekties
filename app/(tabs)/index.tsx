@@ -14,12 +14,14 @@ import * as Haptics from 'expo-haptics';
 import { useAuth } from '@/lib/auth';
 import { useHomeData } from '@/lib/queries';
 import { useInbox } from '@/lib/mentorship';
+import { useEvents } from '@/lib/events';
 import { Card } from '@/components/Card';
 import { MemberCard } from '@/components/MemberCard';
 import { StatPill } from '@/components/StatPill';
 import { AnimatedNumber } from '@/components/AnimatedNumber';
 import { Button } from '@/components/Button';
 import { InviteCard } from '@/components/InviteCard';
+import { NextEventCard } from '@/components/NextEventCard';
 import { colors, radius, spacing, typography } from '@/theme';
 
 export default function HomeScreen() {
@@ -30,6 +32,17 @@ export default function HomeScreen() {
     session?.user?.id ?? null,
   );
   const { pendingIncoming } = useInbox(session?.user?.id ?? null);
+  const {
+    events,
+    error: eventsError,
+    reload: reloadEvents,
+  } = useEvents(profile?.chapter_id ?? null);
+  const nextEvent = events[0] ?? null;
+
+  const onRefresh = useCallback(() => {
+    reload();
+    reloadEvents();
+  }, [reload, reloadEvents]);
 
   const firstName =
     profile?.name?.split(' ')[0] ??
@@ -78,7 +91,7 @@ export default function HomeScreen() {
         refreshControl={
           <RefreshControl
             refreshing={loading}
-            onRefresh={reload}
+            onRefresh={onRefresh}
             tintColor={colors.gold}
           />
         }
@@ -137,6 +150,20 @@ export default function HomeScreen() {
           />
           <QuickAction icon="chatbubbles" label="Open chat" onPress={() => go('/chats')} />
         </View>
+
+        {/* Next event teaser — hidden entirely when there's nothing upcoming
+            (or the events table doesn't exist yet / the fetch errored). */}
+        {!eventsError && nextEvent && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Coming up</Text>
+              <Pressable onPress={() => go('/(tabs)/events')} hitSlop={8}>
+                <Text style={styles.seeAll}>See all</Text>
+              </Pressable>
+            </View>
+            <NextEventCard event={nextEvent} />
+          </View>
+        )}
 
         {/* Member invite loop — surfaced while the chapter is still small.
             (InviteCard renders null until its invite fetch resolves, so a
@@ -297,7 +324,13 @@ const styles = StyleSheet.create({
   mapSub: { ...typography.bodySmall, color: colors.textSecondary },
 
   section: { gap: spacing.md },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   sectionTitle: { ...typography.h2, color: colors.textPrimary },
+  seeAll: { ...typography.bodySmall, color: colors.gold, fontWeight: '600' },
   rail: { gap: spacing.md, paddingRight: spacing.lg },
 
   activityList: { gap: spacing.sm },

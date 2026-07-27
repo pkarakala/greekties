@@ -7,6 +7,7 @@ import {
   TextInput,
   Pressable,
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
@@ -16,14 +17,16 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { useThread, respondToRequest, sendMessage } from '@/lib/mentorship';
+import { reportContent, blockUser } from '@/lib/moderation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
+import { showMessageActions } from '@/components/MessageActions';
 import { colors, radius, spacing, typography } from '@/theme';
 
 export default function ThreadScreen() {
   const { requestId } = useLocalSearchParams<{ requestId: string }>();
   const router = useRouter();
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
   const myUserId = session?.user?.id ?? null;
 
   const { loading, error, request, messages, other, reload } = useThread(
@@ -55,6 +58,62 @@ export default function ThreadScreen() {
     setSending(false);
     if (err) setDraft(content);
     else reload();
+  }
+
+  // ── Moderation (long-press another member's bubble) ────────────────────────
+
+  async function submitReport(messageId: string, reason: string) {
+    if (!myUserId || !reason.trim()) return;
+    const { error: reportError } = await reportContent({
+      reporterId: myUserId,
+      chapterId: profile?.chapter_id ?? null,
+      targetType: 'mentorship_message',
+      targetId: messageId,
+      reason: reason.trim(),
+    });
+    if (reportError) Alert.alert('Couldn’t submit report', reportError);
+    else Alert.alert('Report submitted', 'Thanks — our team will review it.');
+  }
+
+  function startReport(messageId: string) {
+    if (Platform.OS === 'ios') {
+      Alert.prompt(
+        'Report message',
+        'Tell us what’s wrong with this message.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Report',
+            style: 'destructive',
+            onPress: (reason?: string) => void submitReport(messageId, reason || 'Reported from thread'),
+          },
+        ],
+        'plain-text',
+      );
+    } else {
+      // Android has no Alert.prompt — file with a fixed reason.
+      void submitReport(messageId, 'Reported from thread');
+    }
+  }
+
+  function confirmBlock(blockedUserId: string) {
+    if (!myUserId) return;
+    Alert.alert(
+      `Block ${other?.name ?? 'this member'}?`,
+      'You won’t see their profile or messages anymore.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            const { error: blockError } = await blockUser(myUserId, blockedUserId);
+            if (blockError) Alert.alert('Couldn’t block', blockError);
+            else router.back();
+          },
+        },
+      ],
+    );
   }
 
   return (
@@ -110,19 +169,32 @@ export default function ThreadScreen() {
               <Text style={styles.statusNote}>This request was declined.</Text>
             )}
 
-            {/* Conversation (once accepted) */}
+            {/* Conversation (once accepted). Long-press another member's bubble
+                to report the message or block them (own bubbles are inert). */}
             {accepted &&
               messages.map((m) => {
                 const mine = m.sender_id === myUserId;
+                if (mine) {
+                  return (
+                    <View key={m.id} style={[styles.bubble, styles.bubbleMine]}>
+                      <Text style={[styles.bubbleText, styles.bubbleTextMine]}>{m.content}</Text>
+                    </View>
+                  );
+                }
                 return (
-                  <View
+                  <Pressable
                     key={m.id}
-                    style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}
+                    style={[styles.bubble, styles.bubbleTheirs]}
+                    onLongPress={() =>
+                      showMessageActions({
+                        senderName: other?.name ?? 'Member',
+                        onReport: () => startReport(m.id),
+                        onBlock: () => confirmBlock(m.sender_id),
+                      })
+                    }
                   >
-                    <Text style={[styles.bubbleText, mine && styles.bubbleTextMine]}>
-                      {m.content}
-                    </Text>
-                  </View>
+                    <Text style={styles.bubbleText}>{m.content}</Text>
+                  </Pressable>
                 );
               })}
 

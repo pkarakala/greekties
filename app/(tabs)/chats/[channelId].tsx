@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,12 +11,12 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '@/lib/auth';
 import { useChannelThread } from '@/lib/chat';
-import { markRead } from '@/lib/reads';
+import { markChannelRead } from '@/lib/reads';
 import { clockTime } from '@/lib/time';
 import { Avatar } from '@/components/Avatar';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -38,10 +38,17 @@ export default function ChannelThreadScreen() {
   // loadEarlier() prepends older messages (the newest message doesn't change).
   const lastScrolledIdRef = useRef<string | null>(null);
 
-  // Advance the local "last read" marker as messages load/arrive.
+  // Advance the "last read" marker (local + server, cross-device) whenever
+  // the screen gains focus and as messages load / new realtime messages
+  // arrive while it's open.
+  useFocusEffect(
+    useCallback(() => {
+      if (channelId) void markChannelRead(channelId, myUserId ?? '');
+    }, [channelId, myUserId]),
+  );
   useEffect(() => {
-    if (channelId && messages.length > 0) markRead(channelId);
-  }, [channelId, messages.length]);
+    if (channelId && messages.length > 0) void markChannelRead(channelId, myUserId ?? '');
+  }, [channelId, myUserId, messages.length]);
 
   async function handleSend() {
     const content = draft.trim();

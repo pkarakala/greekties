@@ -7,6 +7,7 @@ import {
   ScrollView,
   RefreshControl,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -66,7 +67,8 @@ function DirectoryView({
   initialMentorsOnly?: boolean;
 }) {
   const router = useRouter();
-  const { loading, error, members, reload } = useChapterMembers(chapterId);
+  const { loading, error, members, reload, loadMore, hasMore, loadingMore } =
+    useChapterMembers(chapterId);
 
   const [query, setQuery] = useState('');
   const [mentorsOnly, setMentorsOnly] = useState(initialMentorsOnly);
@@ -109,6 +111,17 @@ function DirectoryView({
       contentContainerStyle={styles.list}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
+      onEndReached={() => {
+        if (hasMore && !loadingMore) void loadMore();
+      }}
+      onEndReachedThreshold={0.4}
+      ListFooterComponent={
+        loadingMore ? (
+          <View style={styles.footerLoading}>
+            <ActivityIndicator color={colors.gold} />
+          </View>
+        ) : null
+      }
       refreshControl={
         <RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.gold} />
       }
@@ -158,7 +171,7 @@ function DirectoryView({
 
 function JobsView({ chapterId }: { chapterId: string | null }) {
   const router = useRouter();
-  const { loading, error, jobs, reload } = useJobs(chapterId);
+  const { loading, error, jobs, reload, loadMore, hasMore, loadingMore } = useJobs(chapterId);
 
   const [query, setQuery] = useState('');
   const [industry, setIndustry] = useState<string | null>(null);
@@ -212,6 +225,17 @@ function JobsView({ chapterId }: { chapterId: string | null }) {
       contentContainerStyle={styles.list}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
+      onEndReached={() => {
+        if (hasMore && !loadingMore) void loadMore();
+      }}
+      onEndReachedThreshold={0.4}
+      ListFooterComponent={
+        loadingMore ? (
+          <View style={styles.footerLoading}>
+            <ActivityIndicator color={colors.gold} />
+          </View>
+        ) : null
+      }
       refreshControl={
         <RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.gold} />
       }
@@ -277,6 +301,7 @@ const styles = StyleSheet.create({
   controls: { gap: spacing.md, paddingBottom: spacing.md },
   chips: { gap: spacing.sm, paddingRight: spacing.lg },
   count: { ...typography.caption, color: colors.textTertiary },
+  footerLoading: { paddingVertical: spacing.md, alignItems: 'center' },
   postBtn: {
     flexDirection: 'row',
     alignItems: 'center',

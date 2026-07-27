@@ -14,7 +14,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/lib/auth';
+import { geocodeCity } from '@/lib/geocode';
 import { updateProfile, uploadAvatar } from '@/lib/profile';
+import type { Profile } from '@/lib/types';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextField } from '@/components/TextField';
 import { Button } from '@/components/Button';
@@ -88,12 +90,28 @@ export default function EditProfileScreen() {
     }
 
     setSaving(true);
+
+    // Geocode the city so the alumni map can place a pin. Best-effort — a
+    // failed lookup never blocks the save (the map just won't show a pin).
+    const trimmedCity = city.trim();
+    const coordFields: Partial<Profile> = {};
+    if (!trimmedCity) {
+      coordFields.lat = null;
+      coordFields.lng = null;
+    } else if (trimmedCity !== profile.city || profile.lat == null) {
+      const coords = await geocodeCity(trimmedCity);
+      if (coords) {
+        coordFields.lat = coords.lat;
+        coordFields.lng = coords.lng;
+      }
+    }
+
     const { error: saveError } = await updateProfile(profile.id, {
       name: name.trim() || null,
       class_year: year,
       role: role.trim() || null,
       industry: industry.trim() || null,
-      city: city.trim() || null,
+      city: trimmedCity || null,
       company: company.trim() || null,
       job_title: jobTitle.trim() || null,
       linkedin_url: linkedin || null,
@@ -101,6 +119,7 @@ export default function EditProfileScreen() {
       open_to_mentor: openToMentor,
       is_hiring: isHiring,
       avatar_url: avatarUrl,
+      ...coordFields,
     });
     setSaving(false);
 
@@ -163,6 +182,7 @@ export default function EditProfileScreen() {
             placeholder="Technology"
           />
           <TextField label="City" value={city} onChangeText={setCity} placeholder="Austin, TX" />
+          <Text style={styles.fieldHint}>Your city places you on the alumni map.</Text>
           <TextField label="Company" value={company} onChangeText={setCompany} placeholder="Acme Inc." />
           <TextField
             label="Job title"
@@ -255,5 +275,12 @@ const styles = StyleSheet.create({
   },
   toggleLabel: { ...typography.h3, color: colors.textPrimary },
   toggleHint: { ...typography.bodySmall, color: colors.textSecondary },
+  // Tucks under the City field (TextField carries its own bottom margin).
+  fieldHint: {
+    ...typography.bodySmall,
+    color: colors.textTertiary,
+    marginTop: -spacing.md,
+    marginBottom: spacing.lg,
+  },
   error: { ...typography.bodySmall, color: colors.red, marginBottom: spacing.lg },
 });

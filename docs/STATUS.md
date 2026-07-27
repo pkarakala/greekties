@@ -92,3 +92,15 @@ Migrations now number 10 — run order in `supabase/migrations/README.md`.
   must degrade gracefully — catch, fall back, never surface raw Postgres errors.
 - Data hooks live in `lib/`, follow the existing `{ loading, error, data, reload }` shape.
 - Commit + push after every coherent change set (cross-device workflow).
+
+## v3.1 (ops + polish)
+
+- **Admin reports queue** — chapter admins can review/resolve `content_reports`.
+- **Server-side unread** — unread counts computed in the DB instead of the client.
+- **Geocoded alumni map** — member locations geocoded so the map has real pins.
+- **Mentorship message reporting** — report messages inside mentorship threads.
+- **Jobs `is_open` filter + pagination** — closed roles filterable, board paginated.
+- **Directory pagination** — the People tab pages through large chapters.
+- **Home events teaser** — a "Coming up" section on Home shows the next upcoming
+  event (`components/NextEventCard.tsx`) with a "See all" link to the Events tab;
+  hidden when there are no events or the events tables don't exist yet.

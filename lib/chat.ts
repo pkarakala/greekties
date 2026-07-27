@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
-import { getLastRead } from './reads';
+import { getLastRead, getServerLastReads } from './reads';
 import { fetchBlockedIds } from './moderation';
 import type { Channel, ChannelMessage, Profile } from './types';
 
@@ -66,6 +66,12 @@ export function useChannels(chapterId: string | null, userId: string | null): Ch
 
       const channels = (data as Channel[]) ?? [];
 
+      // Server-side reads (channel_members.last_read_at) fetched once for all
+      // channels; empty map on error/pre-migration. Merged with the local
+      // timestamp per channel below — server may lag local on this device,
+      // and local won't exist on a freshly signed-in device.
+      const serverReads = userId ? await getServerLastReads(userId) : new Map<string, number>();
+
       const items: ChannelListItem[] = await Promise.all(
         channels.map(async (channel) => {
           const { data: msgs } = await supabase
@@ -77,7 +83,8 @@ export function useChannels(chapterId: string | null, userId: string | null): Ch
 
           const lastMessage = ((msgs as ChannelMessage[]) ?? [])[0] ?? null;
           const lastActivity = lastMessage?.created_at ?? channel.created_at;
-          const lastRead = await getLastRead(channel.id);
+          const localRead = await getLastRead(channel.id);
+          const lastRead = Math.max(serverReads.get(channel.id) ?? 0, localRead);
           const unread =
             !!lastMessage &&
             new Date(lastMessage.created_at).getTime() > lastRead &&

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import type { Profile } from './types';
 
@@ -131,13 +131,47 @@ interface MembersResult {
   reload: () => void;
 }
 
-/** All approved members in a chapter (for the directory). Filtering is client-side. */
-export function useChapterMembers(chapterId: string | null): MembersResult {
+/** Members fetched per page (initial load + each loadMore). */
+const MEMBERS_PAGE_SIZE = 100;
+
+export interface ChapterMembersResult extends MembersResult {
+  /** True when more members exist beyond what's loaded. */
+  hasMore: boolean;
+  /** True while a loadMore() page is in flight. */
+  loadingMore: boolean;
+  /** Fetch the next page (offset-based, name order) and append it. */
+  loadMore: () => Promise<void>;
+}
+
+/**
+ * Approved members in a chapter (for the directory), ordered by name and
+ * paginated via `.range()` offsets. Filtering is client-side, over the pages
+ * loaded so far.
+ */
+export function useChapterMembers(chapterId: string | null): ChapterMembersResult {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [members, setMembers] = useState<Profile[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [nonce, setNonce] = useState(0);
   const reload = useCallback(() => setNonce((n) => n + 1), []);
+
+  // Offset cursor: how many rows have been fetched so far.
+  const fetchedCountRef = useRef(0);
+  const loadingMoreRef = useRef(false);
+
+  const fetchPage = useCallback(
+    (from: number) =>
+      supabase
+        .from('profiles')
+        .select(MEMBER_COLUMNS)
+        .eq('chapter_id', chapterId!)
+        .eq('status', 'approved')
+        .order('name', { ascending: true })
+        .range(from, from + MEMBERS_PAGE_SIZE - 1),
+    [chapterId],
+  );
 
   useEffect(() => {
     if (!chapterId) {
@@ -147,26 +181,49 @@ export function useChapterMembers(chapterId: string | null): MembersResult {
     let mounted = true;
     setLoading(true);
     setError(null);
+    fetchedCountRef.current = 0;
 
-    supabase
-      .from('profiles')
-      .select(MEMBER_COLUMNS)
-      .eq('chapter_id', chapterId)
-      .eq('status', 'approved')
-      .order('name', { ascending: true })
-      .then(({ data, error: err }) => {
-        if (!mounted) return;
-        if (err) setError(err.message);
-        else setMembers((data as Profile[]) ?? []);
-        setLoading(false);
-      });
+    fetchPage(0).then(({ data, error: err }) => {
+      if (!mounted) return;
+      if (err) setError(err.message);
+      else {
+        const page = (data as Profile[]) ?? [];
+        setMembers(page);
+        fetchedCountRef.current = page.length;
+        setHasMore(page.length === MEMBERS_PAGE_SIZE);
+      }
+      setLoading(false);
+    });
 
     return () => {
       mounted = false;
     };
-  }, [chapterId, nonce]);
+  }, [chapterId, nonce, fetchPage]);
 
-  return { loading, error, members, reload };
+  const loadMore = useCallback(async () => {
+    if (!chapterId || fetchedCountRef.current === 0 || loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+
+    const { data, error: err } = await fetchPage(fetchedCountRef.current);
+    if (err) {
+      setError(err.message);
+    } else {
+      const page = (data as Profile[]) ?? [];
+      fetchedCountRef.current += page.length;
+      setHasMore(page.length === MEMBERS_PAGE_SIZE);
+      if (page.length > 0) {
+        setMembers((prev) => {
+          const seen = new Set(prev.map((m) => m.id));
+          return [...prev, ...page.filter((m) => !seen.has(m.id))];
+        });
+      }
+    }
+    loadingMoreRef.current = false;
+    setLoadingMore(false);
+  }, [chapterId, fetchPage]);
+
+  return { loading, error, members, hasMore, loadingMore, loadMore, reload };
 }
 
 /** Approved members that have map coordinates. */

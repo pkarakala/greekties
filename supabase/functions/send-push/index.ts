@@ -12,6 +12,13 @@
 // the sender's display name. data.url carries an in-app path that
 // lib/notifications.ts validates (must start with '/') and routes on tap.
 //
+// Each event ALSO writes one row per recipient into the `notifications`
+// table (app-v4-notifications.sql) — the durable in-app record for users who
+// denied push permission or have no registered device. That insert is
+// best-effort: pre-migration or on failure it logs and the push fan-out
+// continues unaffected. Clients can't write the table (no INSERT policy);
+// the service-role key here bypasses RLS by design.
+//
 // Handled events:
 //   • INSERT channel_messages          → channel members except the sender
 //                                        (public channels use implicit
@@ -89,13 +96,29 @@ async function senderName(admin, userId: string): Promise<string> {
 }
 
 /**
+ * The `notifications.type` values this function emits (must stay within the
+ * CHECK constraint in app-v4-notifications.sql).
+ */
+type NotificationType =
+  | 'channel_message'
+  | 'mentorship_request'
+  | 'mentorship_accepted'
+  | 'mentorship_message';
+
+/**
  * Map a webhook event to recipients + notification copy. Returns null for
  * events that shouldn't notify (e.g. an unrelated mentorship_requests UPDATE).
  */
 async function buildNotification(
   admin,
   payload: WebhookPayload,
-): Promise<{ userIds: string[]; title: string; body: string; url: string } | null> {
+): Promise<{
+  userIds: string[];
+  type: NotificationType;
+  title: string;
+  body: string;
+  url: string;
+} | null> {
   const record = payload.record ?? {};
 
   // 1. New channel message → every explicit member of the channel but the sender.
@@ -112,6 +135,7 @@ async function buildNotification(
     if (userIds.length === 0) return null;
     return {
       userIds,
+      type: 'channel_message',
       title: 'New message',
       body: `${await senderName(admin, sender)} posted in your chapter chat`,
       url: `/chats/${channelId}`,
@@ -122,6 +146,7 @@ async function buildNotification(
   if (payload.table === 'mentorship_requests' && payload.type === 'INSERT') {
     return {
       userIds: [record.to_user_id as string],
+      type: 'mentorship_request',
       title: 'New mentorship request',
       body: `${await senderName(admin, record.from_user_id as string)} sent you a mentorship request`,
       url: `/inbox/${record.id}`,
@@ -135,6 +160,7 @@ async function buildNotification(
     if (record.status !== 'accepted' || wasAccepted) return null;
     return {
       userIds: [record.from_user_id as string],
+      type: 'mentorship_accepted',
       title: 'Request accepted',
       body: `${await senderName(admin, record.to_user_id as string)} accepted your mentorship request`,
       url: `/inbox/${record.id}`,
@@ -156,6 +182,7 @@ async function buildNotification(
     if (!recipient || recipient === sender) return null;
     return {
       userIds: [recipient],
+      type: 'mentorship_message',
       title: 'New message',
       body: `${await senderName(admin, sender)} sent you a message`,
       url: `/inbox/${requestId}`,
@@ -163,6 +190,46 @@ async function buildNotification(
   }
 
   return null;
+}
+
+/** Max rows per `notifications` INSERT — keeps request payloads bounded. */
+const NOTIFICATION_INSERT_CHUNK_SIZE = 500;
+
+/**
+ * Write the durable in-app copy: one `notifications` row per recipient (see
+ * app-v4-notifications.sql). Runs for EVERY recipient — including those with
+ * no device token or denied push permission; this table is how they still
+ * see the notification. Best-effort: pre-migration (relation does not exist)
+ * or any other failure just logs — it must never break the push fan-out.
+ */
+async function recordNotifications(
+  admin,
+  notification: {
+    userIds: string[];
+    type: NotificationType;
+    title: string;
+    body: string;
+    url: string;
+  },
+): Promise<void> {
+  const rows = notification.userIds.map((userId) => ({
+    user_id: userId,
+    type: notification.type,
+    title: notification.title,
+    body: notification.body,
+    url: notification.url,
+  }));
+  for (let i = 0; i < rows.length; i += NOTIFICATION_INSERT_CHUNK_SIZE) {
+    const chunk = rows.slice(i, i + NOTIFICATION_INSERT_CHUNK_SIZE);
+    try {
+      const { error } = await admin.from('notifications').insert(chunk);
+      if (error) {
+        console.error('send-push: notifications insert failed:', error.message);
+      }
+    } catch (err) {
+      console.error('send-push: notifications insert failed:', err);
+    }
+  }
 }
 
 /**
@@ -240,6 +307,10 @@ Deno.serve(async (req) => {
     if (!notification) {
       return json({ skipped: true }, 200);
     }
+
+    // Durable in-app copy first — it must land even for recipients with no
+    // push token (denied permission, Expo Go). Never fatal (logs inside).
+    await recordNotifications(admin, notification);
 
     const { data: tokens } = await admin
       .from('device_tokens')

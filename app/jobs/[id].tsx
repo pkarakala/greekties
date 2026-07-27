@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
@@ -25,15 +25,39 @@ import { Avatar } from '@/components/Avatar';
 import { TextField } from '@/components/TextField';
 import { timeAgoShort } from '@/lib/time';
 import { colors, radius, spacing, typography } from '@/theme';
-import type { Profile } from '@/lib/types';
+import type { JobPosting, Profile } from '@/lib/types';
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { session, profile: me } = useAuth();
   const myUserId = session?.user?.id ?? null;
-  const { loading, job } = useJob(id ?? null);
+  const { loading, job: fetchedJob } = useJob(id ?? null);
   const [poster, setPoster] = useState<Profile | null>(null);
+
+  // useJob has no reload, so keep a local copy and refetch it on focus —
+  // returning from the edit screen should show the saved changes.
+  const [job, setJob] = useState<JobPosting | null>(null);
+  useEffect(() => {
+    setJob(fetchedJob);
+  }, [fetchedJob]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!id) return;
+      let mounted = true;
+      supabase
+        .from('job_postings')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (mounted && data) setJob(data as JobPosting);
+        });
+      return () => {
+        mounted = false;
+      };
+    }, [id]),
+  );
 
   // Report composer (Android — iOS uses Alert.prompt).
   const [reporting, setReporting] = useState(false);
@@ -220,6 +244,13 @@ export default function JobDetailScreen() {
           {isOwner && (
             <View style={styles.ownerControls}>
               <Text style={styles.sectionTitle}>Manage posting</Text>
+              <Button
+                label="Edit posting"
+                variant="secondary"
+                onPress={() =>
+                  router.push({ pathname: '/jobs/edit/[id]', params: { id: job.id } })
+                }
+              />
               <Button
                 label="Close posting"
                 variant="secondary"

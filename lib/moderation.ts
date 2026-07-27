@@ -195,6 +195,113 @@ export async function updateReportStatus(
   }
 }
 
+// ── Blocked-members management ───────────────────────────────────────────────
+// Settings screen where users review and undo their blocks. Joins `user_blocks`
+// to `profiles` client-side (no FK between them the app can rely on).
+
+// Only what the blocked list renders — keeps PII (email, coords) off the wire.
+const BLOCKED_PROFILE_COLUMNS = 'id, user_id, name, avatar_url, role, company';
+
+/** The slice of a profile the blocked-members list renders. */
+export interface BlockedMemberProfile {
+  id: string;
+  user_id: string;
+  name: string | null;
+  avatar_url: string | null;
+  role: string | null;
+  company: string | null;
+}
+
+export interface BlockedEntry {
+  /** Null when the blocked account no longer has a profile (e.g. deleted). */
+  profile: BlockedMemberProfile | null;
+  /** The blocked auth user id — what `unblockUser` needs. */
+  blockedId: string;
+}
+
+export interface BlockedProfilesData {
+  loading: boolean;
+  error: string | null;
+  blocked: BlockedEntry[];
+  reload: () => void;
+}
+
+/**
+ * Everyone the given user has blocked, with their profiles for display.
+ * Empty list (no error) when the moderation migration hasn't run yet.
+ */
+export function useBlockedProfiles(userId: string | null): BlockedProfilesData {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [blocked, setBlocked] = useState<BlockedEntry[]>([]);
+  const [nonce, setNonce] = useState(0);
+  const reload = useCallback(() => setNonce((n) => n + 1), []);
+
+  useEffect(() => {
+    if (!userId) {
+      setBlocked([]);
+      setLoading(false);
+      return;
+    }
+    let mounted = true;
+    setLoading(true);
+    setError(null);
+
+    (async () => {
+      try {
+        const { data: rows, error: blocksErr } = await supabase
+          .from('user_blocks')
+          .select('blocked_id')
+          .eq('blocker_id', userId)
+          .order('created_at', { ascending: false });
+        if (!mounted) return;
+        if (blocksErr) {
+          // Table missing (pre-migration) → behave like an empty block list.
+          if (!isMissingTable(blocksErr.message)) {
+            setError('Couldn’t load your blocked members. Pull to refresh to try again.');
+          }
+          setBlocked([]);
+          return;
+        }
+
+        const blockedIds = (rows ?? []).map((row) => row.blocked_id as string);
+        if (blockedIds.length === 0) {
+          setBlocked([]);
+          return;
+        }
+
+        // Blocked accounts may have no profile row (deleted account) — keep
+        // the entry so the user can still unblock them.
+        const byUserId = new Map<string, BlockedMemberProfile>();
+        const { data: profiles, error: profilesErr } = await supabase
+          .from('profiles')
+          .select(BLOCKED_PROFILE_COLUMNS)
+          .in('user_id', blockedIds);
+        if (!mounted) return;
+        if (!profilesErr) {
+          for (const p of (profiles as BlockedMemberProfile[]) ?? []) {
+            byUserId.set(p.user_id, p);
+          }
+        }
+
+        setBlocked(blockedIds.map((id) => ({ blockedId: id, profile: byUserId.get(id) ?? null })));
+      } catch {
+        if (!mounted) return;
+        setError('Couldn’t load your blocked members. Pull to refresh to try again.');
+        setBlocked([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [userId, nonce]);
+
+  return { loading, error, blocked, reload };
+}
+
 /** The signed-in user's block list, for filtering feeds/directories. */
 export function useBlockedIds(): { blockedIds: Set<string>; refresh: () => Promise<void> } {
   const { session } = useAuth();

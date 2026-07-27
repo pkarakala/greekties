@@ -16,15 +16,18 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '@/lib/auth';
-import { useChannelThread } from '@/lib/chat';
+import { useChannelThread, deleteMessage } from '@/lib/chat';
+import { reportContent } from '@/lib/moderation';
+import { useTypingIndicator } from '@/lib/presence';
 import { markChannelRead } from '@/lib/reads';
-import { fetchReactions, toggleReaction, QUICK_EMOJI } from '@/lib/reactions';
+import { fetchReactions, toggleReaction, useReactionSync, QUICK_EMOJI } from '@/lib/reactions';
 import type { ReactionsByMessage } from '@/lib/reactions';
 import { clockTime } from '@/lib/time';
 import { Avatar } from '@/components/Avatar';
 import { ReactionPills } from '@/components/ReactionPills';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { colors, radius, spacing, typography } from '@/theme';
+import { isAdmin } from '@/lib/types';
 import type { ChannelMessage } from '@/lib/types';
 
 /**
@@ -50,11 +53,18 @@ function toggleInMap(map: ReactionsByMessage, messageId: string, emoji: string):
 export default function ChannelThreadScreen() {
   const { channelId } = useLocalSearchParams<{ channelId: string }>();
   const router = useRouter();
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
   const myUserId = session?.user?.id ?? null;
 
   const { loading, error, channel, messages, senders, hasMore, loadingEarlier, loadEarlier, send } =
     useChannelThread(channelId ?? null, myUserId);
+
+  // Ephemeral typing indicators over a Realtime broadcast room (no Postgres).
+  const { typers, signalTyping } = useTypingIndicator(
+    channelId ?? null,
+    myUserId,
+    profile?.name ?? null,
+  );
 
   const [draft, setDraft] = useState('');
   const listRef = useRef<FlatList<ChannelMessage>>(null);
@@ -63,10 +73,9 @@ export default function ChannelThreadScreen() {
   const lastScrolledIdRef = useRef<string | null>(null);
 
   // ── Emoji reactions ────────────────────────────────────────────────────────
-  // message id → aggregated { emoji, count, mine } pills. KNOWN LIMITATION:
-  // no realtime subscription for reactions in this round — other members'
-  // reactions only appear when a message's page is (re)fetched, i.e. on
-  // screen re-entry. Realtime parity is a follow-up.
+  // message id → aggregated { emoji, count, mine } pills. Kept live by the
+  // useReactionSync subscription below (other members' reactions arrive via
+  // Realtime and trigger a per-message refetch).
   const [reactions, setReactions] = useState<ReactionsByMessage>(new Map());
   // Ids already queried, so the effect below only fetches newly visible
   // messages (initial page, loadEarlier pages, new realtime arrivals) and
@@ -98,6 +107,29 @@ export default function ChannelThreadScreen() {
     });
   }, [messages, myUserId]);
 
+  // Realtime: when anyone reacts to a visible message, refetch just that
+  // message's pills (skipping ids with in-flight optimistic state is handled
+  // by fetchReactions returning authoritative rows — server state wins).
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+  useReactionSync(
+    channelId ?? null,
+    useCallback(() => messagesRef.current.map((m) => m.id), []),
+    useCallback(
+      (messageId: string) => {
+        void fetchReactions([messageId], myUserId).then((fetched) => {
+          if (!mountedRef.current) return;
+          setReactions((prev) => {
+            const next = new Map(prev);
+            next.set(messageId, fetched.get(messageId) ?? []);
+            return next;
+          });
+        });
+      },
+      [myUserId],
+    ),
+  );
+
   const handleToggleReaction = useCallback(
     (messageId: string, emoji: string) => {
       if (!myUserId) return;
@@ -114,20 +146,123 @@ export default function ChannelThreadScreen() {
     [myUserId],
   );
 
-  // Long-press a bubble (or tap the '+' pill) → quick-react sheet. Alert-only,
-  // matching the moderation menu pattern in components/MessageActions.tsx.
-  const openReactionSheet = useCallback(
+  // ── Delete / report (own vs. others' messages) ─────────────────────────────
+  // Optimistic delete: the thread state lives in useChannelThread, so the
+  // screen hides the bubble locally the moment the user confirms; the realtime
+  // DELETE subscription removes it from the hook's state for real (and for
+  // everyone else). On server error the id is un-hidden and the bubble returns.
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
+  const visibleMessages =
+    hiddenIds.size === 0 ? messages : messages.filter((m) => !hiddenIds.has(m.id));
+
+  const confirmDelete = useCallback((messageId: string) => {
+    Alert.alert('Delete message?', 'This removes the message for everyone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          setHiddenIds((prev) => new Set(prev).add(messageId));
+          void deleteMessage(messageId).then(({ error: err }) => {
+            if (!err || !mountedRef.current) return;
+            setHiddenIds((prev) => {
+              const next = new Set(prev);
+              next.delete(messageId);
+              return next;
+            });
+            Alert.alert('Message not deleted', err);
+          });
+        },
+      },
+    ]);
+  }, []);
+
+  // Report another member's message (App Store 1.2) — same prompt pattern as
+  // the mentorship thread (app/inbox/[requestId].tsx).
+  const submitReport = useCallback(
+    async (messageId: string, reason: string) => {
+      if (!myUserId || !reason.trim()) return;
+      const { error: reportError } = await reportContent({
+        reporterId: myUserId,
+        chapterId: profile?.chapter_id ?? null,
+        targetType: 'channel_message',
+        targetId: messageId,
+        reason: reason.trim(),
+      });
+      if (reportError) Alert.alert('Couldn’t submit report', reportError);
+      else Alert.alert('Report submitted', 'Thanks — our team will review it.');
+    },
+    [myUserId, profile?.chapter_id],
+  );
+
+  const startReport = useCallback(
     (messageId: string) => {
+      if (Platform.OS === 'ios') {
+        Alert.prompt(
+          'Report message',
+          'Tell us what’s wrong with this message.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Report',
+              style: 'destructive',
+              onPress: (reason?: string) =>
+                void submitReport(messageId, reason || 'Reported from channel'),
+            },
+          ],
+          'plain-text',
+        );
+      } else {
+        // Android has no Alert.prompt — file with a fixed reason.
+        void submitReport(messageId, 'Reported from channel');
+      }
+    },
+    [submitReport],
+  );
+
+  // Long-press a bubble (or tap the '+' pill) → message sheet: quick-react
+  // emoji plus delete (own messages, or any message for chapter admins) and
+  // report (others' messages). Alert-only, matching the moderation menu
+  // pattern in components/MessageActions.tsx.
+  const openReactionSheet = useCallback(
+    (message: ChannelMessage) => {
       if (!myUserId) return;
-      Alert.alert('React to message', undefined, [
+      const mine = message.sender_id === myUserId;
+      Alert.alert('Message', undefined, [
         ...QUICK_EMOJI.map((emoji) => ({
           text: emoji,
-          onPress: () => handleToggleReaction(messageId, emoji),
+          onPress: () => handleToggleReaction(message.id, emoji),
         })),
+        ...(!mine
+          ? [
+              {
+                text: 'Report message',
+                style: 'destructive' as const,
+                onPress: () => startReport(message.id),
+              },
+            ]
+          : []),
+        ...(mine
+          ? [
+              {
+                text: 'Delete message',
+                style: 'destructive' as const,
+                onPress: () => confirmDelete(message.id),
+              },
+            ]
+          : isAdmin(profile)
+            ? [
+                {
+                  text: 'Delete message (admin)',
+                  style: 'destructive' as const,
+                  onPress: () => confirmDelete(message.id),
+                },
+              ]
+            : []),
         { text: 'Cancel', style: 'cancel' as const },
       ]);
     },
-    [myUserId, handleToggleReaction],
+    [myUserId, profile, handleToggleReaction, startReport, confirmDelete],
   );
 
   // Advance the "last read" marker (local + server, cross-device) whenever
@@ -152,7 +287,7 @@ export default function ChannelThreadScreen() {
 
   function renderItem({ item, index }: { item: ChannelMessage; index: number }) {
     const mine = item.sender_id === myUserId;
-    const prev = index > 0 ? messages[index - 1] : null;
+    const prev = index > 0 ? visibleMessages[index - 1] : null;
     const showHeader = !prev || prev.sender_id !== item.sender_id;
     const sender = senders[item.sender_id];
     const messageReactions = reactions.get(item.id) ?? [];
@@ -175,7 +310,7 @@ export default function ChannelThreadScreen() {
         )}
         <View style={[styles.bubbleRow, mine ? styles.alignRight : styles.alignLeft]}>
           <Pressable
-            onLongPress={() => openReactionSheet(item.id)}
+            onLongPress={() => openReactionSheet(item)}
             style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}
           >
             <Text style={[styles.bubbleText, mine && styles.bubbleTextMine]}>{item.content}</Text>
@@ -187,7 +322,7 @@ export default function ChannelThreadScreen() {
             <ReactionPills
               reactions={messageReactions}
               onToggle={(emoji) => handleToggleReaction(item.id, emoji)}
-              onAdd={() => openReactionSheet(item.id)}
+              onAdd={() => openReactionSheet(item)}
             />
           </View>
         )}
@@ -211,7 +346,7 @@ export default function ChannelThreadScreen() {
         >
           <FlatList
             ref={listRef}
-            data={messages}
+            data={visibleMessages}
             keyExtractor={(m) => m.id}
             renderItem={renderItem}
             contentContainerStyle={styles.list}
@@ -221,7 +356,7 @@ export default function ChannelThreadScreen() {
             onContentSizeChange={() => {
               // Only auto-scroll when a *new* newest message arrives — not when
               // loadEarlier() prepends history above the current scroll position.
-              const newestId = messages[messages.length - 1]?.id ?? null;
+              const newestId = visibleMessages[visibleMessages.length - 1]?.id ?? null;
               if (newestId && newestId !== lastScrolledIdRef.current) {
                 lastScrolledIdRef.current = newestId;
                 listRef.current?.scrollToEnd({ animated: true });
@@ -251,11 +386,22 @@ export default function ChannelThreadScreen() {
             }
           />
 
+          {typers.length > 0 && (
+            <Text style={styles.typingLine} numberOfLines={1}>
+              {typers.length === 1
+                ? `${typers[0]} is typing…`
+                : `${typers.length} people are typing…`}
+            </Text>
+          )}
+
           <View style={styles.composer}>
             <TextInput
               style={styles.input}
               value={draft}
-              onChangeText={setDraft}
+              onChangeText={(text) => {
+                setDraft(text);
+                if (text.length > 0) signalTyping();
+              }}
               placeholder={channel ? `Message #${channel.name}` : 'Message'}
               placeholderTextColor={colors.textTertiary}
               selectionColor={colors.gold}
@@ -301,6 +447,13 @@ const styles = StyleSheet.create({
   bubbleTextMine: { color: colors.background },
   bubbleTime: { ...typography.caption, color: colors.textTertiary },
   reactionsRow: { maxWidth: '85%' },
+
+  typingLine: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xs,
+  },
 
   composer: {
     flexDirection: 'row',

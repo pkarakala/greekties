@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { useEvent, rsvp, deleteEvent } from '@/lib/events';
@@ -66,7 +66,14 @@ export default function EventDetailScreen() {
     setLocalStatus(myStatus);
   }, [myStatus]);
 
-  const canDelete = !!event && !!myUserId && (event.created_by === myUserId || isAdmin(me));
+  // Refresh when returning from the edit screen so saved changes show.
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload]),
+  );
+
+  const canManage = !!event && !!myUserId && (event.created_by === myUserId || isAdmin(me));
 
   async function setRsvp(status: RsvpStatus) {
     if (!event || !myUserId) return;
@@ -170,9 +177,16 @@ export default function EventDetailScreen() {
             </Pressable>
           )}
 
-          {canDelete && (
+          {canManage && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Manage event</Text>
+              <Button
+                label="Edit event"
+                variant="secondary"
+                onPress={() =>
+                  router.push({ pathname: '/events/edit/[id]', params: { id: event.id } })
+                }
+              />
               <Button
                 label="Delete event"
                 variant="ghost"

@@ -50,6 +50,18 @@ read an alumni-only channel as an active member. Migration: `supabase/migrations
    realtime pattern as channels.
 3. RLS test: log in as an active member → no `alumni` channel; as an alum → it appears.
 
+## Typing indicators
+
+`lib/presence.ts` `useTypingIndicator(channelId, userId, displayName)` — **broadcast-based
+and ephemeral, no persistence**. The thread screen joins the `typing:<channelId>` Supabase
+Realtime **broadcast** room (broadcast never touches Postgres, so no table/migration/RLS is
+involved). Typing in the composer sends a throttled signal (max one per 2s) carrying only
+`{ userId, name }`; receivers show "&lt;name&gt; is typing…" (or "&lt;n&gt; people are
+typing…") in a caption line above the composer, and each entry expires ~5s after the last
+signal (a 4s sweep clears stale names). Because broadcast channel names are guessable,
+**only the display name is broadcast — never message content**. Nothing is stored anywhere;
+close the screen and the indicator state is gone.
+
 ## Deferred to Phase 2 of the product
 
 Polls, events, file sharing, reactions, and read receipts. V1 is text-only.

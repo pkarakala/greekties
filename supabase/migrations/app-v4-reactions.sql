@@ -95,3 +95,33 @@ create policy "Remove own reactions"
 --   6. Insert with emoji = 'way-too-long-emoji' (> 8 chars) → MUST fail the
 --      CHECK constraint.
 -- ============================================================================
+
+-- ── REALTIME (live reaction pills — lib/reactions.ts subscribeToReactions) ──
+-- DELETE events only carry the columns in the replica identity; the default
+-- identity is the primary key of the *old* row, which PostgREST realtime may
+-- not expose. FULL makes DELETE payloads include message_id/user_id/emoji so
+-- the client can tell which message's pills to refresh. Idempotent: setting
+-- the same identity twice is a no-op.
+alter table message_reactions replica identity full;
+
+-- Also add the table to the realtime publication (Supabase Dashboard →
+-- Database → Publications → supabase_realtime → enable message_reactions),
+-- or via SQL — wrapped so re-running doesn't fail on "already member":
+--   do $$ begin
+--     alter publication supabase_realtime add table message_reactions;
+--   exception when duplicate_object then null; end $$;
+--
+-- NOTE: postgres_changes events respect RLS — a subscriber only receives
+-- INSERT/DELETE events for rows their SELECT policy ("Read reactions on
+-- visible messages") lets them read, so cross-chapter / exec-only / alumni
+-- reactions never leak over the socket.
+--
+-- ACCEPTANCE (realtime):
+--   7. select relreplident from pg_class where relname = 'message_reactions';
+--      → MUST return 'f' (full).
+--   8. select * from pg_publication_tables where pubname = 'supabase_realtime'
+--      and tablename = 'message_reactions'; → MUST return 1 row.
+--   9. With two clients on the same visible channel: client A reacts →
+--      client B's pill updates without refetch; A un-reacts → pill clears.
+--      A client who cannot see the message MUST receive neither event.
+-- ============================================================================

@@ -15,6 +15,7 @@ import { useAuth } from '@/lib/auth';
 import { useHomeData } from '@/lib/queries';
 import { useInbox } from '@/lib/mentorship';
 import { useEvents } from '@/lib/events';
+import { useNotifications } from '@/lib/inbox-notifications';
 import { Card } from '@/components/Card';
 import { MemberCard } from '@/components/MemberCard';
 import { StatPill } from '@/components/StatPill';
@@ -33,6 +34,7 @@ export default function HomeScreen() {
     session?.user?.id ?? null,
   );
   const { pendingIncoming } = useInbox(session?.user?.id ?? null);
+  const { unreadCount } = useNotifications(session?.user?.id ?? null);
   const {
     events,
     error: eventsError,
@@ -103,21 +105,42 @@ export default function HomeScreen() {
             <Text style={styles.greeting}>Welcome back,</Text>
             <Text style={styles.name}>{firstName}</Text>
           </View>
-          <Pressable
-            onPress={() => go('/inbox')}
-            hitSlop={12}
-            style={styles.inboxBtn}
-            accessibilityLabel="Open inbox"
-          >
-            <Ionicons name="mail-outline" size={24} color={colors.textPrimary} />
-            {pendingIncoming > 0 && (
-              <View style={styles.inboxBadge}>
-                <Text style={styles.inboxBadgeText}>
-                  {pendingIncoming > 9 ? '9+' : pendingIncoming}
-                </Text>
-              </View>
-            )}
-          </Pressable>
+          <View style={styles.headerIcons}>
+            <Pressable
+              onPress={() => go('/notifications')}
+              hitSlop={12}
+              style={styles.inboxBtn}
+              accessibilityLabel="Open notifications"
+            >
+              <Ionicons
+                name="notifications-outline"
+                size={24}
+                color={colors.textPrimary}
+              />
+              {unreadCount > 0 && (
+                <View style={styles.inboxBadge}>
+                  <Text style={styles.inboxBadgeText}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </Pressable>
+            <Pressable
+              onPress={() => go('/inbox')}
+              hitSlop={12}
+              style={styles.inboxBtn}
+              accessibilityLabel="Open inbox"
+            >
+              <Ionicons name="mail-outline" size={24} color={colors.textPrimary} />
+              {pendingIncoming > 0 && (
+                <View style={styles.inboxBadge}>
+                  <Text style={styles.inboxBadgeText}>
+                    {pendingIncoming > 9 ? '9+' : pendingIncoming}
+                  </Text>
+                </View>
+              )}
+            </Pressable>
+          </View>
         </View>
 
         {/* Hero — Network Net Worth → full network breakdown */}
@@ -264,6 +287,7 @@ const styles = StyleSheet.create({
   greeting: { ...typography.body, color: colors.textSecondary },
   name: { ...typography.h1, color: colors.textPrimary },
 
+  headerIcons: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   inboxBtn: { padding: spacing.xs },
   inboxBadge: {
     position: 'absolute',

@@ -1,9 +1,30 @@
+import { useEffect, useRef } from 'react';
 import { supabase } from './supabase';
 
 // Emoji reactions on channel messages (GroupMe chat parity). Backed by the
 // `message_reactions` table from supabase/migrations/app-v4-reactions.sql.
 // The table may not exist in the live DB yet, so every call degrades
 // gracefully — empty map / friendly message, never a raw Postgres error.
+//
+// REALTIME (ready to wire, next round): the chats screen
+// (app/(tabs)/chats/[channelId].tsx) currently only sees other members'
+// reactions on (re)fetch. To make pills live, adopt `useReactionSync`:
+//
+//   useReactionSync(
+//     channelId ?? null,
+//     () => messages.map((m) => m.id),          // ids currently on screen
+//     (messageId) => {                           // a reaction changed on one
+//       reactionsFetchedRef.current.delete(messageId);
+//       void fetchReactions([messageId], myUserId).then(/* merge into state */);
+//     },
+//   );
+//
+// One subscription per screen; it receives ALL message_reactions changes the
+// caller is allowed to see (Realtime respects RLS) and filters to the visible
+// message ids client-side, because postgres_changes can't filter on an id list
+// server-side. Requires the realtime section at the bottom of
+// app-v4-reactions.sql (replica identity full + publication membership) —
+// until that runs, the subscription simply never fires, which is a safe no-op.
 
 /** True for "relation does not exist" — the reactions migration hasn't run. */
 function isMissingTable(message: string): boolean {
@@ -107,4 +128,75 @@ export async function toggleReaction(
   } catch {
     return { error: 'Couldn’t add your reaction. Please try again.' };
   }
+}
+
+/**
+ * Subscribe ONE realtime channel to INSERT + DELETE on message_reactions.
+ *
+ * postgres_changes can't server-filter on a list of message ids, so we
+ * receive every change the caller's RLS allows and filter client-side:
+ * `onChange(messageId)` fires only when `messageIds()` (read at event time,
+ * so pagination/new arrivals are picked up without resubscribing) includes
+ * the changed row's message_id. DELETE payloads need `replica identity full`
+ * on the table (see app-v4-reactions.sql) — without it `payload.old` may
+ * lack message_id, in which case the event is safely ignored.
+ *
+ * Returns an unsubscribe function.
+ */
+export function subscribeToReactions(
+  channelKey: string,
+  messageIds: () => string[],
+  onChange: (messageId: string) => void,
+): () => void {
+  const handle = (row: unknown) => {
+    const messageId = (row as { message_id?: unknown } | null | undefined)?.message_id;
+    if (typeof messageId !== 'string' || messageId.length === 0) return;
+    if (!messageIds().includes(messageId)) return;
+    onChange(messageId);
+  };
+
+  const sub = supabase
+    .channel(`reactions:${channelKey}`)
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'message_reactions' },
+      (payload) => handle(payload.new),
+    )
+    .on(
+      'postgres_changes',
+      { event: 'DELETE', schema: 'public', table: 'message_reactions' },
+      (payload) => handle(payload.old),
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(sub);
+  };
+}
+
+/**
+ * Ready-to-wire hook for the chats screen (see the header comment): keeps a
+ * single reactions subscription alive for the screen's lifetime and calls
+ * `refetch(messageId)` whenever someone reacts to (or un-reacts from) a
+ * visible message. `messageIds` and `refetch` are read through refs so the
+ * subscription survives re-renders without churning.
+ */
+export function useReactionSync(
+  channelId: string | null,
+  messageIds: () => string[],
+  refetch: (messageId: string) => void,
+): void {
+  const idsRef = useRef(messageIds);
+  const refetchRef = useRef(refetch);
+  idsRef.current = messageIds;
+  refetchRef.current = refetch;
+
+  useEffect(() => {
+    if (!channelId) return;
+    return subscribeToReactions(
+      channelId,
+      () => idsRef.current(),
+      (messageId) => refetchRef.current(messageId),
+    );
+  }, [channelId]);
 }

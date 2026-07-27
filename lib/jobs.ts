@@ -173,3 +173,32 @@ export async function createJob(input: {
 
   return { id: (data?.id as string) ?? null, error: error?.message ?? null };
 }
+
+/**
+ * Update a job posting's editable fields. RLS allows only the poster (or a
+ * chapter admin). Pass snake_case column names. Errors are mapped to friendly
+ * copy — never raw Postgres text (same idea as lib/moderation.ts isMissingTable).
+ */
+export async function updateJob(
+  jobId: string,
+  fields: Partial<{
+    title: string;
+    company: string;
+    location: string | null;
+    industry: string | null;
+    description: string | null;
+    apply_url: string | null;
+  }>,
+): Promise<{ error: string | null }> {
+  try {
+    const { error } = await supabase.from('job_postings').update(fields).eq('id', jobId);
+    if (!error) return { error: null };
+    return {
+      error: /does not exist|schema cache/i.test(error.message)
+        ? 'Editing postings isn’t available yet. Check back soon.'
+        : 'Couldn’t save your changes. Please try again.',
+    };
+  } catch {
+    return { error: 'Couldn’t save your changes. Please try again.' };
+  }
+}

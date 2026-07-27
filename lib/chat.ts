@@ -255,7 +255,10 @@ export function useChannelThread(
     setLoadingEarlier(false);
   }, [channelId, loadingEarlier, ensureSenderProfiles]);
 
-  // Realtime: append new messages as they arrive (deduped by id, blocked filtered).
+  // Realtime: append new messages as they arrive (deduped by id, blocked
+  // filtered) and remove deleted ones. DELETE payloads carry the old row only
+  // because channel_messages has REPLICA IDENTITY FULL (app-v4-chat-delete.sql)
+  // — pre-migration the payload's old record may be empty, so guard the id.
   useEffect(() => {
     if (!channelId) return;
 
@@ -274,6 +277,20 @@ export function useChannelThread(
           if (blockedRef.current.has(msg.sender_id)) return;
           setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
           void ensureSenderProfiles([msg.sender_id]);
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'channel_messages',
+          filter: `channel_id=eq.${channelId}`,
+        },
+        (payload) => {
+          const deletedId = (payload.old as Partial<ChannelMessage> | undefined)?.id;
+          if (!deletedId) return;
+          setMessages((prev) => prev.filter((m) => m.id !== deletedId));
         },
       )
       .subscribe();
@@ -319,4 +336,30 @@ export function useChannelThread(
     send,
     reload,
   };
+}
+
+/**
+ * Delete one channel message. Allowed for the sender ("Delete own messages")
+ * and for chapter owner/manager admins ("Admins delete chapter channel
+ * messages") — both policies live in app-v4-chat-delete.sql.
+ *
+ * An RLS-denied delete is NOT a Postgres error: it silently matches 0 rows.
+ * So we `.select('id')` on the delete and treat an empty result as failure —
+ * this also covers the pre-migration DB (no delete policy → 0 rows for
+ * everyone). Never surfaces a raw Postgres error.
+ */
+export async function deleteMessage(messageId: string): Promise<{ error: string | null }> {
+  const FAILED = 'Couldn’t delete this message.';
+  try {
+    const { data, error } = await supabase
+      .from('channel_messages')
+      .delete()
+      .eq('id', messageId)
+      .select('id');
+    if (error) return { error: FAILED };
+    if (!data || data.length === 0) return { error: FAILED };
+    return { error: null };
+  } catch {
+    return { error: FAILED };
+  }
 }

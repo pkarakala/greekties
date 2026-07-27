@@ -323,6 +323,34 @@ export async function rsvp(
   }
 }
 
+/**
+ * Update an event's editable fields. RLS allows only the creator or a chapter
+ * admin (same policy as delete). Pass snake_case column names.
+ */
+export async function updateEvent(
+  eventId: string,
+  fields: Partial<{
+    title: string;
+    category: EventCategory;
+    starts_at: string;
+    ends_at: string | null;
+    location: string | null;
+    description: string | null;
+  }>,
+): Promise<{ error: string | null }> {
+  try {
+    const { error } = await supabase.from('events').update(fields).eq('id', eventId);
+    if (!error) return { error: null };
+    return {
+      error: isMissingTable(error.message)
+        ? NOT_SET_UP
+        : 'Couldn’t save your changes. Please try again.',
+    };
+  } catch {
+    return { error: 'Couldn’t save your changes. Please try again.' };
+  }
+}
+
 /** Delete an event. RLS allows only the creator or a chapter admin. */
 export async function deleteEvent(id: string): Promise<{ error: string | null }> {
   try {

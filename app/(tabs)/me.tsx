@@ -88,6 +88,11 @@ export default function MeScreen() {
             label="Privacy Policy"
             onPress={() => void openExternalUrl(PRIVACY_URL)}
           />
+          <Row
+            icon="remove-circle-outline"
+            label="Blocked members"
+            onPress={() => router.push('/settings/blocked')}
+          />
           <Row icon="mail-outline" label="Contact support" onPress={contactSupport} last />
         </Card>
 

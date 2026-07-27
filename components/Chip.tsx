@@ -12,6 +12,8 @@ interface ChipProps {
 export function Chip({ label, selected, onPress }: ChipProps) {
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: !!selected }}
       onPress={() => {
         Haptics.selectionAsync().catch(() => {});
         onPress();

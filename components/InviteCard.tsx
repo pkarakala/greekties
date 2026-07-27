@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '@/lib/auth';
 import { fetchChapterInvite } from '@/lib/chapters';
+import { joinLink, joinMessage } from '@/lib/links';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { colors, spacing, typography } from '@/theme';
@@ -42,13 +43,14 @@ export function InviteCard() {
     };
   }, []);
 
-  const inviteLink = code ? `greekties://join/${code}` : null;
+  // Web link so invitees without the app land on the web build.
+  const inviteLink = code ? joinLink(code) : null;
 
   async function shareInvite() {
-    if (!inviteLink) return;
+    if (!code) return;
     try {
       await Share.share({
-        message: `Join our chapter on Greek Ties: ${inviteLink}`,
+        message: joinMessage(code),
       });
     } catch {
       // Share sheet dismissed/unavailable — nothing to surface.

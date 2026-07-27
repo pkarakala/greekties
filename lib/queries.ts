@@ -264,3 +264,169 @@ export function useMapMembers(chapterId: string | null): MembersResult {
 
   return { loading, error, members, reload };
 }
+
+// ── Network breakdown (the "Network Net Worth" screen, app/network.tsx) ──────
+
+export interface BreakdownEntry {
+  name: string;
+  count: number;
+}
+
+export interface NetworkBreakdown {
+  /** Approved members counted (capped at BREAKDOWN_ROW_CAP). */
+  total: number;
+  industries: BreakdownEntry[];
+  companies: BreakdownEntry[];
+  cities: BreakdownEntry[];
+  classYears: { year: number; count: number }[];
+  /** Members with open_to_mentor set. */
+  mentors: number;
+  /** Members with is_hiring set. */
+  hiring: number;
+  /** Members with map coordinates (lat present). */
+  onMap: number;
+}
+
+export interface NetworkBreakdownData {
+  loading: boolean;
+  error: string | null;
+  breakdown: NetworkBreakdown;
+  reload: () => void;
+}
+
+const EMPTY_BREAKDOWN: NetworkBreakdown = {
+  total: 0,
+  industries: [],
+  companies: [],
+  cities: [],
+  classYears: [],
+  mentors: 0,
+  hiring: 0,
+  onMap: 0,
+};
+
+// Aggregate-only columns — no names, emails, or anything identifying. The
+// breakdown screen renders counts, so counts are all we ship to the client.
+const BREAKDOWN_COLUMNS = 'industry, company, city, class_year, open_to_mentor, is_hiring, lat';
+
+/**
+ * One un-paginated select capped at 1,000 rows — far above any current chapter
+ * size. If a chapter ever outgrows the cap, the aggregates describe the first
+ * 1,000 approved members rather than paging (this screen is a summary, not a
+ * directory — useChapterMembers handles exhaustive listing).
+ */
+const BREAKDOWN_ROW_CAP = 1000;
+
+/** Entries kept per list (industries/companies/cities/class years). */
+const BREAKDOWN_TOP_N = 8;
+
+interface BreakdownRow {
+  industry: string | null;
+  company: string | null;
+  city: string | null;
+  class_year: number | null;
+  open_to_mentor: boolean | null;
+  is_hiring: boolean | null;
+  lat: number | null;
+}
+
+/** Same check as lib/moderation.ts — "relation does not exist" pre-migration. */
+function isMissingTableOrColumn(message: string): boolean {
+  return /does not exist|schema cache/i.test(message);
+}
+
+/** Tally non-empty values → top N entries, most common first. */
+function topCounts(values: (string | null)[]): BreakdownEntry[] {
+  const counts = new Map<string, number>();
+  for (const raw of values) {
+    const name = raw?.trim();
+    if (!name) continue;
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+    .slice(0, BREAKDOWN_TOP_N);
+}
+
+function aggregateBreakdown(rows: BreakdownRow[]): NetworkBreakdown {
+  const yearCounts = new Map<number, number>();
+  for (const row of rows) {
+    if (row.class_year != null) {
+      yearCounts.set(row.class_year, (yearCounts.get(row.class_year) ?? 0) + 1);
+    }
+  }
+
+  return {
+    total: rows.length,
+    industries: topCounts(rows.map((r) => r.industry)),
+    companies: topCounts(rows.map((r) => r.company)),
+    cities: topCounts(rows.map((r) => r.city)),
+    classYears: [...yearCounts.entries()]
+      .map(([year, count]) => ({ year, count }))
+      .sort((a, b) => b.count - a.count || b.year - a.year)
+      .slice(0, BREAKDOWN_TOP_N),
+    mentors: rows.filter((r) => r.open_to_mentor === true).length,
+    hiring: rows.filter((r) => r.is_hiring === true).length,
+    onMap: rows.filter((r) => r.lat != null).length,
+  };
+}
+
+/**
+ * The full "Network Net Worth" breakdown for a chapter: how many approved
+ * members there are and where they cluster (industry, company, city, class
+ * year), plus mentor/hiring/on-the-map counts. One select, aggregated
+ * client-side. Degrades to an empty breakdown pre-migration.
+ */
+export function useNetworkBreakdown(chapterId: string | null): NetworkBreakdownData {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [breakdown, setBreakdown] = useState<NetworkBreakdown>(EMPTY_BREAKDOWN);
+  const [nonce, setNonce] = useState(0);
+  const reload = useCallback(() => setNonce((n) => n + 1), []);
+
+  useEffect(() => {
+    if (!chapterId) {
+      setBreakdown(EMPTY_BREAKDOWN);
+      setLoading(false);
+      return;
+    }
+    let mounted = true;
+    setLoading(true);
+    setError(null);
+
+    (async () => {
+      try {
+        const { data, error: err } = await supabase
+          .from('profiles')
+          .select(BREAKDOWN_COLUMNS)
+          .eq('chapter_id', chapterId)
+          .eq('status', 'approved')
+          .limit(BREAKDOWN_ROW_CAP);
+
+        if (!mounted) return;
+        if (err) {
+          // Missing table/column (pre-migration) → empty breakdown, no error.
+          if (!isMissingTableOrColumn(err.message)) {
+            setError('Couldn’t load your network. Pull to refresh.');
+          }
+          setBreakdown(EMPTY_BREAKDOWN);
+        } else {
+          setBreakdown(aggregateBreakdown((data as BreakdownRow[]) ?? []));
+        }
+      } catch {
+        if (!mounted) return;
+        setError('Couldn’t load your network. Pull to refresh.');
+        setBreakdown(EMPTY_BREAKDOWN);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [chapterId, nonce]);
+
+  return { loading, error, breakdown, reload };
+}

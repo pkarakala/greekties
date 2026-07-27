@@ -62,6 +62,98 @@ export async function rejectMember(profileId: string): Promise<string | null> {
   return error?.message ?? null;
 }
 
+// ── Member management (approved members: roles + removal) ───────────────────
+
+// Mirrors lib/queries.ts MEMBER_COLUMNS (kept local so the admin module isn't
+// coupled to directory queries). Deliberately excludes `email` — the member
+// list never renders it, so PII stays off the wire.
+const ADMIN_MEMBER_COLUMNS =
+  'id, user_id, chapter_id, name, avatar_url, class_year, role, industry, city, company, job_title, open_to_mentor, is_hiring, status, admin_role, linkedin_url, bio, created_at';
+
+export interface ChapterMemberListData {
+  loading: boolean;
+  error: string | null;
+  members: Profile[];
+  reload: () => void;
+}
+
+/** Approved members in a chapter, ordered by name, for the admin member list. */
+export function useChapterMemberList(chapterId: string | null): ChapterMemberListData {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [members, setMembers] = useState<Profile[]>([]);
+  const [nonce, setNonce] = useState(0);
+  const reload = useCallback(() => setNonce((n) => n + 1), []);
+
+  useEffect(() => {
+    if (!chapterId) {
+      setLoading(false);
+      return;
+    }
+    let mounted = true;
+    setLoading(true);
+    setError(null);
+
+    supabase
+      .from('profiles')
+      .select(ADMIN_MEMBER_COLUMNS)
+      .eq('chapter_id', chapterId)
+      .eq('status', 'approved')
+      .order('name', { ascending: true })
+      .then(({ data, error: err }) => {
+        if (!mounted) return;
+        if (err) setError(err.message);
+        else setMembers((data as Profile[]) ?? []);
+        setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [chapterId, nonce]);
+
+  return { loading, error, members, reload };
+}
+
+/**
+ * Grant or revoke the 'manager' admin role (null = regular member). The UI
+ * gates who may call this (owners manage managers; owners are untouchable),
+ * but NOTE: real enforcement depends on the live `profiles` RLS policies,
+ * which are documented but unverified (see docs/STATUS.md).
+ */
+export async function setMemberRole(
+  profileId: string,
+  role: 'manager' | null,
+): Promise<string | null> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ admin_role: role })
+    .eq('id', profileId);
+  return error?.message ?? null;
+}
+
+/**
+ * Remove an approved member from the chapter. Prefers a soft delete (status →
+ * 'rejected') so the row — and anything hanging off it — survives for
+ * audit/appeal; only if the live `status` column rejects that value
+ * (check constraint / enum) does it fall back to deleting the profile row.
+ * NOTE: server-side enforcement depends on the live `profiles` RLS policies,
+ * which are documented but unverified (see docs/STATUS.md).
+ */
+export async function removeMember(profileId: string): Promise<string | null> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ status: 'rejected' })
+    .eq('id', profileId);
+  if (!error) return null;
+  // 'rejected' isn't an accepted status value on this DB → hard delete.
+  if (/check constraint|invalid input value/i.test(error.message)) {
+    const { error: delErr } = await supabase.from('profiles').delete().eq('id', profileId);
+    return delErr?.message ?? null;
+  }
+  return error.message;
+}
+
 // ── Channel management ───────────────────────────────────────────────────────
 
 export interface AdminChannelsData {

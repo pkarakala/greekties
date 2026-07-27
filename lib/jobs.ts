@@ -19,7 +19,7 @@ export interface JobsData {
 }
 
 /** True when the error means the `is_open` column doesn't exist yet (pre-migration). */
-function isMissingIsOpen(message: string): boolean {
+export function isMissingIsOpen(message: string): boolean {
   return /is_open|column .* does not exist|schema cache/i.test(message);
 }
 
@@ -29,8 +29,11 @@ function isMissingIsOpen(message: string): boolean {
  * column — but the live DB may not have `is_open` at all yet, in which case
  * the filtered query errors and we retry unfiltered (graceful degradation,
  * same idea as lib/moderation.ts isMissingTable).
+ *
+ * Exported for tests (the is_open retry path); the hooks below are its only
+ * app-side callers.
  */
-async function fetchJobsPage(
+export async function fetchJobsPage(
   chapterId: string,
   before: string | null,
 ): Promise<{ page: JobPosting[]; error: string | null }> {

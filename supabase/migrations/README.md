@@ -24,6 +24,10 @@ The v3 files are independent of each other, so run them in any order once every 
 
 The app degrades gracefully before these run (empty calendar, push registration no-ops, create-chapter shows a friendly error) — but the features only work once they're applied.
 
+### V4 (run after `app-v1-chat.sql` — independent of v2/v3)
+
+- **`app-v4-reactions.sql`** — creates `message_reactions` (emoji reactions on channel messages, GroupMe chat parity). RLS: read/react only on messages visible via `channel_messages` RLS (inherited through the EXISTS subquery, same pattern as v1 chat), insert own rows only, delete own rows only. Backs `lib/reactions.ts` and the reaction pills in the channel thread. Pre-migration the app just shows no pills.
+
 ## How to run
 
 1. Go to Supabase Dashboard → SQL Editor → New Query.

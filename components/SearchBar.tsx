@@ -13,6 +13,7 @@ export function SearchBar({ value, onChangeText, placeholder = 'Search' }: Searc
     <View style={styles.wrap}>
       <Ionicons name="search" size={18} color={colors.textTertiary} />
       <TextInput
+        accessibilityRole="search"
         style={styles.input}
         value={value}
         onChangeText={onChangeText}
@@ -25,7 +26,12 @@ export function SearchBar({ value, onChangeText, placeholder = 'Search' }: Searc
         clearButtonMode="while-editing"
       />
       {value.length > 0 && (
-        <Pressable onPress={() => onChangeText('')} hitSlop={8}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Clear search"
+          onPress={() => onChangeText('')}
+          hitSlop={8}
+        >
           <Ionicons name="close-circle" size={18} color={colors.textTertiary} />
         </Pressable>
       )}

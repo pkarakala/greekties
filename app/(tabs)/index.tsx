@@ -22,6 +22,7 @@ import { AnimatedNumber } from '@/components/AnimatedNumber';
 import { Button } from '@/components/Button';
 import { InviteCard } from '@/components/InviteCard';
 import { NextEventCard } from '@/components/NextEventCard';
+import { ProfileNudgeCard } from '@/components/ProfileNudgeCard';
 import { colors, radius, spacing, typography } from '@/theme';
 
 export default function HomeScreen() {
@@ -119,8 +120,8 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        {/* Hero — Network Net Worth */}
-        <Card elevated style={styles.hero}>
+        {/* Hero — Network Net Worth → full network breakdown */}
+        <Card elevated style={styles.hero} onPress={() => go('/network')}>
           <Text style={styles.heroLabel}>Your Network</Text>
           <AnimatedNumber value={stats.members} style={styles.heroNumber} />
           <Text style={styles.heroSub}>
@@ -135,6 +136,9 @@ export default function HomeScreen() {
         </Card>
 
         {!!error && <Text style={styles.error}>Couldn’t load your network: {error}</Text>}
+
+        {/* Profile nudge — shown while the profile is mostly empty. */}
+        <ProfileNudgeCard profile={profile} />
 
         {/* Quick actions */}
         <View style={styles.quickRow}>

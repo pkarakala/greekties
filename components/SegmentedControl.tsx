@@ -20,6 +20,8 @@ export function SegmentedControl<T extends string>({
         return (
           <Pressable
             key={opt.value}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
             style={[styles.segment, active && styles.activeSegment]}
             onPress={() => {
               Haptics.selectionAsync().catch(() => {});

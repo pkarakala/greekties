@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -48,6 +48,10 @@ export default function JoinScreen() {
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set once a join succeeds so the "already a member → Home" effect below
+  // can't stomp the redirect to /onboarding/complete-profile when the
+  // refreshed profile lands while this screen is still mounted.
+  const justJoined = useRef(false);
 
   useEffect(() => {
     let mounted = true;
@@ -65,8 +69,10 @@ export default function JoinScreen() {
     };
   }, [code]);
 
-  // Already a member of this chapter → straight to Home.
+  // Already a member of this chapter → straight to Home. (Skipped right
+  // after a successful join — that flow routes to profile setup instead.)
   useEffect(() => {
+    if (justJoined.current) return;
     if (profile && chapter && profile.chapter_id === chapter.id) {
       router.replace('/');
     }
@@ -94,10 +100,12 @@ export default function JoinScreen() {
     });
 
     if (!rpcError) {
+      justJoined.current = true;
       await consumePendingInviteCode(); // clear any stored copy of this code
       await refreshProfile();
       setJoining(false);
-      router.replace('/');
+      // Fresh member → capture the profile basics while they're engaged.
+      router.replace('/onboarding/complete-profile');
       return;
     }
 
@@ -133,9 +141,11 @@ export default function JoinScreen() {
       return;
     }
 
+    justJoined.current = true;
     await consumePendingInviteCode(); // clear any stored copy of this code
     await refreshProfile();
-    router.replace('/');
+    // Fresh member → capture the profile basics while they're engaged.
+    router.replace('/onboarding/complete-profile');
   }, [chapter, joining, session, profile, code, router, refreshProfile]);
 
   if (initializing || loadingChapter) {

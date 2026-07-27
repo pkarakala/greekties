@@ -50,7 +50,8 @@ export default function CreateChapterScreen() {
 
     await refreshProfile();
     setSaving(false);
-    router.replace('/');
+    // Founder just created the chapter → capture their profile basics now.
+    router.replace('/onboarding/complete-profile');
   }
 
   return (

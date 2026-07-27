@@ -104,3 +104,22 @@ Migrations now number 10 — run order in `supabase/migrations/README.md`.
 - **Home events teaser** — a "Coming up" section on Home shows the next upcoming
   event (`components/NextEventCard.tsx`) with a "See all" link to the Events tab;
   hidden when there are no events or the events tables don't exist yet.
+
+## v3.2 (startup round)
+
+- **Message reactions** — react to channel/mentorship messages.
+- **Post-join profile completion** — `components/ProfileNudgeCard.tsx` nudges new
+  members through the six fields that make them findable (exported
+  `profileCompleteness()` helper).
+- **Network breakdown screen** — where the chapter's alumni work/live, at a glance.
+- **Admin member management** — chapter admins can manage members in-app.
+- **Web session fix + HTTPS invite links** — web builds persist auth sessions;
+  invite links share as `https://` URLs.
+- **Test coverage 4 → 8 suites** — new suites for `lib/events.ts` (missing-table
+  degradation + day-grouping helpers), `lib/jobs.ts` (`fetchJobsPage`/`isMissingIsOpen`
+  exported so the `is_open` retry path is testable), `lib/chapters.ts` (RPC error
+  mapping), and `profileCompleteness()`.
+- **Accessibility pass** — `accessibilityRole`/`accessibilityLabel`/`accessibilityState`
+  on Chip, SearchBar, Card, SegmentedControl, and ScreenHeader (selected state on
+  chips/segments, labeled icon-only back/clear buttons, header role on titles); no
+  visual changes.

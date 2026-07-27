@@ -68,6 +68,12 @@ export default function AdminScreen() {
           onPress={() => router.push('/admin/reports')}
         />
         <NavRow
+          icon="people-outline"
+          title="Members"
+          subtitle="Roles and removals"
+          onPress={() => router.push('/admin/members')}
+        />
+        <NavRow
           icon="chatbubbles"
           title="Channels"
           subtitle="Create, rename, or remove channels"

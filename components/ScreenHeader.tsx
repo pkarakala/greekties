@@ -14,19 +14,24 @@ export function ScreenHeader({ title, onBack, right }: ScreenHeaderProps) {
     <View style={styles.bar}>
       <View style={styles.side}>
         {onBack && (
-          <Pressable onPress={onBack} hitSlop={12}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            onPress={onBack}
+            hitSlop={12}
+          >
             <Ionicons name="chevron-back" size={26} color={colors.textPrimary} />
           </Pressable>
         )}
       </View>
 
-      <Text style={styles.title} numberOfLines={1}>
+      <Text accessibilityRole="header" style={styles.title} numberOfLines={1}>
         {title}
       </Text>
 
       <View style={[styles.side, styles.right]}>
         {right && (
-          <Pressable onPress={right.onPress} hitSlop={12}>
+          <Pressable accessibilityRole="button" onPress={right.onPress} hitSlop={12}>
             <Ionicons name={right.icon} size={24} color={colors.textPrimary} />
             {!!right.badge && right.badge > 0 && (
               <View style={styles.badge}>

@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { useChapter, updateChapter } from '@/lib/admin';
 import { fetchChapterInvite } from '@/lib/chapters';
+import { joinLink, joinMessage } from '@/lib/links';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextField } from '@/components/TextField';
 import { Button } from '@/components/Button';
@@ -57,7 +58,10 @@ export default function ChapterSettingsScreen() {
     };
   }, [chapterId]);
 
-  const inviteLink = chapterId ? `greekties://join/${inviteCode ?? chapterId}` : '';
+  // Web link so invitees without the app land on the web build; join/[code]
+  // resolves both short codes and the legacy chapter-id fallback.
+  const shareCode = chapterId ? (inviteCode ?? chapterId) : null;
+  const inviteLink = shareCode ? joinLink(shareCode) : '';
 
   async function save() {
     if (!chapterId) return;
@@ -78,9 +82,10 @@ export default function ChapterSettingsScreen() {
   }
 
   async function shareInvite() {
+    if (!shareCode) return;
     try {
       await Share.share({
-        message: `Join our chapter on Greek Ties: ${inviteLink}`,
+        message: joinMessage(shareCode, chapter?.name ?? null),
       });
     } catch {
       Alert.alert('Couldn’t open share sheet');

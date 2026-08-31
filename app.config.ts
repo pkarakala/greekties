@@ -20,7 +20,7 @@ type ConfigWithLegacyKeys = ExpoConfig & {
 
 const config: ConfigWithLegacyKeys = {
   name: 'Greek Ties',
-  slug: 'greek-ties-app',
+  slug: 'greek-ties',
   version: '1.0.0',
   orientation: 'portrait',
   scheme: 'greekties',
@@ -50,6 +50,11 @@ const config: ConfigWithLegacyKeys = {
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: '#16294A',
+    },
+  },
+  extra: {
+    eas: {
+      projectId: '8b2653aa-f1c4-4f07-8a50-00f26112b58a',
     },
   },
   plugins: [

@@ -5,7 +5,7 @@ onto TestFlight and the App Store. This is Section D of
 `docs/LAUNCH_RUNBOOK.md`; do the runbook's backend/accounts/verification
 sections first. Work top to bottom.*
 
-## Status at a glance (updated 2026-07-25)
+## Status at a glance (updated 2026-08-30)
 
 **Satisfied by the codebase** (verify on-device, but no code work left):
 
@@ -20,6 +20,8 @@ sections first. Work top to bottom.*
   infoPlist usage strings and env-driven secrets
 - ✅ Push notifications code (`lib/notifications.ts` via expo-notifications) and
   events/calendar — pending their migrations + Edge Function deploy (runbook §A)
+- ✅ In-app notification center, channel-message delete, and emoji reactions —
+  pending v4 migrations + Realtime/publication verification (runbook §A)
 
 **Still open — human/account tasks** (nothing in-repo can close these):
 
@@ -29,6 +31,8 @@ sections first. Work top to bottom.*
 - ⬜ Privacy nutrition labels questionnaire (§3)
 - ⬜ Age rating questionnaire (§3)
 - ⬜ Live support mailbox + privacy-policy URL confirmed reachable (§3)
+- ⬜ Supabase migrations through v4 applied, Realtime configured, and Edge
+  Functions/webhooks deployed (§5 + runbook §A)
 - ⬜ Demo chapter + demo account seeded, reviewer notes written (§6)
 - ⬜ Screenshots from the seeded demo chapter (§3)
 
@@ -137,8 +141,9 @@ required and exercised:
 - [ ] Let EAS configure push credentials during the first production build
       (APNs key + aps-environment entitlement) — accept when prompted, or run
       `eas credentials` to set it up explicitly.
-- [ ] Backend side must be live before submission: `device_tokens` migration
-      applied, `send-push` deployed, Database Webhooks created — see
+- [ ] Backend side must be live before submission: migrations through
+      `app-v4-notifications.sql` applied, `send-push` deployed with
+      `WEBHOOK_SECRET`, Database Webhooks created — see
       `docs/LAUNCH_RUNBOOK.md` §A.
 - [ ] Verify on a **physical device** (runbook §C3) — simulators cannot
       receive push; App Review tests on real hardware.
@@ -161,7 +166,8 @@ App Review must be able to reach every feature without an invite:
       moderation reviews reports within 24 hours.
 - [ ] Verify the demo account can complete: browse directory → view alumni map
       → send a channel message → view/RSVP an event → report a message → block
-      a user → post/view a job → delete account (test on a *throwaway* clone
+      a user → react to/delete an own channel message → post/view a job → view
+      the notification inbox → delete account (test on a *throwaway* clone
       account, not the demo account itself).
 
 ## 7. Universal links (TODO — invite virality, post-V1)
@@ -180,8 +186,9 @@ does nothing if the app isn't installed:
 
 ## 8. Final pre-submission sweep
 
-- [ ] `supabase/migrations/` applied to prod (invites, moderation, deletion RPC,
-      avatars bucket, chapter creation, events, device tokens — run order in
+- [ ] `supabase/migrations/` applied to prod through v4 (invites, moderation,
+      deletion RPC, avatars bucket, chapter creation, events, device tokens,
+      reactions, notifications, channel-message delete — run order in
       `docs/LAUNCH_RUNBOOK.md` §A1) — the compliance features must actually
       work in the build App Review sees.
 - [ ] Run through the demo-account flow (Section 6) on the exact build being

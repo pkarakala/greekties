@@ -111,7 +111,9 @@ export default function ChannelThreadScreen() {
   // message's pills (skipping ids with in-flight optimistic state is handled
   // by fetchReactions returning authoritative rows — server state wins).
   const messagesRef = useRef(messages);
-  messagesRef.current = messages;
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
   useReactionSync(
     channelId ?? null,
     useCallback(() => messagesRef.current.map((m) => m.id), []),

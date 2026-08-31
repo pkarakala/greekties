@@ -37,12 +37,13 @@ idempotent (safe to re-run). Full rationale per file:
        are in the file)
 8. [ ] `app-v3-chapters.sql` — `create_chapter()` RPC (organic signups found a
        chapter, become owner, default channels seeded)
-9. [ ] Events migration (`events` + `event_rsvps` tables + RLS) — run whichever
-       `app-v3-*` file in `supabase/migrations/` creates them
-10. [ ] Push migration (`device_tokens` table + RLS) — run whichever
-        `app-v3-*` file creates it
+9. [ ] `app-v3-events.sql` — events + RSVPs + RLS
+10. [ ] `app-v3-push.sql` — device_tokens + RLS
+11. [ ] `app-v4-chat-delete.sql` — own/admin channel-message deletion + realtime DELETE payload support
+12. [ ] `app-v4-notifications.sql` — durable in-app notification center
+13. [ ] `app-v4-reactions.sql` — channel-message emoji reactions + RLS
 
-> The app degrades gracefully when v2/v3 objects are missing (hidden features,
+> The app degrades gracefully when v2/v3/v4 objects are missing (hidden features,
 > no raw errors), so partial rollout is safe — but every unapplied file is a
 > feature App Review can't see.
 
@@ -53,10 +54,13 @@ Dashboard → Database → Replication → `supabase_realtime` publication → a
 - [ ] `channel_messages` — live channel chat
 - [ ] `messages` — live mentorship threads
 - [ ] `mentorship_requests` — live status flips (pending → accepted/declined)
+- [ ] `message_reactions` — live channel-message reaction pills (after `app-v4-reactions.sql`)
 
 Then verify the RLS/Realtime caveat in `supabase/migrations/README.md` →
 "Realtime": subscribe as an active (non-alumni) member filtered to the alumni
-channel's id and confirm **no** events arrive when an alum posts.
+channel's id and confirm **no** events arrive when an alum posts. Also confirm
+the `supabase_realtime` publication has DELETE enabled for `channel_messages`
+after `app-v4-chat-delete.sql`, so deleted bubbles disappear on other devices.
 
 ### A3. Deploy Edge Functions
 
@@ -64,23 +68,25 @@ From the repo root, with the Supabase CLI logged in (`supabase login`):
 
 ```bash
 supabase functions deploy delete-account --project-ref sdscrvoorrygesrhjeee
-supabase functions deploy send-push --project-ref sdscrvoorrygesrhjeee
+supabase secrets set WEBHOOK_SECRET="<long-random-string>" --project-ref sdscrvoorrygesrhjeee
+supabase functions deploy send-push --no-verify-jwt --project-ref sdscrvoorrygesrhjeee
 ```
 
 - [ ] `delete-account` — account-deletion fallback. No secrets to configure
       (`SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_ANON_KEY` are
       platform-injected). Header of
       `supabase/functions/delete-account/index.ts` has the full flow.
-- [ ] `send-push` — reads `device_tokens`, calls the Expo Push API. Check its
-      `index.ts` header for any required secrets; set them with:
-      ```bash
-      supabase secrets set NAME=value --project-ref sdscrvoorrygesrhjeee
-      ```
+- [ ] `send-push` — reads `device_tokens`, writes durable rows to
+      `notifications`, and calls the Expo Push API. It requires only
+      `WEBHOOK_SECRET`; `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are
+      platform-injected.
 - [ ] **Database Webhooks** for push: Dashboard → Database → Webhooks → create
-      a webhook per triggering table (e.g. INSERT on `channel_messages`,
-      `messages`) → HTTP POST to the `send-push` function URL with the
-      `Authorization: Bearer <service_role or anon key>` header the function
-      expects (see its header comments).
+      four HTTP POST webhooks to
+      `https://sdscrvoorrygesrhjeee.supabase.co/functions/v1/send-push`, each
+      with header `x-webhook-secret: <WEBHOOK_SECRET>`:
+      `channel_messages` INSERT, `mentorship_requests` INSERT,
+      `mentorship_requests` UPDATE, and `messages` INSERT. Full details:
+      `docs/PUSH_NOTIFICATIONS.md`.
 
 ### A4. RLS acceptance tests (non-negotiable)
 
@@ -89,7 +95,7 @@ supabase functions deploy send-push --project-ref sdscrvoorrygesrhjeee
       isolation, exec lockdown, membership column pin, job pinning, invites).
 - [ ] Run the per-file ACCEPTANCE TESTS footers in `app-v2-invites.sql`,
       `app-v2-account-deletion.sql` (staging/throwaway only — destructive),
-      and `app-v3-chapters.sql`.
+      `app-v3-chapters.sql`, and all v4 migrations.
 
 ## B. Accounts & external services
 
@@ -147,6 +153,9 @@ npx expo start --ios
 - [ ] Every tab renders: Home, People (directory + filters), Chats (send a
       message; open a second simulator/account and see it arrive live), Events
       (create, RSVP, category toggles), Me
+- [ ] Channel message polish: react to a message, see the reaction update on a
+      second account, delete your own message, and confirm it disappears live
+      on the second account
 - [ ] Profile edit + avatar upload; alumni map renders (dev build with Mapbox
       token — Expo Go skips the map gracefully)
 - [ ] Mentorship: request → accept → thread messages arrive live both ways
@@ -167,6 +176,8 @@ npx expo start --ios
       the permission prompt → confirm a row appears in `device_tokens`
 - [ ] Trigger a push (send a channel message from another account) → banner
       arrives; tapping it deep-links to the right screen
+- [ ] Open `/notifications` from the Home bell and confirm the same event is
+      recorded even if push permission is denied
 - [ ] Sign out → confirm the token is unregistered (no push after sign-out)
 
 ## D. Submission

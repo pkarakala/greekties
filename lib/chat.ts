@@ -156,7 +156,9 @@ export function useChannelThread(
   const reload = useCallback(() => setNonce((n) => n + 1), []);
 
   const sendersRef = useRef(senders);
-  sendersRef.current = senders;
+  useEffect(() => {
+    sendersRef.current = senders;
+  }, [senders]);
   // Pagination cursor: created_at of the oldest *fetched* message (blocked
   // messages included, so a fully-blocked page still advances the cursor).
   const oldestFetchedRef = useRef<string | null>(null);

@@ -48,7 +48,6 @@ export function AnimatedNumber({ value, duration = 800, style }: AnimatedNumberP
   return (
     <AnimatedTextInput
       editable={false}
-      // eslint-disable-next-line react-native/no-inline-styles
       pointerEvents="none"
       underlineColorAndroid="transparent"
       style={style}

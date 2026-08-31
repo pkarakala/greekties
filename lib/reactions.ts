@@ -188,8 +188,11 @@ export function useReactionSync(
 ): void {
   const idsRef = useRef(messageIds);
   const refetchRef = useRef(refetch);
-  idsRef.current = messageIds;
-  refetchRef.current = refetch;
+
+  useEffect(() => {
+    idsRef.current = messageIds;
+    refetchRef.current = refetch;
+  }, [messageIds, refetch]);
 
   useEffect(() => {
     if (!channelId) return;

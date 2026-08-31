@@ -26,6 +26,12 @@ The app degrades gracefully before these run (empty calendar, push registration 
 
 ### V4 (run after `app-v1-chat.sql` — independent of v2/v3)
 
+- **`app-v4-chat-delete.sql`** — adds DELETE policies on `channel_messages`
+  so members can delete their own channel messages and chapter admins can
+  moderate any channel message in their chapter. Also sets
+  `channel_messages replica identity full` so realtime DELETE payloads carry
+  the deleted row's id. Backs `deleteMessage()` in `lib/chat.ts` and the
+  long-press delete action in channel threads.
 - **`app-v4-reactions.sql`** — creates `message_reactions` (emoji reactions on channel messages, GroupMe chat parity). RLS: read/react only on messages visible via `channel_messages` RLS (inherited through the EXISTS subquery, same pattern as v1 chat), insert own rows only, delete own rows only. Backs `lib/reactions.ts` and the reaction pills in the channel thread. Pre-migration the app just shows no pills.
 - **`app-v4-notifications.sql`** — creates `notifications` (the in-app notification center: a durable per-user copy of every push, so users who denied push permission still see them). Depends only on `auth.users`, so it can run any time. RLS: users SELECT/DELETE their own rows; UPDATE limited to the `read` column via column-level GRANT (same approach as `channel_members.last_read_at`); **no INSERT policy** — only the `send-push` Edge Function writes rows (service role). Backs `lib/inbox-notifications.ts`, the `/notifications` screen, and the Home bell badge. Redeploy `../functions/send-push/` after applying so events start landing here; pre-migration the app shows an empty inbox and the function logs-and-continues.
 

@@ -14,7 +14,7 @@ const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
 // Go — a top-level import would throw before any in-component guard runs.
 let Mapbox: typeof import('@rnmapbox/maps').default | null = null;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   Mapbox = require('@rnmapbox/maps').default;
 } catch {
   Mapbox = null;

@@ -1,9 +1,24 @@
 # Greek Ties — Working Status / Handoff
 
-*Updated 2026-07-26. If you're an AI assistant or a new contributor picking this up,
+*Updated 2026-08-30. If you're an AI assistant or a new contributor picking this up,
 read this file, then `docs/LAUNCH_RUNBOOK.md`, then `docs/PRODUCTION_ROADMAP.md`.*
 
-## Latest change set (v3 — public-release features)
+## Latest change set (v4 — launch polish + notification center)
+
+- **In-app notification center**: `lib/inbox-notifications.ts`,
+  `app/notifications.tsx`, Home bell badge, and `app-v4-notifications.sql`.
+  `send-push` now also writes durable notification rows for users who deny push.
+- **Channel-message delete**: `deleteMessage()` in `lib/chat.ts`, long-press
+  delete in channel threads, and `app-v4-chat-delete.sql` for own-message and
+  admin moderation deletes.
+- **Message reactions**: `lib/reactions.ts`, reaction pills/actions in channel
+  threads, and `app-v4-reactions.sql`.
+- **Local verification on 2026-08-30**: `npm run typecheck` passes,
+  `npm test -- --runInBand` passes (11 suites / 122 tests), and `npm run lint`
+  passes with 0 errors / 29 warnings. Remaining warnings are the existing
+  React compiler `set-state-in-effect` data-loading patterns.
+
+## Previous change set (v3 — public-release features)
 
 - **Push notifications**: `lib/notifications.ts` (registration + tap routing, wired
   in `_layout.tsx`; sign-out unregisters), `supabase/functions/send-push/` (webhook-
@@ -17,12 +32,12 @@ read this file, then `docs/LAUNCH_RUNBOOK.md`, then `docs/PRODUCTION_ROADMAP.md`
   members (share/copy the invite link).
 - **Event calendar**: Events tab (agenda grouped by day, category filters), create +
   detail screens with RSVPs (`app-v3-events.sql`, `lib/events.ts`).
-- **Tests + lint**: jest-expo (4 suites / 38 tests, all passing), ESLint flat config
-  (0 errors), Prettier, CI runs typecheck + tests + lint.
+- **Tests + lint**: jest-expo, ESLint flat config, Prettier, CI runs typecheck
+  + tests + lint.
 - **Launch guide**: `docs/LAUNCH_RUNBOOK.md` is now the end-to-end go-live checklist
   (migrations → accounts → verification → submission → day-1 ops).
 
-Migrations now number 10 — run order in `supabase/migrations/README.md`.
+Migrations now number 13 — run order in `supabase/migrations/README.md`.
 
 ## Context
 
@@ -71,19 +86,21 @@ Migrations now number 10 — run order in `supabase/migrations/README.md`.
 
 ## Immediate next steps
 
-1. **Verification pass** — adversarial security/correctness review of this change set,
-   apply findings, final `npx tsc --noEmit`, commit + push. (In progress.)
+1. **Commit + push this readiness update** so the Xcode machine sees the v4
+   runbook and lint cleanup.
 2. **On the Xcode machine:** pull, `npm ci`, fill `.env`, run per `docs/SIMULATOR_SETUP.md`,
    and smoke-test — the app has still never been run on a device.
 3. **Blocked on the owner (cannot proceed without):**
-   - Supabase dashboard access — run the 7 migrations (order in
-     `supabase/migrations/README.md`), enable Realtime on `channel_messages`,
-     create the `avatars` bucket policies, deploy the delete-account Edge Function.
+   - Supabase dashboard access — run migrations through v4 (order in
+     `supabase/migrations/README.md`), enable Realtime/publication requirements
+     for `channel_messages`, `messages`, `mentorship_requests`, and
+     `message_reactions`, create the `avatars` bucket policies, deploy the
+     delete-account and send-push Edge Functions, and wire Database Webhooks.
    - Locate the companion website repo + `greek-ties-app-docs` repo (own the
      schema/RLS for profiles/chapters/mentorship/messages) — still missing.
    - Accounts: Apple Developer, Expo/EAS (`eas init`), Mapbox (pk.* + sk.* tokens).
-4. **After that:** Phase E of the roadmap — push notifications, event calendar,
-   member-facing invite loop.
+4. **After that:** TestFlight build, physical-device push verification, seeded
+   demo chapter/account, screenshots, and App Store Connect metadata.
 
 ## Conventions
 

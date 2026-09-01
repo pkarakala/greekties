@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+import { createRealtimeTopic } from './realtime';
 
 // Ephemeral typing indicators over Supabase Realtime **broadcast** channels.
 // Broadcast never touches Postgres — no table, no migration, no RLS needed —
@@ -71,7 +72,7 @@ export function useTypingIndicator(
     setTypers([]);
     if (!channelId) return;
 
-    const chan = supabase.channel(`typing:${channelId}`, {
+    const chan = supabase.channel(createRealtimeTopic('typing', channelId), {
       config: { broadcast: { self: false } },
     });
     channelRef.current = chan;

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import { getLastRead, getServerLastReads } from './reads';
 import { fetchBlockedIds } from './moderation';
+import { createRealtimeTopic } from './realtime';
 import type { Channel, ChannelMessage, Profile } from './types';
 
 /** Messages fetched per page (initial load + each "load earlier"). */
@@ -265,7 +266,7 @@ export function useChannelThread(
     if (!channelId) return;
 
     const sub = supabase
-      .channel(`room:${channelId}`)
+      .channel(createRealtimeTopic('room', channelId))
       .on(
         'postgres_changes',
         {

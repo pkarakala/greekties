@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from './supabase';
+import { createRealtimeTopic } from './realtime';
 
 // Emoji reactions on channel messages (GroupMe chat parity). Backed by the
 // `message_reactions` table from supabase/migrations/app-v4-reactions.sql.
@@ -156,7 +157,7 @@ export function subscribeToReactions(
   };
 
   const sub = supabase
-    .channel(`reactions:${channelKey}`)
+    .channel(createRealtimeTopic('reactions', channelKey))
     .on(
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'message_reactions' },

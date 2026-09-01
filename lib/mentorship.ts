@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import { fetchBlockedIds } from './moderation';
+import { createRealtimeTopic } from './realtime';
 import type { Message, MentorshipRequest, Profile, RequestStatus } from './types';
 
 /** Fetch profiles for a set of auth user ids, keyed by user_id. */
@@ -155,7 +156,7 @@ export function useThread(requestId: string | null, userId: string | null): Thre
     if (!requestId) return;
 
     const sub = supabase
-      .channel(`thread:${requestId}`)
+      .channel(createRealtimeTopic('thread', requestId))
       .on(
         'postgres_changes',
         {

@@ -179,7 +179,7 @@ describe('subscribeToReactions', () => {
   it('subscribes one channel to INSERT and DELETE on message_reactions', () => {
     subscribeToReactions('chan-1', () => [], () => {});
     expect(mockedChannel).toHaveBeenCalledTimes(1);
-    expect(mockedChannel).toHaveBeenCalledWith('reactions:chan-1');
+    expect(mockedChannel).toHaveBeenCalledWith(expect.stringMatching(/^reactions:chan-1:[a-z0-9]+-\d+$/));
     expect(handlers.map((h) => h.event).sort()).toEqual(['DELETE', 'INSERT']);
     expect(builder.subscribe).toHaveBeenCalledTimes(1);
   });

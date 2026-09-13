@@ -468,8 +468,11 @@ set local role postgres;
 select set_config('request.jwt.claims', '{"sub":"10000000-0000-4000-8000-000000000003","role":"authenticated"}', true);
 set local role authenticated;
 do $$
+declare
+  joined uuid;
 begin
-  if public.join_chapter('secure-code-a') <> 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid
+  joined := public.join_chapter('secure-code-a');
+  if joined <> 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid
      or (select status from public.profiles where user_id = auth.uid()) <> 'approved' then
     raise exception 'P0 acceptance: rejected same-chapter rejoin was not safely reactivated';
   end if;

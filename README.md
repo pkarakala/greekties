@@ -20,7 +20,8 @@ Expo SDK 56 / RN 0.85.3 / React 19.2.3 on Node 24.17.0. `npm install` clean ·
 - `app/_layout.tsx` — auth gate: logged-out → `/login`, logged-in on an auth screen → `/`.
 - `app/login.tsx` — email/password `signInWithPassword`.
 - `app/signup.tsx` — `signUp`, carries an invite `code` through, handles email-confirm.
-- `app/join/[code].tsx` — resolve chapter by invite code, instant join (no approval gate).
+- `app/join/[code].tsx` — resolve and join through server-side invite RPCs (no
+  direct invite-table access or client-side approved-profile fallback).
 - `app/(tabs)/` — minimal Home + Me shell so auth has a landing (Phase 2 expands this).
 - `components/` — `Button`, `TextField`, `Wordmark` (design-system primitives).
 
@@ -110,10 +111,9 @@ dev client (not Expo Go).
 > Verified by typecheck and a full Metro bundle. Not yet run on a simulator/device —
 > that needs the real `EXPO_PUBLIC_SUPABASE_ANON_KEY` in `.env` and a working account.
 
-**Invite-code note:** the shared schema doesn't document an invite-code column on
-`chapters`, so `join/[code]` tries an `invite_code` column and falls back to the chapter
-`id`. If the live website uses a different column, update `resolveChapter()` in
-`app/join/[code].tsx`.
+**Invite-code note:** invite previews use `resolve_chapter_invite(code)` and joins
+use `join_chapter(code)`. Clients never read `chapter_invites` or accept a raw
+chapter UUID as an invite. Apply `app-v6-p0-authorization-invites.sql` last.
 
 ## Running it
 

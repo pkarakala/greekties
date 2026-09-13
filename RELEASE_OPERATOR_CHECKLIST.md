@@ -61,6 +61,30 @@ Dashboard path for every migration:
 Supabase Dashboard -> project `sdscrvoorrygesrhjeee` -> SQL Editor -> New Query
 -> paste the full file contents -> Run.
 
+Before V6/V7, run this read-only live-schema preflight in SQL Editor and save
+the result with the release evidence:
+
+```sql
+select ordinal_position, column_name, data_type, is_nullable, column_default
+from information_schema.columns
+where table_schema = 'public' and table_name = 'profiles'
+order by ordinal_position;
+
+select tablename, policyname, permissive, roles, cmd, qual, with_check
+from pg_policies
+where schemaname = 'public'
+  and tablename in ('profiles', 'chapters')
+order by tablename, permissive, policyname;
+```
+
+The 2026-09-12 live inspection found the 24 profile columns documented in
+`supabase/migrations/README.md`, nullable `text` status with no status check,
+only `approved`/`pending`/`rejected` values, enabled (not forced) RLS, and no
+RESTRICTIVE policies on `profiles` or `chapters`. Stop if the column set or
+status values have drifted. V7 preserves unknown restrictive policies and
+deliberately aborts if one applies to authenticated profile SELECT/UPDATE;
+review that policy instead of deleting it automatically.
+
 Run these files in this exact order:
 
 - [ ] `supabase/migrations/app-v1-chat.sql`
@@ -76,6 +100,11 @@ Run these files in this exact order:
 - [ ] `supabase/migrations/app-v4-chat-delete.sql`
 - [ ] `supabase/migrations/app-v4-notifications.sql`
 - [ ] `supabase/migrations/app-v4-reactions.sql`
+- [ ] `supabase/migrations/app-v5-chat-rls-recursion.sql`
+- [ ] `supabase/migrations/app-v6-p0-authorization-invites.sql`
+- [ ] `supabase/migrations/app-v7-p0-followup.sql`
+- [ ] `supabase/tests/p0-authorization-invites.sql` (must finish successfully;
+      it rolls back all fixtures)
 
 If `app-v2-avatars-storage.sql` fails on storage policy ownership:
 Supabase Dashboard -> Storage -> `avatars` bucket -> Policies -> recreate the
@@ -105,7 +134,11 @@ select proname
 from pg_proc
 where proname in (
   'join_chapter',
+  'resolve_chapter_invite',
   'create_chapter_invite',
+  'approve_chapter_member',
+  'reject_chapter_member',
+  'set_chapter_member_admin_role',
   'delete_own_account',
   'create_chapter'
 )
@@ -122,8 +155,20 @@ where relname = 'channel_messages';
 
 Expected: `f` for FULL.
 
+Post-V7 access checks (also enforced by the rolled-back SQL acceptance test):
+
+- [ ] As an approved member, edit and save name, class year, role, industry,
+      city/coordinates, company, job title, LinkedIn URL, bio, mentor/hiring
+      toggles, and avatar; reload and confirm every value persisted.
+- [ ] As that member, direct updates to `status`, `chapter_id`, `user_id`, and
+      `admin_role` each fail with permission denied and leave the row unchanged.
+- [ ] An ordinary-field update targeting another member changes zero rows.
+- [ ] Re-run the `pg_policies` inventory above; all unexpected RESTRICTIVE
+      policies are still present and have an explicit owner/rationale.
+
 **STOP/VERIFY:** every migration ran without unresolved errors, all expected
-tables/RPCs exist, and `channel_messages.relreplident = 'f'`.
+tables/RPCs exist, profile allowed/denied checks pass, and
+`channel_messages.relreplident = 'f'`.
 
 ## 3. Supabase Realtime
 
@@ -499,7 +544,7 @@ URLs are reachable in a logged-out browser.
 
 ## 11. Final Pre-Submission Gate
 
-- [ ] Supabase migrations through v4 are applied to production.
+- [ ] Supabase migrations through V7 are applied to production in order.
 - [ ] RLS acceptance tests from `supabase/migrations/README.md` passed.
 - [ ] Per-file acceptance tests passed for:
   `app-v2-invites.sql`, `app-v2-account-deletion.sql`,

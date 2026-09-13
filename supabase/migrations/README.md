@@ -1,6 +1,8 @@
 # Supabase Migrations — Greek Ties App
 
-New tables, functions, and storage the mobile app needs. These **only ADD** objects — they never alter the existing live tables (`chapters`, `profiles`, `mentorship_requests`, `messages`), so they're safe to run against the production database. Every file is idempotent (`create ... if not exists` / `drop policy if exists` / `create or replace`), so re-running one is harmless.
+Tables, functions, storage, policies, and grants the mobile app needs. V1-V5
+primarily add app objects; the P0 V6 migration intentionally replaces policies,
+functions, and client grants on existing tables. Every file is idempotent.
 
 ## Run order
 
@@ -35,6 +37,68 @@ The app degrades gracefully before these run (empty calendar, push registration 
 - **`app-v4-reactions.sql`** — creates `message_reactions` (emoji reactions on channel messages, GroupMe chat parity). RLS: read/react only on messages visible via `channel_messages` RLS (inherited through the EXISTS subquery, same pattern as v1 chat), insert own rows only, delete own rows only. Backs `lib/reactions.ts` and the reaction pills in the channel thread. Pre-migration the app just shows no pills.
 - **`app-v4-notifications.sql`** — creates `notifications` (the in-app notification center: a durable per-user copy of every push, so users who denied push permission still see them). Depends only on `auth.users`, so it can run any time. RLS: users SELECT/DELETE their own rows; UPDATE limited to the `read` column via column-level GRANT (same approach as `channel_members.last_read_at`); **no INSERT policy** — only the `send-push` Edge Function writes rows (service role). Backs `lib/inbox-notifications.ts`, the `/notifications` screen, and the Home bell badge. Redeploy `../functions/send-push/` after applying so events start landing here; pre-migration the app shows an empty inbox and the function logs-and-continues.
 
+### P0 security hardening (run last)
+
+- **`app-v6-p0-authorization-invites.sql`** — requires `profiles.status = 'approved'`
+  across chapter, channel, events, admin, mentorship, jobs, and moderation;
+  replaces broad client grants with least-privilege table/column grants; moves
+  profile approval/rejection/role changes behind admin RPCs; and adds the
+  `resolve_chapter_invite(code)` preview RPC so invitees never read
+  `chapter_invites` directly. Redeploy `../functions/send-push/` so its
+  service-role recipient filtering is active.
+
+- **`app-v7-p0-followup.sql`** — validates the live nullable-text status shape,
+  adds a rejected-safe lifecycle check, replaces client-facing permissive
+  policies by catalog scope (including differently named policies), and
+  reapplies least-privilege grants for `profiles` and `chapters`. It runs in one
+  explicit transaction, verifies every profile field used by edit/onboarding,
+  and aborts rather than committing a broken profile editor. Run immediately
+  after V6, then run `../tests/p0-authorization-invites.sql` to verify
+  pending/approved/rejected, cross-chapter, profile-edit, invite, and non-admin
+  behavior in a rolled-back transaction.
+
+### V7 live-schema assumptions and restrictive-policy preflight
+
+The live project is the source of truth for pre-existing tables. On 2026-09-12,
+this read-only `information_schema` query returned 24 `profiles` columns:
+
+```sql
+select ordinal_position, column_name, data_type, is_nullable, column_default
+from information_schema.columns
+where table_schema = 'public' and table_name = 'profiles'
+order by ordinal_position;
+```
+
+Expected names, in order: `id`, `user_id`, `chapter_id`, `name`, `email`,
+`class_year`, `role`, `industry`, `city`, `company`, `job_title`,
+`open_to_mentor`, `bio`, `created_at`, `status`, `admin_role`,
+`theme_preference`, `lat`, `lng`, `avatar_url`, `linkedin_url`,
+`seeking_mentor`, `chapter_role`, `is_hiring`. `status` was nullable `text`
+with default `pending`; `profiles` had only its primary key and user/chapter
+foreign keys, so there was no status check. `major`, `graduation_year`, and
+`pronouns` do not exist and must not appear in grants. Existing status values
+were 200 `approved`, 5 `pending`, and 1 `rejected`, with no null or unexpected
+value. RLS was enabled (not forced) on both `profiles` and `chapters`; chapter
+columns `name` and `designation` both existed.
+
+Re-run that query immediately before rollout. Also inventory policy topology:
+
+```sql
+select tablename, policyname, permissive, roles, cmd, qual, with_check
+from pg_policies
+where schemaname = 'public'
+  and tablename in ('profiles', 'chapters')
+order by tablename, permissive, policyname;
+```
+
+The same inspection found eight legacy PERMISSIVE policies and no RESTRICTIVE
+policies on these tables. V7 drops only client-facing PERMISSIVE policies.
+Unknown RESTRICTIVE policies are intentionally preserved because they combine
+with permissive policies using `AND`; if one could affect authenticated
+profile SELECT/UPDATE, V7 aborts before commit so an operator can review its
+owner and rationale. Never delete an unknown restrictive policy just to make
+the migration pass.
+
 ## How to run
 
 1. Go to Supabase Dashboard → SQL Editor → New Query.
@@ -58,9 +122,25 @@ The DB is the only real enforcement layer (client checks are cosmetic). Walk thi
 - [ ] **Exec membership lockdown** — as a **non-admin**: `insert into channel_members (channel_id, user_id) values ('<exec channel>', auth.uid());` must fail RLS. As an owner/manager it succeeds.
 - [ ] **Membership column pin** — as a member of a public channel: `update channel_members set channel_id = '<exec channel>' where user_id = auth.uid();` must fail with "permission denied" (only `last_read_at` is grantable). Updating `last_read_at` succeeds.
 - [ ] **Job pinning** — as the poster of a job: `update job_postings set chapter_id = '<other chapter>' where id = '<their job>';` must fail RLS (the `WITH CHECK` pin). Updating `is_open`/title in place succeeds.
-- [ ] **Invites** — a non-admin calling `create_chapter_invite(...)` errors; `select * from chapter_invites;` as a non-admin returns 0 rows; `join_chapter(...)` for a user who already has a profile errors.
+- [ ] **Invites** — a non-admin calling `create_chapter_invite(...)` errors;
+  direct `select * from chapter_invites;` fails with permission denied for every
+  API client; `resolve_chapter_invite(...)` returns only a valid invite's display
+  fields; and `join_chapter(...)` for a user who already has a profile errors.
+- [ ] **Allowed profile edit** — as an approved member, update and reload all
+  fields used by `app/profile/edit.tsx` and onboarding: `name`, `class_year`,
+  `role`, `industry`, `city`, `company`, `job_title`, `linkedin_url`, `bio`,
+  `open_to_mentor`, `is_hiring`, `avatar_url`, `lat`, and `lng`. Every value
+  persists on the caller's own row.
+- [ ] **Denied profile escalation** — as that member, separate direct updates
+  to `status`, `chapter_id`, `user_id`, and `admin_role` each fail with
+  permission denied and change nothing. An ordinary-field update targeting a
+  different member changes zero rows.
+- [ ] **Restrictive-policy preservation** — re-run the `pg_policies` inventory;
+  unexpected RESTRICTIVE policies remain present and have a reviewed
+  owner/rationale. If V7 aborted on one, resolve the review before retrying.
 
-If any check fails, the corresponding migration didn't apply fully — re-run it and re-check.
+If any access check fails, stop the rollout and diagnose before retrying. Do
+not remove an unknown restrictive policy without understanding its purpose.
 
 ## Full schema reference
 

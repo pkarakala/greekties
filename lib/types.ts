@@ -2,7 +2,7 @@
 // Source of truth: greek-ties-app-docs/docs/DATABASE.md. Do NOT change their shape.
 
 export type AdminRole = 'owner' | 'manager' | 'viewer' | null;
-export type ProfileStatus = 'pending' | 'approved';
+export type ProfileStatus = 'pending' | 'approved' | 'rejected';
 
 export interface Profile {
   id: string;
@@ -44,7 +44,10 @@ export interface Chapter {
 }
 
 export function isAdmin(profile: Profile | null): boolean {
-  return profile?.admin_role === 'owner' || profile?.admin_role === 'manager';
+  return (
+    profile?.status === 'approved' &&
+    (profile.admin_role === 'owner' || profile.admin_role === 'manager')
+  );
 }
 
 export type RequestStatus = 'pending' | 'accepted' | 'declined';

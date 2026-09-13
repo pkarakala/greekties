@@ -37,7 +37,7 @@ read this file, then `docs/LAUNCH_RUNBOOK.md`, then `docs/PRODUCTION_ROADMAP.md`
 - **Launch guide**: `docs/LAUNCH_RUNBOOK.md` is now the end-to-end go-live checklist
   (migrations → accounts → verification → submission → day-1 ops).
 
-Migrations now number 13 — run order in `supabase/migrations/README.md`.
+Migrations now number 15 — run order in `supabase/migrations/README.md`.
 
 ## Context
 
@@ -53,8 +53,8 @@ Migrations now number 13 — run order in `supabase/migrations/README.md`.
 
 **Core loops fixed:**
 - Join flow works in every auth state (`app/_layout.tsx` gate rewrite,
-  `app/join/[code].tsx` RPC-first join with legacy fallback, invite-code persistence
-  through email confirmation via `lib/invite.ts` + login/signup wiring).
+  server-only preview/join RPCs with no fail-open legacy fallback, invite-code
+  persistence through email confirmation via `lib/invite.ts` + login/signup wiring).
 - Profile editing + avatar upload (`app/profile/edit.tsx`, `lib/profile.ts`,
   Supabase Storage `avatars` bucket).
 - Forgot/reset password (`app/forgot-password.tsx`, `app/reset-password.tsx`).

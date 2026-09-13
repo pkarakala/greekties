@@ -56,6 +56,7 @@
 // ============================================================================
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { approvedRecipientIds } from './recipients.ts';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 /** Expo's documented max messages per push API request. */
@@ -114,6 +115,7 @@ async function buildNotification(
   payload: WebhookPayload,
 ): Promise<{
   userIds: string[];
+  chapterId: string;
   type: NotificationType;
   title: string;
   body: string;
@@ -125,6 +127,12 @@ async function buildNotification(
   if (payload.table === 'channel_messages' && payload.type === 'INSERT') {
     const channelId = record.channel_id as string;
     const sender = record.sender_id as string;
+    const { data: channel } = await admin
+      .from('channels')
+      .select('chapter_id')
+      .eq('id', channelId)
+      .maybeSingle();
+    if (!channel?.chapter_id) return null;
     const { data: members } = await admin
       .from('channel_members')
       .select('user_id')
@@ -135,6 +143,7 @@ async function buildNotification(
     if (userIds.length === 0) return null;
     return {
       userIds,
+      chapterId: channel.chapter_id as string,
       type: 'channel_message',
       title: 'New message',
       body: `${await senderName(admin, sender)} posted in your chapter chat`,
@@ -144,8 +153,10 @@ async function buildNotification(
 
   // 2. New mentorship request → the requested mentor.
   if (payload.table === 'mentorship_requests' && payload.type === 'INSERT') {
+    if (!record.chapter_id || !record.to_user_id || !record.from_user_id) return null;
     return {
       userIds: [record.to_user_id as string],
+      chapterId: record.chapter_id as string,
       type: 'mentorship_request',
       title: 'New mentorship request',
       body: `${await senderName(admin, record.from_user_id as string)} sent you a mentorship request`,
@@ -157,9 +168,16 @@ async function buildNotification(
   //    notifies; any other UPDATE (decline, edits) is ignored.
   if (payload.table === 'mentorship_requests' && payload.type === 'UPDATE') {
     const wasAccepted = payload.old_record?.status === 'accepted';
-    if (record.status !== 'accepted' || wasAccepted) return null;
+    if (
+      record.status !== 'accepted' ||
+      wasAccepted ||
+      !record.chapter_id ||
+      !record.from_user_id ||
+      !record.to_user_id
+    ) return null;
     return {
       userIds: [record.from_user_id as string],
+      chapterId: record.chapter_id as string,
       type: 'mentorship_accepted',
       title: 'Request accepted',
       body: `${await senderName(admin, record.to_user_id as string)} accepted your mentorship request`,
@@ -173,15 +191,17 @@ async function buildNotification(
     const sender = record.sender_id as string;
     const { data: request } = await admin
       .from('mentorship_requests')
-      .select('from_user_id, to_user_id')
+      .select('from_user_id, to_user_id, chapter_id, status')
       .eq('id', requestId)
       .maybeSingle();
-    if (!request) return null;
+    if (!request?.chapter_id || request.status !== 'accepted') return null;
+    if (sender !== request.from_user_id && sender !== request.to_user_id) return null;
     const recipient =
       request.from_user_id === sender ? request.to_user_id : request.from_user_id;
     if (!recipient || recipient === sender) return null;
     return {
       userIds: [recipient],
+      chapterId: request.chapter_id as string,
       type: 'mentorship_message',
       title: 'New message',
       body: `${await senderName(admin, sender)} sent you a message`,
@@ -192,6 +212,11 @@ async function buildNotification(
   return null;
 }
 
+/**
+ * Service-role reads bypass RLS, so re-apply the P0 membership invariant before
+ * any durable or push notification is emitted. The chapter pin also rejects
+ * stale/corrupt channel membership rows from another chapter.
+ */
 /** Max rows per `notifications` INSERT — keeps request payloads bounded. */
 const NOTIFICATION_INSERT_CHUNK_SIZE = 500;
 
@@ -305,6 +330,15 @@ Deno.serve(async (req) => {
   try {
     const notification = await buildNotification(admin, payload);
     if (!notification) {
+      return json({ skipped: true }, 200);
+    }
+
+    notification.userIds = await approvedRecipientIds(
+      admin,
+      notification.userIds,
+      notification.chapterId,
+    );
+    if (notification.userIds.length === 0) {
       return json({ skipped: true }, 200);
     }
 

@@ -42,6 +42,19 @@ idempotent (safe to re-run). Full rationale per file:
 11. [ ] `app-v4-chat-delete.sql` — own/admin channel-message deletion + realtime DELETE payload support
 12. [ ] `app-v4-notifications.sql` — durable in-app notification center
 13. [ ] `app-v4-reactions.sql` — channel-message emoji reactions + RLS
+14. [ ] `app-v5-chat-rls-recursion.sql` — recursion-free channel authorization helpers
+15. [ ] `app-v6-p0-authorization-invites.sql` — approved-profile gates,
+        least-privilege grants, server-only admin lifecycle, secure invite preview
+16. [ ] `app-v7-p0-followup.sql` — live-schema/status validation, catalog-scoped
+        profile/chapter policy replacement, and fail-closed profile grants
+
+Immediately before V6/V7, run the read-only `information_schema.columns` and
+`pg_policies` inventory in `supabase/migrations/README.md`. The 2026-09-12 live
+baseline has 24 profile columns, nullable `text` status with no check, and no
+values outside `approved`/`pending`/`rejected`; RLS is enabled (not forced),
+and there are no RESTRICTIVE profile/chapter policies. If that changes, stop
+and review. V7 preserves unknown restrictive policies and aborts
+transactionally if one could block authenticated profile SELECT/UPDATE.
 
 > The app degrades gracefully when v2/v3/v4 objects are missing (hidden features,
 > no raw errors), so partial rollout is safe — but every unapplied file is a
@@ -96,6 +109,15 @@ supabase functions deploy send-push --no-verify-jwt --project-ref sdscrvoorryges
 - [ ] Run the per-file ACCEPTANCE TESTS footers in `app-v2-invites.sql`,
       `app-v2-account-deletion.sql` (staging/throwaway only — destructive),
       `app-v3-chapters.sql`, and all v4 migrations.
+- [ ] Run `supabase/tests/p0-authorization-invites.sql`; it must complete
+      successfully and rolls back all test fixtures. It proves every field
+      saved by profile edit/onboarding succeeds for the owner, protected fields
+      (`status`, `chapter_id`, `user_id`, `admin_role`) fail, and cross-row
+      updates remain denied.
+- [ ] With a real approved test login, save the full profile form and reload it;
+      then confirm direct protected-column updates fail with permission denied.
+- [ ] Re-run the policy inventory. Any unexpected RESTRICTIVE policy must still
+      exist and have a reviewed owner/rationale; do not silently drop it.
 
 ## B. Accounts & external services
 

@@ -49,16 +49,17 @@ export function usePendingMembers(chapterId: string | null): PendingMembersData 
 }
 
 export async function approveMember(profileId: string): Promise<string | null> {
-  const { error } = await supabase
-    .from('profiles')
-    .update({ status: 'approved' })
-    .eq('id', profileId);
+  const { error } = await supabase.rpc('approve_chapter_member', {
+    target_profile_id: profileId,
+  });
   return error?.message ?? null;
 }
 
-/** Reject a pending join by removing the pending profile row. Destructive. */
+/** Reject a pending join while retaining its row for audit/appeal. */
 export async function rejectMember(profileId: string): Promise<string | null> {
-  const { error } = await supabase.from('profiles').delete().eq('id', profileId);
+  const { error } = await supabase.rpc('reject_chapter_member', {
+    target_profile_id: profileId,
+  });
   return error?.message ?? null;
 }
 
@@ -116,42 +117,29 @@ export function useChapterMemberList(chapterId: string | null): ChapterMemberLis
 }
 
 /**
- * Grant or revoke the 'manager' admin role (null = regular member). The UI
- * gates who may call this (owners manage managers; owners are untouchable),
- * but NOTE: real enforcement depends on the live `profiles` RLS policies,
- * which are documented but unverified (see docs/STATUS.md).
+ * Grant or revoke the 'manager' admin role (null = regular member). The
+ * server-side RPC permits only an approved owner in the same chapter.
  */
 export async function setMemberRole(
   profileId: string,
   role: 'manager' | null,
 ): Promise<string | null> {
-  const { error } = await supabase
-    .from('profiles')
-    .update({ admin_role: role })
-    .eq('id', profileId);
+  const { error } = await supabase.rpc('set_chapter_member_admin_role', {
+    target_profile_id: profileId,
+    target_admin_role: role,
+  });
   return error?.message ?? null;
 }
 
 /**
- * Remove an approved member from the chapter. Prefers a soft delete (status →
- * 'rejected') so the row — and anything hanging off it — survives for
- * audit/appeal; only if the live `status` column rejects that value
- * (check constraint / enum) does it fall back to deleting the profile row.
- * NOTE: server-side enforcement depends on the live `profiles` RLS policies,
- * which are documented but unverified (see docs/STATUS.md).
+ * Remove an approved member from the chapter by moving them to `rejected`.
+ * Authorization and admin hierarchy are enforced by the server-side RPC.
  */
 export async function removeMember(profileId: string): Promise<string | null> {
-  const { error } = await supabase
-    .from('profiles')
-    .update({ status: 'rejected' })
-    .eq('id', profileId);
-  if (!error) return null;
-  // 'rejected' isn't an accepted status value on this DB → hard delete.
-  if (/check constraint|invalid input value/i.test(error.message)) {
-    const { error: delErr } = await supabase.from('profiles').delete().eq('id', profileId);
-    return delErr?.message ?? null;
-  }
-  return error.message;
+  const { error } = await supabase.rpc('reject_chapter_member', {
+    target_profile_id: profileId,
+  });
+  return error?.message ?? null;
 }
 
 // ── Channel management ───────────────────────────────────────────────────────

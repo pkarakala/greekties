@@ -2,42 +2,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import { storePendingInviteCode, consumePendingInviteCode } from '@/lib/invite';
+import {
+  consumePendingInviteCode,
+  joinChapterWithInvite,
+  resolveChapterInvite,
+  storePendingInviteCode,
+  type ChapterInvitePreview,
+} from '@/lib/invite';
 import { Wordmark } from '@/components/Wordmark';
 import { Button } from '@/components/Button';
 import { colors, radius, spacing, typography } from '@/theme';
-import type { Chapter } from '@/lib/types';
-
-// Resolve the invite code to a chapter for the confirmation card. Server-side
-// codes live in chapter_invites (app-v2-invites.sql); until that migration
-// runs we fall back to legacy links that carried the raw chapter id.
-async function resolveChapter(code: string): Promise<Chapter | null> {
-  const byInvite = await supabase
-    .from('chapter_invites')
-    .select('chapter_id, chapters(*)')
-    .eq('code', code)
-    .eq('revoked', false)
-    .maybeSingle();
-
-  if (!byInvite.error && byInvite.data) {
-    const nested = (byInvite.data as { chapters: Chapter | Chapter[] | null }).chapters;
-    const chapter = Array.isArray(nested) ? nested[0] : nested;
-    if (chapter) return chapter;
-  }
-
-  // Legacy fallback: table missing (migration not run) or the code is a
-  // chapter id from an old link.
-  const byId = await supabase
-    .from('chapters')
-    .select('*')
-    .eq('id', code)
-    .maybeSingle();
-
-  if (!byId.error && byId.data) return byId.data as Chapter;
-  return null;
-}
 
 export default function JoinScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
@@ -45,7 +20,7 @@ export default function JoinScreen() {
   const { initializing, session, profile, refreshProfile } = useAuth();
 
   const [loadingChapter, setLoadingChapter] = useState(true);
-  const [chapter, setChapter] = useState<Chapter | null>(null);
+  const [chapter, setChapter] = useState<ChapterInvitePreview | null>(null);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Set once a join succeeds so the "already a member → Home" effect below
@@ -59,7 +34,7 @@ export default function JoinScreen() {
       setLoadingChapter(false);
       return;
     }
-    resolveChapter(code).then((c) => {
+    resolveChapterInvite(code).then((c) => {
       if (!mounted) return;
       setChapter(c);
       setLoadingChapter(false);
@@ -73,7 +48,7 @@ export default function JoinScreen() {
   // after a successful join — that flow routes to profile setup instead.)
   useEffect(() => {
     if (justJoined.current) return;
-    if (profile && chapter && profile.chapter_id === chapter.id) {
+    if (profile?.status === 'approved' && chapter && profile.chapter_id === chapter.id) {
       router.replace('/');
     }
   }, [profile, chapter, router]);
@@ -92,14 +67,11 @@ export default function JoinScreen() {
     setError(null);
     setJoining(true);
 
-    // Preferred path: server-validated join (app-v2-invites.sql). The RPC
-    // checks the code, enforces one-chapter-per-account, and creates the
-    // profile server-side so the client never sets status/chapter_id itself.
-    const { error: rpcError } = await supabase.rpc('join_chapter', {
-      invite_code: code,
-    });
+    // The RPC checks the code, enforces one-chapter-per-account, and creates
+    // the profile server-side. If it is unavailable, this path fails closed.
+    const { error: joinError } = await joinChapterWithInvite(code!);
 
-    if (!rpcError) {
+    if (!joinError) {
       justJoined.current = true;
       await consumePendingInviteCode(); // clear any stored copy of this code
       await refreshProfile();
@@ -109,44 +81,9 @@ export default function JoinScreen() {
       return;
     }
 
-    // RPC missing → migration not run yet; use the legacy insert, guarded.
-    const fnMissing =
-      rpcError.code === '42883' || rpcError.code === 'PGRST202';
-    if (!fnMissing) {
-      setJoining(false);
-      setError(rpcError.message);
-      return;
-    }
-
-    if (profile) {
-      // Already in a different chapter — never insert a second profiles row
-      // (duplicate rows break the app's single-profile session load).
-      setJoining(false);
-      setError('You already belong to a chapter. Each account can only join one chapter.');
-      return;
-    }
-
-    const { error: insertError } = await supabase.from('profiles').insert({
-      user_id: session.user.id,
-      chapter_id: chapter.id,
-      email: session.user.email,
-      name: (session.user.user_metadata?.name as string) ?? session.user.email,
-      status: 'approved',
-    });
-
     setJoining(false);
-
-    if (insertError) {
-      setError(insertError.message);
-      return;
-    }
-
-    justJoined.current = true;
-    await consumePendingInviteCode(); // clear any stored copy of this code
-    await refreshProfile();
-    // Fresh member → capture the profile basics while they're engaged.
-    router.replace('/onboarding/complete-profile');
-  }, [chapter, joining, session, profile, code, router, refreshProfile]);
+    setError(joinError);
+  }, [chapter, joining, session, code, router, refreshProfile]);
 
   if (initializing || loadingChapter) {
     return (
@@ -172,7 +109,7 @@ export default function JoinScreen() {
   }
 
   // Signed in but already in a different chapter → clear message, no join.
-  if (profile && profile.chapter_id !== chapter.id) {
+  if (profile?.status === 'approved' && profile.chapter_id !== chapter.id) {
     return (
       <SafeAreaView style={styles.center}>
         <Wordmark size={28} />

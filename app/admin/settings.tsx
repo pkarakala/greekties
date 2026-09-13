@@ -35,6 +35,7 @@ export default function ChapterSettingsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (chapter) {
@@ -43,24 +44,20 @@ export default function ChapterSettingsScreen() {
     }
   }, [chapter]);
 
-  // Prefer a short server-side invite code (app-v2-invites.sql). Until that
-  // migration runs, fall back to the legacy chapter-id link that join/[code]
-  // still resolves.
   useEffect(() => {
     if (!chapterId) return;
     let mounted = true;
-    fetchChapterInvite(chapterId).then(({ code }) => {
+    fetchChapterInvite(chapterId).then(({ code, error }) => {
       if (!mounted) return;
-      if (code) setInviteCode(code);
+      setInviteCode(code);
+      setInviteError(error ?? (code ? null : 'Invite links are unavailable until secure invite setup is applied.'));
     });
     return () => {
       mounted = false;
     };
   }, [chapterId]);
 
-  // Web link so invitees without the app land on the web build; join/[code]
-  // resolves both short codes and the legacy chapter-id fallback.
-  const shareCode = chapterId ? (inviteCode ?? chapterId) : null;
+  const shareCode = inviteCode;
   const inviteLink = shareCode ? joinLink(shareCode) : '';
 
   async function save() {
@@ -82,7 +79,10 @@ export default function ChapterSettingsScreen() {
   }
 
   async function shareInvite() {
-    if (!shareCode) return;
+    if (!shareCode) {
+      setInviteError('Invite links are unavailable until secure invite setup is applied.');
+      return;
+    }
     try {
       await Share.share({
         message: joinMessage(shareCode, chapter?.name ?? null),
@@ -131,10 +131,14 @@ export default function ChapterSettingsScreen() {
               <Text style={styles.inviteHint}>
                 Anyone with this link can join the chapter instantly.
               </Text>
-              <Text style={styles.inviteLink} numberOfLines={1}>
-                {inviteLink}
-              </Text>
-              <Button label="Share invite link" variant="secondary" onPress={shareInvite} />
+              {inviteLink ? (
+                <>
+                  <Text style={styles.inviteLink} numberOfLines={1}>{inviteLink}</Text>
+                  <Button label="Share invite link" variant="secondary" onPress={shareInvite} />
+                </>
+              ) : (
+                <Text style={styles.error}>{inviteError ?? 'Invite link unavailable.'}</Text>
+              )}
             </Card>
           </ScrollView>
         </KeyboardAvoidingView>

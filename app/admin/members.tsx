@@ -1,5 +1,14 @@
 import { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Alert, Pressable, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Alert,
+  Pressable,
+  RefreshControl,
+  type AlertButton,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,9 +29,9 @@ function roleLine(p: Profile): string {
 }
 
 /**
- * Who may act on whom (mirrored server-side only if the live profiles RLS
- * enforces it — see lib/admin.ts): owners are untouchable, managers can be
- * modified only by owners, regular members by any admin.
+ * Who may act on whom. The RPCs enforce the same hierarchy server-side:
+ * owners are untouchable, managers can be modified only by owners, and
+ * regular members can be removed by either admin role.
  */
 function canModify(me: Profile | null, target: Pick<Profile, 'admin_role'>): boolean {
   if (target.admin_role === 'owner') return false;
@@ -77,7 +86,7 @@ export default function MembersScreen() {
   function confirmRemove(p: Profile) {
     Alert.alert(
       'Remove from chapter?',
-      `${p.name ?? 'This member'} will lose access to the chapter. They can rejoin with an invite link.`,
+      `${p.name ?? 'This member'} will lose access to the chapter and can rejoin only with a valid invite for this chapter.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -107,13 +116,18 @@ export default function MembersScreen() {
 
   function openActions(p: Profile) {
     const role = effectiveRole(p);
-    Alert.alert(p.name ?? 'Member', undefined, [
-      role === 'manager'
-        ? { text: 'Remove manager', onPress: () => changeRole(p, null) }
-        : { text: 'Make manager', onPress: () => changeRole(p, 'manager') },
+    const actions: AlertButton[] = [
+      ...(profile?.admin_role === 'owner'
+        ? [
+            role === 'manager'
+              ? { text: 'Remove manager', onPress: () => changeRole(p, null) }
+              : { text: 'Make manager', onPress: () => changeRole(p, 'manager') },
+          ]
+        : []),
       { text: 'Remove from chapter', style: 'destructive', onPress: () => confirmRemove(p) },
       { text: 'Cancel', style: 'cancel' },
-    ]);
+    ];
+    Alert.alert(p.name ?? 'Member', undefined, actions);
   }
 
   return (

@@ -141,7 +141,7 @@ begin
     raise exception 'P0 acceptance: anon directly read chapter_invites';
   exception when insufficient_privilege then
     null;
-  end if;
+  end;
 end;
 $$;
 

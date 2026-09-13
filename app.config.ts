@@ -74,7 +74,9 @@ const config: ConfigWithLegacyKeys = {
   },
   experiments: {
     typedRoutes: true,
-    baseUrl: '/greekties',
+    // GitHub Pages needs the repository base path, but native asset bundling
+    // must use the app bundle root instead of nesting assets under that path.
+    ...(process.env.EAS_BUILD_PLATFORM ? {} : { baseUrl: '/greekties' }),
   },
 };
 

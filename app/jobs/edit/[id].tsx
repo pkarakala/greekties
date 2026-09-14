@@ -21,10 +21,10 @@ import { colors, spacing, typography } from '@/theme';
 export default function EditJobScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { session, profile: me } = useAuth();
+  const { session, profile: me, blockedIds } = useAuth();
   const myUserId = session?.user?.id ?? null;
 
-  const { loading, job } = useJob(id ?? null);
+  const { loading, job } = useJob(id ?? null, blockedIds);
 
   const [title, setTitle] = useState('');
   const [company, setCompany] = useState('');

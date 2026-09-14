@@ -118,11 +118,11 @@ values
   ('80000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000002', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'profile', '20000000-0000-4000-8000-000000000004', 'test'),
   ('80000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000005', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'profile', '20000000-0000-4000-8000-000000000006', 'test');
 
-insert into public.notifications (id, user_id, type, title, url)
+insert into public.notifications (id, user_id, actor_user_id, type, title, url)
 values
-  ('90000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', 'channel_message', 'Pending must not see', '/chats/denied'),
-  ('90000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000002', 'channel_message', 'Approved can see', '/chats/allowed'),
-  ('90000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000003', 'mentorship_message', 'Rejected must not see', '/inbox/denied');
+  ('90000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', null, 'channel_message', 'Pending must not see', '/chats/denied'),
+  ('90000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000004', 'channel_message', 'Approved can see', '/chats/allowed'),
+  ('90000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000003', null, 'mentorship_message', 'Rejected must not see', '/inbox/denied');
 
 -- Anonymous users can preview a valid code through the RPC, but cannot read
 -- the underlying invite table or treat a chapter UUID as a legacy code.

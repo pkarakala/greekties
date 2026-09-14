@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import { getLastRead, getServerLastReads } from './reads';
-import { fetchBlockedIds } from './moderation';
+import { canShowActorContent, filterBlockedActors } from './moderation';
 import { createRealtimeTopic } from './realtime';
 import type { Channel, ChannelMessage, Profile } from './types';
 
@@ -35,7 +35,11 @@ export interface ChannelsData {
   reload: () => void;
 }
 
-export function useChannels(chapterId: string | null, userId: string | null): ChannelsData {
+export function useChannels(
+  chapterId: string | null,
+  userId: string | null,
+  blockedIds: ReadonlySet<string>,
+): ChannelsData {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sections, setSections] = useState<ChannelSection[]>([]);
@@ -80,9 +84,14 @@ export function useChannels(chapterId: string | null, userId: string | null): Ch
             .select('*')
             .eq('channel_id', channel.id)
             .order('created_at', { ascending: false })
-            .limit(1);
+            .limit(20);
 
-          const lastMessage = ((msgs as ChannelMessage[]) ?? [])[0] ?? null;
+          const lastMessage =
+            filterBlockedActors(
+              (msgs as ChannelMessage[]) ?? [],
+              blockedIds,
+              (message) => message.sender_id,
+            )[0] ?? null;
           const lastActivity = lastMessage?.created_at ?? channel.created_at;
           const localRead = await getLastRead(channel.id);
           const lastRead = Math.max(serverReads.get(channel.id) ?? 0, localRead);
@@ -120,9 +129,23 @@ export function useChannels(chapterId: string | null, userId: string | null): Ch
     return () => {
       mounted = false;
     };
-  }, [chapterId, userId, nonce]);
+  }, [chapterId, userId, blockedIds, nonce]);
 
-  return { loading, error, sections, reload };
+  const visibleSections = sections.map((section) => ({
+    ...section,
+    data: section.data.map((item) =>
+      item.lastMessage && !canShowActorContent(item.lastMessage.sender_id, blockedIds)
+        ? {
+            ...item,
+            lastMessage: null,
+            lastActivity: item.channel.created_at,
+            unread: false,
+          }
+        : item,
+    ),
+  }));
+
+  return { loading, error, sections: visibleSections, reload };
 }
 
 export interface ChannelThreadData {
@@ -145,6 +168,7 @@ export interface ChannelThreadData {
 export function useChannelThread(
   channelId: string | null,
   userId: string | null,
+  blockedIds: ReadonlySet<string>,
 ): ChannelThreadData {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -164,7 +188,10 @@ export function useChannelThread(
   // messages included, so a fully-blocked page still advances the cursor).
   const oldestFetchedRef = useRef<string | null>(null);
   // Users this viewer has blocked — their messages are hidden (initial + realtime).
-  const blockedRef = useRef<Set<string>>(new Set());
+  const blockedRef = useRef<ReadonlySet<string>>(blockedIds);
+  useEffect(() => {
+    blockedRef.current = blockedIds;
+  }, [blockedIds]);
 
   const ensureSenderProfiles = useCallback(async (userIds: string[]) => {
     const missing = [...new Set(userIds)].filter((id) => id && !sendersRef.current[id]);
@@ -188,9 +215,6 @@ export function useChannelThread(
     setError(null);
 
     (async () => {
-      // Blocked ids first so the initial page can be filtered (empty set on any error).
-      if (userId) blockedRef.current = await fetchBlockedIds(userId);
-
       const [chanRes, msgRes] = await Promise.all([
         supabase.from('channels').select('*').eq('id', channelId).maybeSingle(),
         supabase
@@ -213,7 +237,7 @@ export function useChannelThread(
       const page = ((msgRes.data as ChannelMessage[]) ?? []).reverse();
       oldestFetchedRef.current = page[0]?.created_at ?? null;
       setHasMore(page.length === PAGE_SIZE);
-      const msgs = page.filter((m) => !blockedRef.current.has(m.sender_id));
+      const msgs = filterBlockedActors(page, blockedRef.current, (m) => m.sender_id);
       setMessages(msgs);
       await ensureSenderProfiles(msgs.map((m) => m.sender_id));
       if (mounted) setLoading(false);
@@ -222,7 +246,7 @@ export function useChannelThread(
     return () => {
       mounted = false;
     };
-  }, [channelId, userId, nonce, ensureSenderProfiles]);
+  }, [channelId, userId, blockedIds, nonce, ensureSenderProfiles]);
 
   // Pagination: fetch the PAGE_SIZE messages before the oldest fetched and prepend.
   const loadEarlier = useCallback(async () => {
@@ -247,7 +271,7 @@ export function useChannelThread(
     const page = ((data as ChannelMessage[]) ?? []).reverse();
     if (page.length > 0) oldestFetchedRef.current = page[0].created_at;
     setHasMore(page.length === PAGE_SIZE);
-    const older = page.filter((m) => !blockedRef.current.has(m.sender_id));
+    const older = filterBlockedActors(page, blockedRef.current, (m) => m.sender_id);
     if (older.length > 0) {
       setMessages((prev) => {
         const seen = new Set(prev.map((m) => m.id));
@@ -277,7 +301,7 @@ export function useChannelThread(
         },
         (payload) => {
           const msg = payload.new as ChannelMessage;
-          if (blockedRef.current.has(msg.sender_id)) return;
+          if (!canShowActorContent(msg.sender_id, blockedRef.current)) return;
           setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
           void ensureSenderProfiles([msg.sender_id]);
         },
@@ -331,7 +355,7 @@ export function useChannelThread(
     loading,
     error,
     channel,
-    messages,
+    messages: filterBlockedActors(messages, blockedIds, (message) => message.sender_id),
     senders,
     hasMore,
     loadingEarlier,

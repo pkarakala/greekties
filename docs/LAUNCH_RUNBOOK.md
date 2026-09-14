@@ -47,14 +47,22 @@ idempotent (safe to re-run). Full rationale per file:
         least-privilege grants, server-only admin lifecycle, secure invite preview
 16. [ ] `app-v7-p0-followup.sql` — live-schema/status validation, catalog-scoped
         profile/chapter policy replacement, and fail-closed profile grants
+17. [ ] `app-v8-security-membership-blocks.sql` — controlled active/alumni
+        designation, block-aware RLS/realtime, and notification actor tracking
 
-Immediately before V6/V7, run the read-only `information_schema.columns` and
+Immediately before V6/V7/V8, run the read-only `information_schema.columns` and
 `pg_policies` inventory in `supabase/migrations/README.md`. The 2026-09-12 live
 baseline has 24 profile columns, nullable `text` status with no check, and no
 values outside `approved`/`pending`/`rejected`; RLS is enabled (not forced),
 and there are no RESTRICTIVE profile/chapter policies. If that changes, stop
 and review. V7 preserves unknown restrictive policies and aborts
 transactionally if one could block authenticated profile SELECT/UPDATE.
+
+After V8 on staging, use the admin member screen to re-designate verified
+alumni. Do not derive those values from historical `profiles.role`; that field
+was user-editable and is intentionally treated as untrusted. Run both SQL
+acceptance files, then redeploy `send-push` so service-role fan-out enforces
+block relationships.
 
 > The app degrades gracefully when v2/v3/v4 objects are missing (hidden features,
 > no raw errors), so partial rollout is safe — but every unapplied file is a
@@ -68,6 +76,7 @@ Dashboard → Database → Replication → `supabase_realtime` publication → a
 - [ ] `messages` — live mentorship threads
 - [ ] `mentorship_requests` — live status flips (pending → accepted/declined)
 - [ ] `message_reactions` — live channel-message reaction pills (after `app-v4-reactions.sql`)
+- [ ] `user_blocks` — cross-device block-list refresh (V8 adds this publication entry transactionally)
 
 Then verify the RLS/Realtime caveat in `supabase/migrations/README.md` →
 "Realtime": subscribe as an active (non-alumni) member filtered to the alumni
@@ -114,6 +123,11 @@ supabase functions deploy send-push --no-verify-jwt --project-ref sdscrvoorryges
       saved by profile edit/onboarding succeeds for the owner, protected fields
       (`status`, `chapter_id`, `user_id`, `admin_role`) fail, and cross-row
       updates remain denied.
+- [ ] Run `supabase/tests/p0-membership-blocks.sql`; it must complete
+      successfully and roll back all fixtures. It proves role edits cannot
+      grant alumni access, admin designation hierarchy works, blocked content
+      and notifications are hidden in both directions, realtime-era messages
+      stay hidden, and unblocking restores visibility.
 - [ ] With a real approved test login, save the full profile form and reload it;
       then confirm direct protected-column updates fail with permission denied.
 - [ ] Re-run the policy inventory. Any unexpected RESTRICTIVE policy must still

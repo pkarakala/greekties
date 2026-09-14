@@ -22,7 +22,7 @@ function MemberBadges({ p }: { p: Profile }) {
     <View style={styles.badges}>
       {p.open_to_mentor && <Badge label="Mentor" tone="gold" />}
       {p.is_hiring && <Badge label="Hiring" tone="green" />}
-      {p.role === 'Alumni' && <Badge label="Alumni" />}
+      {p.membership_type === 'alumni' && <Badge label="Alumni" />}
     </View>
   );
 }

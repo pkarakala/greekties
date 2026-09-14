@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
-import { fetchBlockedIds } from './moderation';
+import { canShowActorContent, filterBlockedActors } from './moderation';
 import { createRealtimeTopic } from './realtime';
 import type { Message, MentorshipRequest, Profile, RequestStatus } from './types';
 
@@ -24,7 +24,10 @@ export interface InboxData {
   reload: () => void;
 }
 
-export function useInbox(userId: string | null): InboxData {
+export function useInbox(
+  userId: string | null,
+  blockedIds: ReadonlySet<string>,
+): InboxData {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [incoming, setIncoming] = useState<MentorshipRequest[]>([]);
@@ -54,7 +57,11 @@ export function useInbox(userId: string | null): InboxData {
           setLoading(false);
           return;
         }
-        const rows = (data as MentorshipRequest[]) ?? [];
+        const rows = filterBlockedActors(
+          (data as MentorshipRequest[]) ?? [],
+          blockedIds,
+          (row) => (row.from_user_id === userId ? row.to_user_id : row.from_user_id),
+        );
         setIncoming(rows.filter((r) => r.to_user_id === userId));
         setOutgoing(rows.filter((r) => r.from_user_id === userId));
 
@@ -66,11 +73,21 @@ export function useInbox(userId: string | null): InboxData {
     return () => {
       mounted = false;
     };
-  }, [userId, nonce]);
+  }, [userId, blockedIds, nonce]);
 
-  const pendingIncoming = incoming.filter((r) => r.status === 'pending').length;
+  const visibleIncoming = filterBlockedActors(incoming, blockedIds, (row) => row.from_user_id);
+  const visibleOutgoing = filterBlockedActors(outgoing, blockedIds, (row) => row.to_user_id);
+  const pendingIncoming = visibleIncoming.filter((r) => r.status === 'pending').length;
 
-  return { loading, error, incoming, outgoing, profiles, pendingIncoming, reload };
+  return {
+    loading,
+    error,
+    incoming: visibleIncoming,
+    outgoing: visibleOutgoing,
+    profiles,
+    pendingIncoming,
+    reload,
+  };
 }
 
 export interface ThreadData {
@@ -82,7 +99,11 @@ export interface ThreadData {
   reload: () => void;
 }
 
-export function useThread(requestId: string | null, userId: string | null): ThreadData {
+export function useThread(
+  requestId: string | null,
+  userId: string | null,
+  blockedIds: ReadonlySet<string>,
+): ThreadData {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [request, setRequest] = useState<MentorshipRequest | null>(null);
@@ -92,7 +113,10 @@ export function useThread(requestId: string | null, userId: string | null): Thre
   const reload = useCallback(() => setNonce((n) => n + 1), []);
 
   // Users this viewer has blocked — their messages are hidden (initial + realtime).
-  const blockedRef = useRef<Set<string>>(new Set());
+  const blockedRef = useRef<ReadonlySet<string>>(blockedIds);
+  useEffect(() => {
+    blockedRef.current = blockedIds;
+  }, [blockedIds]);
 
   useEffect(() => {
     if (!requestId) {
@@ -104,10 +128,6 @@ export function useThread(requestId: string | null, userId: string | null): Thre
     setError(null);
 
     (async () => {
-      // Blocked ids first so the fetched messages can be filtered (empty set on any error).
-      if (userId) blockedRef.current = await fetchBlockedIds(userId);
-      if (!mounted) return;
-
       const reqRes = await supabase
         .from('mentorship_requests')
         .select('*')
@@ -121,10 +141,15 @@ export function useThread(requestId: string | null, userId: string | null): Thre
         return;
       }
       const req = (reqRes.data as MentorshipRequest) ?? null;
-      setRequest(req);
+      const otherId = req
+        ? req.from_user_id === userId
+          ? req.to_user_id
+          : req.from_user_id
+        : null;
+      const visibleRequest = req && canShowActorContent(otherId, blockedIds) ? req : null;
+      setRequest(visibleRequest);
 
-      if (req) {
-        const otherId = req.from_user_id === userId ? req.to_user_id : req.from_user_id;
+      if (visibleRequest && otherId) {
         const [msgRes, profMap] = await Promise.all([
           supabase
             .from('messages')
@@ -137,7 +162,7 @@ export function useThread(requestId: string | null, userId: string | null): Thre
         if (msgRes.error) setError(msgRes.error.message);
         else {
           const msgs = (msgRes.data as Message[]) ?? [];
-          setMessages(msgs.filter((m) => !blockedRef.current.has(m.sender_id)));
+          setMessages(filterBlockedActors(msgs, blockedRef.current, (m) => m.sender_id));
         }
         setOther(profMap[otherId] ?? null);
       }
@@ -147,7 +172,7 @@ export function useThread(requestId: string | null, userId: string | null): Thre
     return () => {
       mounted = false;
     };
-  }, [requestId, userId, nonce]);
+  }, [requestId, userId, blockedIds, nonce]);
 
   // Realtime (mirrors lib/chat.ts): append new messages as they arrive (deduped by
   // id, blocked filtered) and pick up status changes (pending → accepted/declined)
@@ -167,7 +192,7 @@ export function useThread(requestId: string | null, userId: string | null): Thre
         },
         (payload) => {
           const msg = payload.new as Message;
-          if (blockedRef.current.has(msg.sender_id)) return;
+          if (!canShowActorContent(msg.sender_id, blockedRef.current)) return;
           setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
         },
       )
@@ -180,7 +205,10 @@ export function useThread(requestId: string | null, userId: string | null): Thre
           filter: `id=eq.${requestId}`,
         },
         (payload) => {
-          setRequest(payload.new as MentorshipRequest);
+          const next = payload.new as MentorshipRequest;
+          const otherId = next.from_user_id === userId ? next.to_user_id : next.from_user_id;
+          if (!canShowActorContent(otherId, blockedRef.current)) return;
+          setRequest(next);
         },
       )
       .subscribe();
@@ -188,9 +216,25 @@ export function useThread(requestId: string | null, userId: string | null): Thre
     return () => {
       supabase.removeChannel(sub);
     };
-  }, [requestId]);
+  }, [requestId, userId]);
 
-  return { loading, error, request, messages, other, reload };
+  const otherUserId = request
+    ? request.from_user_id === userId
+      ? request.to_user_id
+      : request.from_user_id
+    : null;
+  const visibleRequest =
+    request && canShowActorContent(otherUserId, blockedIds) ? request : null;
+  return {
+    loading,
+    error,
+    request: visibleRequest,
+    messages: visibleRequest
+      ? filterBlockedActors(messages, blockedIds, (message) => message.sender_id)
+      : [],
+    other: visibleRequest ? other : null,
+    reload,
+  };
 }
 
 export async function createMentorshipRequest(input: {

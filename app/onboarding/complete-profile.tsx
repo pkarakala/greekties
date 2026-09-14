@@ -159,7 +159,9 @@ export default function CompleteProfileScreen() {
           </View>
 
           <TextField label="City" value={city} onChangeText={setCity} placeholder="Austin, TX" />
-          <Text style={styles.fieldHint}>Your city places you on the alumni map.</Text>
+          <Text style={styles.fieldHint}>
+            Alumni designated by a chapter admin can appear on the map.
+          </Text>
           <TextField
             label="Industry"
             value={industry}

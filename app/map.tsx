@@ -22,8 +22,11 @@ try {
 
 export default function MapScreen() {
   const router = useRouter();
-  const { profile } = useAuth();
-  const { loading, error, members } = useMapMembers(profile?.chapter_id ?? null);
+  const { profile, blockedIds } = useAuth();
+  const { loading, error, members } = useMapMembers(
+    profile?.chapter_id ?? null,
+    blockedIds,
+  );
   const [tokenReady, setTokenReady] = useState(false);
 
   useEffect(() => {
@@ -43,9 +46,9 @@ export default function MapScreen() {
   const selfLat = profile?.lat ?? null;
   const selfLng = profile?.lng ?? null;
   const selfCoordinate = useMemo<[number, number] | null>(() => {
-    if (selfLat == null || selfLng == null) return null;
+    if (profile?.membership_type !== 'alumni' || selfLat == null || selfLng == null) return null;
     return [selfLng, selfLat];
-  }, [selfLat, selfLng]);
+  }, [profile?.membership_type, selfLat, selfLng]);
 
   const otherMembers = useMemo(
     () => members.filter((m) => m.id !== profile?.id),

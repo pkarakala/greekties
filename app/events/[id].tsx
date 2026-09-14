@@ -52,11 +52,11 @@ function eventDateTime(iso: string): string {
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { session, profile: me } = useAuth();
+  const { session, profile: me, blockedIds } = useAuth();
   const myUserId = session?.user?.id ?? null;
 
   const { loading, error, event, goingCount, maybeCount, myStatus, creator, reload } =
-    useEvent(id ?? null, myUserId);
+    useEvent(id ?? null, myUserId, blockedIds);
 
   // Optimistic RSVP: reflect the tap immediately, roll back on failure.
   const [localStatus, setLocalStatus] = useState<RsvpStatus | null>(null);

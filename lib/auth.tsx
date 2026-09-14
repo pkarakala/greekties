@@ -9,6 +9,12 @@ import {
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { unregisterPushToken } from './notifications';
+import {
+  applyBlockListChange,
+  fetchBlockedIds,
+  subscribeToBlockListChanges,
+} from './moderation';
+import { createRealtimeTopic } from './realtime';
 import type { Profile } from './types';
 
 interface AuthState {
@@ -17,7 +23,10 @@ interface AuthState {
   session: Session | null;
   /** The user's chapter profile, or null if not loaded / no profile yet. */
   profile: Profile | null;
+  /** Auth user ids blocked by the signed-in user. RLS handles reverse blocks. */
+  blockedIds: ReadonlySet<string>;
   refreshProfile: () => Promise<void>;
+  refreshBlockedIds: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -41,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [initializing, setInitializing] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
 
   const loadProfileFor = useCallback(async (s: Session | null) => {
     if (!s?.user) {
@@ -64,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Keep app state in sync with auth changes (login, logout, token refresh).
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
+      if (!newSession) setBlockedIds(new Set());
       void loadProfileFor(newSession);
     });
 
@@ -75,6 +86,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshProfile = useCallback(() => loadProfileFor(session), [loadProfileFor, session]);
 
+  const refreshBlockedIds = useCallback(async () => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+    setBlockedIds(await fetchBlockedIds(userId));
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+
+    let active = true;
+    void fetchBlockedIds(userId).then((ids) => {
+      if (active) setBlockedIds(ids);
+    });
+    const unsubscribeLocal = subscribeToBlockListChanges((change) => {
+      if (change.blockerId !== userId) return;
+      setBlockedIds((current) => applyBlockListChange(current, change));
+    });
+
+    const blockChanges = supabase
+      .channel(createRealtimeTopic('blocks', userId))
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_blocks',
+          filter: `blocker_id=eq.${userId}`,
+        },
+        () => void refreshBlockedIds(),
+      )
+      .subscribe();
+
+    return () => {
+      active = false;
+      unsubscribeLocal();
+      supabase.removeChannel(blockChanges);
+    };
+  }, [session?.user?.id, refreshBlockedIds]);
+
   const signOut = useCallback(async () => {
     // Remove this device's push token first — the delete needs the user's
     // RLS session, which is gone once signOut() completes.
@@ -84,7 +135,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session]);
 
   return (
-    <AuthContext.Provider value={{ initializing, session, profile, refreshProfile, signOut }}>
+    <AuthContext.Provider
+      value={{
+        initializing,
+        session,
+        profile,
+        blockedIds,
+        refreshProfile,
+        refreshBlockedIds,
+        signOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

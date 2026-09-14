@@ -21,6 +21,7 @@ function makeProfile(overrides: Partial<Profile> = {}): Profile {
     avatar_url: null,
     class_year: null,
     role: null,
+    membership_type: 'active',
     industry: null,
     city: null,
     lat: null,

@@ -63,10 +63,10 @@ function toLocalDateTimeFields(iso: string): { date: string; time: string } {
 export default function EditEventScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { session, profile: me } = useAuth();
+  const { session, profile: me, blockedIds } = useAuth();
   const myUserId = session?.user?.id ?? null;
 
-  const { loading, event } = useEvent(id ?? null, myUserId);
+  const { loading, event } = useEvent(id ?? null, myUserId, blockedIds);
 
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<EventCategory>('chapter');

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from './supabase';
-import type { Channel, ChannelVisibility, Chapter, Profile } from './types';
+import type { Channel, ChannelVisibility, Chapter, MembershipType, Profile } from './types';
 
 // ── Member approvals ─────────────────────────────────────────────────────────
 
@@ -69,7 +69,7 @@ export async function rejectMember(profileId: string): Promise<string | null> {
 // coupled to directory queries). Deliberately excludes `email` — the member
 // list never renders it, so PII stays off the wire.
 const ADMIN_MEMBER_COLUMNS =
-  'id, user_id, chapter_id, name, avatar_url, class_year, role, industry, city, company, job_title, open_to_mentor, is_hiring, status, admin_role, linkedin_url, bio, created_at';
+  'id, user_id, chapter_id, name, avatar_url, class_year, role, membership_type, industry, city, company, job_title, open_to_mentor, is_hiring, status, admin_role, linkedin_url, bio, created_at';
 
 export interface ChapterMemberListData {
   loading: boolean;
@@ -127,6 +127,22 @@ export async function setMemberRole(
   const { error } = await supabase.rpc('set_chapter_member_admin_role', {
     target_profile_id: profileId,
     target_admin_role: role,
+  });
+  return error?.message ?? null;
+}
+
+/**
+ * Set the controlled active/alumni designation. The RPC enforces approval,
+ * chapter tenancy, and the owner/manager hierarchy; `profiles.role` remains
+ * unrelated professional display text.
+ */
+export async function setMemberMembershipType(
+  profileId: string,
+  membershipType: MembershipType,
+): Promise<string | null> {
+  const { error } = await supabase.rpc('set_chapter_member_membership_type', {
+    target_profile_id: profileId,
+    target_membership_type: membershipType,
   });
   return error?.message ?? null;
 }

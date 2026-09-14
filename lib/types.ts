@@ -3,6 +3,7 @@
 
 export type AdminRole = 'owner' | 'manager' | 'viewer' | null;
 export type ProfileStatus = 'pending' | 'approved' | 'rejected';
+export type MembershipType = 'active' | 'alumni';
 
 export interface Profile {
   id: string;
@@ -12,7 +13,10 @@ export interface Profile {
   email: string | null;
   avatar_url: string | null;
   class_year: number | null;
+  /** Professional display text only; never use this field for authorization. */
   role: string | null;
+  /** Server-controlled chapter membership designation used by authorization. */
+  membership_type: MembershipType;
   industry: string | null;
   city: string | null;
   lat: number | null;

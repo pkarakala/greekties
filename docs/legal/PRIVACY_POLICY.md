@@ -20,8 +20,8 @@ If you have questions, contact us at **support@greekties.app**.
 - **Account information:** your name and email address, collected when you create
   an account. Your password is handled by our authentication provider (Supabase
   Auth) and is never visible to us in plain text.
-- **Profile information (optional unless noted):** graduation year, member status
-  (active or alumni), industry, company, job title, LinkedIn URL, a short bio,
+- **Profile information (optional unless noted):** graduation year, professional
+  role, industry, company, job title, LinkedIn URL, a short bio,
   whether you are open to mentoring, whether you are hiring, your **city**, and —
   only if you choose to appear on the alumni map — approximate **geographic
   coordinates** for that city.
@@ -31,7 +31,9 @@ If you have questions, contact us at **support@greekties.app**.
   conversations, job postings you create, and reports you submit about other
   users or content.
 - **Invite and membership data:** the chapter you join, the invite code you used,
-  your membership status, and any admin role within your chapter.
+  your chapter membership designation (active or alumni), approval status, and
+  any admin role within your chapter. Membership designations are controlled by
+  authorized chapter administrators.
 
 ### 1.2 Information collected automatically
 

@@ -57,6 +57,18 @@ The app degrades gracefully before these run (empty calendar, push registration 
   pending/approved/rejected, cross-chapter, profile-edit, invite, and non-admin
   behavior in a rolled-back transaction.
 
+- **`app-v8-security-membership-blocks.sql`** — separates user-editable
+  professional `role` text from server-controlled `membership_type`, changes
+  alumni channel authorization to the controlled field, adds an admin-only
+  designation RPC, and applies symmetric block filtering to profiles, jobs,
+  events/RSVPs, channel messages/reactions, mentorship, realtime SELECT
+  delivery, and notifications. Legacy actor-driven notifications without a
+  trustworthy actor id are hidden fail-closed. Existing rows intentionally start as `active`;
+  verified alumni must be re-designated by an admin before release. Redeploy
+  `../functions/send-push/` after this migration so service-role notification
+  fan-out also enforces blocks. Then run
+  `../tests/p0-membership-blocks.sql` in a non-production validation database.
+
 ### V7 live-schema assumptions and restrictive-policy preflight
 
 The live project is the source of truth for pre-existing tables. On 2026-09-12,
@@ -117,7 +129,7 @@ For live chat:
 
 The DB is the only real enforcement layer (client checks are cosmetic). Walk this list after every migration run, using real logins (app or SQL editor impersonation):
 
-- [ ] **Alumni privacy** — as an **active member** (role ≠ 'Alumni'): `select * from channels;` must NOT include the `alumni` channel, and selecting that channel's `channel_messages` returns 0 rows. As an **alumni**, both are visible.
+- [ ] **Alumni privacy** — as an **active member** (`membership_type = 'active'`): setting editable `role = 'Alumni'` must not expose the alumni channel. An approved admin can designate `membership_type = 'alumni'` only through `set_chapter_member_membership_type(...)`, after which the alumni channel and its messages are visible.
 - [ ] **Cross-chapter isolation** — as a member of chapter A: selects on chapter B's `channels`, `channel_messages`, and `job_postings` all return 0 rows.
 - [ ] **Exec membership lockdown** — as a **non-admin**: `insert into channel_members (channel_id, user_id) values ('<exec channel>', auth.uid());` must fail RLS. As an owner/manager it succeeds.
 - [ ] **Membership column pin** — as a member of a public channel: `update channel_members set channel_id = '<exec channel>' where user_id = auth.uid();` must fail with "permission denied" (only `last_read_at` is grantable). Updating `last_read_at` succeeds.
@@ -132,9 +144,16 @@ The DB is the only real enforcement layer (client checks are cosmetic). Walk thi
   `open_to_mentor`, `is_hiring`, `avatar_url`, `lat`, and `lng`. Every value
   persists on the caller's own row.
 - [ ] **Denied profile escalation** — as that member, separate direct updates
-  to `status`, `chapter_id`, `user_id`, and `admin_role` each fail with
+  to `status`, `chapter_id`, `user_id`, `admin_role`, and `membership_type` each fail with
   permission denied and change nothing. An ordinary-field update targeting a
   different member changes zero rows.
+- [ ] **Block enforcement** — after A blocks B, each side receives zero rows for
+  the other's profiles, jobs, events/RSVPs, channel messages/reactions, and
+  mentorship requests/messages; B-authored notifications and their deep links
+  disappear for A; neither side can create a mentorship request or direct
+  message to the other; Postgres Changes does not deliver B's messages to A;
+  push fan-out excludes the relationship. After A unblocks B, visibility and
+  permitted interaction return.
 - [ ] **Restrictive-policy preservation** — re-run the `pg_policies` inventory;
   unexpected RESTRICTIVE policies remain present and have a reviewed
   owner/rationale. If V7 aborted on one, resolve the review before retrying.

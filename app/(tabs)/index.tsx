@@ -28,13 +28,14 @@ import { colors, radius, spacing, typography } from '@/theme';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { session, profile } = useAuth();
+  const { session, profile, blockedIds } = useAuth();
   const { loading, error, stats, suggested, recent, reload } = useHomeData(
     profile?.chapter_id ?? null,
     session?.user?.id ?? null,
+    blockedIds,
   );
-  const { pendingIncoming } = useInbox(session?.user?.id ?? null);
-  const { unreadCount } = useNotifications(session?.user?.id ?? null);
+  const { pendingIncoming } = useInbox(session?.user?.id ?? null, blockedIds);
+  const { unreadCount } = useNotifications(session?.user?.id ?? null, blockedIds);
   const {
     events,
     error: eventsError,

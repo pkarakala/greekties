@@ -26,12 +26,13 @@ import { colors, radius, spacing, typography } from '@/theme';
 export default function ThreadScreen() {
   const { requestId } = useLocalSearchParams<{ requestId: string }>();
   const router = useRouter();
-  const { session, profile } = useAuth();
+  const { session, profile, blockedIds } = useAuth();
   const myUserId = session?.user?.id ?? null;
 
   const { loading, error, request, messages, other, reload } = useThread(
     requestId ?? null,
     myUserId,
+    blockedIds,
   );
 
   const [draft, setDraft] = useState('');

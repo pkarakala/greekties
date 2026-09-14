@@ -18,7 +18,6 @@ import * as Haptics from 'expo-haptics';
 import { useAuth } from '@/lib/auth';
 import { useChannelThread, deleteMessage } from '@/lib/chat';
 import { reportContent } from '@/lib/moderation';
-import { useTypingIndicator } from '@/lib/presence';
 import { markChannelRead } from '@/lib/reads';
 import { fetchReactions, toggleReaction, useReactionSync, QUICK_EMOJI } from '@/lib/reactions';
 import type { ReactionsByMessage } from '@/lib/reactions';
@@ -53,18 +52,11 @@ function toggleInMap(map: ReactionsByMessage, messageId: string, emoji: string):
 export default function ChannelThreadScreen() {
   const { channelId } = useLocalSearchParams<{ channelId: string }>();
   const router = useRouter();
-  const { session, profile } = useAuth();
+  const { session, profile, blockedIds } = useAuth();
   const myUserId = session?.user?.id ?? null;
 
   const { loading, error, channel, messages, senders, hasMore, loadingEarlier, loadEarlier, send } =
-    useChannelThread(channelId ?? null, myUserId);
-
-  // Ephemeral typing indicators over a Realtime broadcast room (no Postgres).
-  const { typers, signalTyping } = useTypingIndicator(
-    channelId ?? null,
-    myUserId,
-    profile?.name ?? null,
-  );
+    useChannelThread(channelId ?? null, myUserId, blockedIds);
 
   const [draft, setDraft] = useState('');
   const listRef = useRef<FlatList<ChannelMessage>>(null);
@@ -388,22 +380,11 @@ export default function ChannelThreadScreen() {
             }
           />
 
-          {typers.length > 0 && (
-            <Text style={styles.typingLine} numberOfLines={1}>
-              {typers.length === 1
-                ? `${typers[0]} is typing…`
-                : `${typers.length} people are typing…`}
-            </Text>
-          )}
-
           <View style={styles.composer}>
             <TextInput
               style={styles.input}
               value={draft}
-              onChangeText={(text) => {
-                setDraft(text);
-                if (text.length > 0) signalTyping();
-              }}
+              onChangeText={setDraft}
               placeholder={channel ? `Message #${channel.name}` : 'Message'}
               placeholderTextColor={colors.textTertiary}
               selectionColor={colors.gold}
@@ -449,13 +430,6 @@ const styles = StyleSheet.create({
   bubbleTextMine: { color: colors.background },
   bubbleTime: { ...typography.caption, color: colors.textTertiary },
   reactionsRow: { maxWidth: '85%' },
-
-  typingLine: {
-    ...typography.caption,
-    color: colors.textTertiary,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xs,
-  },
 
   composer: {
     flexDirection: 'row',

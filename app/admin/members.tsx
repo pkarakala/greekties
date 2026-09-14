@@ -13,14 +13,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
-import { useChapterMemberList, setMemberRole, removeMember } from '@/lib/admin';
+import {
+  useChapterMemberList,
+  setMemberRole,
+  setMemberMembershipType,
+  removeMember,
+} from '@/lib/admin';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Card } from '@/components/Card';
 import { Avatar } from '@/components/Avatar';
 import { Badge } from '@/components/Badge';
 import { SearchBar } from '@/components/SearchBar';
 import { colors, spacing, typography } from '@/theme';
-import type { AdminRole, Profile } from '@/lib/types';
+import type { AdminRole, MembershipType, Profile } from '@/lib/types';
 
 function roleLine(p: Profile): string {
   // "Software Engineer at Google" / "Google" / "Member" — same as the directory.
@@ -39,6 +44,14 @@ function canModify(me: Profile | null, target: Pick<Profile, 'admin_role'>): boo
   return me?.admin_role === 'owner' || me?.admin_role === 'manager';
 }
 
+function canChangeMembership(
+  me: Profile | null,
+  target: Pick<Profile, 'admin_role'>,
+): boolean {
+  if (me?.admin_role === 'owner') return true;
+  return me?.admin_role === 'manager' && target.admin_role === null;
+}
+
 export default function MembersScreen() {
   const router = useRouter();
   const { profile } = useAuth();
@@ -47,6 +60,9 @@ export default function MembersScreen() {
   const [query, setQuery] = useState('');
   // Optimistic overrides so role changes / removals feel instant.
   const [roleOverrides, setRoleOverrides] = useState<Record<string, AdminRole>>({});
+  const [membershipOverrides, setMembershipOverrides] = useState<
+    Record<string, MembershipType>
+  >({});
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -65,6 +81,10 @@ export default function MembersScreen() {
     return p.id in roleOverrides ? roleOverrides[p.id] : p.admin_role;
   }
 
+  function effectiveMembershipType(p: Profile): MembershipType {
+    return p.id in membershipOverrides ? membershipOverrides[p.id] : p.membership_type;
+  }
+
   async function changeRole(p: Profile, role: 'manager' | null) {
     setBusyId(p.id);
     setRoleOverrides((prev) => ({ ...prev, [p.id]: role }));
@@ -78,6 +98,23 @@ export default function MembersScreen() {
         return next;
       });
       Alert.alert('Couldn’t update role', err);
+    } else {
+      reload();
+    }
+  }
+
+  async function changeMembershipType(p: Profile, membershipType: MembershipType) {
+    setBusyId(p.id);
+    setMembershipOverrides((prev) => ({ ...prev, [p.id]: membershipType }));
+    const err = await setMemberMembershipType(p.id, membershipType);
+    setBusyId(null);
+    if (err) {
+      setMembershipOverrides((prev) => {
+        const next = { ...prev };
+        delete next[p.id];
+        return next;
+      });
+      Alert.alert('Couldn’t update membership', err);
     } else {
       reload();
     }
@@ -116,7 +153,18 @@ export default function MembersScreen() {
 
   function openActions(p: Profile) {
     const role = effectiveRole(p);
+    const membershipType = effectiveMembershipType(p);
     const actions: AlertButton[] = [
+      ...(canChangeMembership(profile, { admin_role: role })
+        ? [
+            membershipType === 'alumni'
+              ? {
+                  text: 'Mark as active member',
+                  onPress: () => changeMembershipType(p, 'active'),
+                }
+              : { text: 'Mark as alumni', onPress: () => changeMembershipType(p, 'alumni') },
+          ]
+        : []),
       ...(profile?.admin_role === 'owner'
         ? [
             role === 'manager'
@@ -124,7 +172,15 @@ export default function MembersScreen() {
               : { text: 'Make manager', onPress: () => changeRole(p, 'manager') },
           ]
         : []),
-      { text: 'Remove from chapter', style: 'destructive', onPress: () => confirmRemove(p) },
+      ...(canModify(profile, { admin_role: role })
+        ? [
+            {
+              text: 'Remove from chapter',
+              style: 'destructive' as const,
+              onPress: () => confirmRemove(p),
+            },
+          ]
+        : []),
       { text: 'Cancel', style: 'cancel' },
     ];
     Alert.alert(p.name ?? 'Member', undefined, actions);
@@ -148,7 +204,10 @@ export default function MembersScreen() {
         }
         renderItem={({ item }) => {
           const role = effectiveRole(item);
-          const showActions = canModify(profile, { admin_role: role });
+          const membershipType = effectiveMembershipType(item);
+          const showActions =
+            canModify(profile, { admin_role: role }) ||
+            canChangeMembership(profile, { admin_role: role });
           return (
             <Card style={styles.row}>
               <Avatar uri={item.avatar_url} name={item.name} size="sm" />
@@ -159,6 +218,7 @@ export default function MembersScreen() {
                   </Text>
                   {role === 'owner' && <Badge label="Owner" tone="gold" />}
                   {role === 'manager' && <Badge label="Manager" tone="neutral" />}
+                  {membershipType === 'alumni' && <Badge label="Alumni" />}
                 </View>
                 <Text style={styles.sub} numberOfLines={1}>
                   {roleLine(item)}

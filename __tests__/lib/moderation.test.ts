@@ -1,6 +1,15 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import type { Mock } from 'jest-mock';
-import { reportContent, blockUser, fetchBlockedIds } from '../../lib/moderation';
+import {
+  applyBlockListChange,
+  blockUser,
+  canShowActorContent,
+  fetchBlockedIds,
+  filterBlockedActors,
+  reportContent,
+  subscribeToBlockListChanges,
+  unblockUser,
+} from '../../lib/moderation';
 import { supabase } from '../../lib/supabase';
 
 jest.mock('../../lib/supabase', () => ({
@@ -90,6 +99,67 @@ describe('blockUser', () => {
     mockInsertResult({ message: 'network failure' });
     const { error } = await blockUser('user-1', 'user-2');
     expect(error).toMatch(/Couldn’t block/);
+  });
+});
+
+describe('block visibility invariants', () => {
+  it('filters blocked owners from every actor-owned product surface', () => {
+    const blockedIds = new Set(['blocked-user']);
+    const surfaces = [
+      { surface: 'profiles', actor: 'blocked-user' },
+      { surface: 'people', actor: 'blocked-user' },
+      { surface: 'map', actor: 'blocked-user' },
+      { surface: 'jobs', actor: 'blocked-user' },
+      { surface: 'events', actor: 'blocked-user' },
+      { surface: 'channel chat', actor: 'blocked-user' },
+      { surface: 'mentorship', actor: 'blocked-user' },
+      { surface: 'notifications/navigation', actor: 'blocked-user' },
+      { surface: 'own content', actor: 'viewer' },
+    ];
+
+    expect(filterBlockedActors(surfaces, blockedIds, (row) => row.actor)).toEqual([
+      { surface: 'own content', actor: 'viewer' },
+    ]);
+  });
+
+  it('rejects realtime content from a blocked sender', () => {
+    const blockedIds = new Set(['blocked-user']);
+    expect(canShowActorContent('blocked-user', blockedIds)).toBe(false);
+    expect(canShowActorContent('visible-user', blockedIds)).toBe(true);
+  });
+
+  it('unblocking restores visibility immutably', () => {
+    const blocked = applyBlockListChange(new Set<string>(), {
+      blockedId: 'member-2',
+      blocked: true,
+    });
+    const unblocked = applyBlockListChange(blocked, {
+      blockedId: 'member-2',
+      blocked: false,
+    });
+
+    expect(blocked).toEqual(new Set(['member-2']));
+    expect(unblocked).toEqual(new Set());
+    expect(canShowActorContent('member-2', unblocked)).toBe(true);
+  });
+
+  it('publishes successful local block and unblock changes to mounted surfaces', async () => {
+    const changes: unknown[] = [];
+    const unsubscribe = subscribeToBlockListChanges((change) => changes.push(change));
+
+    mockInsertResult(null);
+    await blockUser('viewer', 'member-2');
+
+    const eqBlockedId = jest.fn(async () => ({ error: null }));
+    const eqBlockerId = jest.fn(() => ({ eq: eqBlockedId }));
+    mockedFrom.mockReturnValue({ delete: jest.fn(() => ({ eq: eqBlockerId })) });
+    await unblockUser('viewer', 'member-2');
+    unsubscribe();
+
+    expect(changes).toEqual([
+      { blockerId: 'viewer', blockedId: 'member-2', blocked: true },
+      { blockerId: 'viewer', blockedId: 'member-2', blocked: false },
+    ]);
   });
 });
 

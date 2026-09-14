@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from './supabase';
 import { useAuth } from './auth';
+import { canShowActorContent, filterBlockedActors } from './moderation';
 import type { Event, EventCategory, RsvpStatus } from './types';
 
 // Event calendar data layer (V2 flagship). Backed by the `events` and
@@ -88,7 +89,7 @@ export interface EventsData {
  * each carrying its going count and the viewer's own RSVP status.
  */
 export function useEvents(chapterId: string | null): EventsData {
-  const { session } = useAuth();
+  const { session, blockedIds } = useAuth();
   const userId = session?.user?.id ?? null;
 
   const [loading, setLoading] = useState(true);
@@ -130,7 +131,11 @@ export function useEvents(chapterId: string | null): EventsData {
           return;
         }
 
-        const rows = (data as Event[]) ?? [];
+        const rows = filterBlockedActors(
+          (data as Event[]) ?? [],
+          blockedIds,
+          (row) => row.created_by,
+        );
         const meta = await fetchRsvpMeta(
           rows.map((e) => e.id),
           userId,
@@ -154,9 +159,14 @@ export function useEvents(chapterId: string | null): EventsData {
     return () => {
       mounted = false;
     };
-  }, [chapterId, userId, nonce]);
+  }, [chapterId, userId, blockedIds, nonce]);
 
-  return { loading, error, events, reload };
+  return {
+    loading,
+    error,
+    events: filterBlockedActors(events, blockedIds, (row) => row.created_by),
+    reload,
+  };
 }
 
 export interface EventDetail {
@@ -171,7 +181,11 @@ export interface EventDetail {
 }
 
 /** One event + RSVP counts + the viewer's own status + the creator's profile. */
-export function useEvent(eventId: string | null, userId: string | null): EventDetail {
+export function useEvent(
+  eventId: string | null,
+  userId: string | null,
+  blockedIds: ReadonlySet<string>,
+): EventDetail {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [event, setEvent] = useState<Event | null>(null);
@@ -209,7 +223,9 @@ export function useEvent(eventId: string | null, userId: string | null): EventDe
           return;
         }
 
-        const row = (data as Event) ?? null;
+        const fetched = (data as Event) ?? null;
+        const row =
+          fetched && canShowActorContent(fetched.created_by, blockedIds) ? fetched : null;
         setEvent(row);
         if (!row) {
           setLoading(false);
@@ -261,9 +277,20 @@ export function useEvent(eventId: string | null, userId: string | null): EventDe
     return () => {
       mounted = false;
     };
-  }, [eventId, userId, nonce]);
+  }, [eventId, userId, blockedIds, nonce]);
 
-  return { loading, error, event, goingCount, maybeCount, myStatus, creator, reload };
+  const visibleEvent =
+    event && canShowActorContent(event.created_by, blockedIds) ? event : null;
+  return {
+    loading,
+    error,
+    event: visibleEvent,
+    goingCount: visibleEvent ? goingCount : 0,
+    maybeCount: visibleEvent ? maybeCount : 0,
+    myStatus: visibleEvent ? myStatus : null,
+    creator: visibleEvent ? creator : null,
+    reload,
+  };
 }
 
 /** Create an event in the caller's chapter. RLS pins chapter_id/created_by. */

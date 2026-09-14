@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { useJob } from '@/lib/jobs';
-import { reportContent } from '@/lib/moderation';
+import { canShowActorContent, reportContent } from '@/lib/moderation';
 import { openExternalUrl } from '@/lib/url';
 import { isAdmin } from '@/lib/types';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -30,9 +30,9 @@ import type { JobPosting, Profile } from '@/lib/types';
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { session, profile: me } = useAuth();
+  const { session, profile: me, blockedIds } = useAuth();
   const myUserId = session?.user?.id ?? null;
-  const { loading, job: fetchedJob } = useJob(id ?? null);
+  const { loading, job: fetchedJob } = useJob(id ?? null, blockedIds);
   const [poster, setPoster] = useState<Profile | null>(null);
 
   // useJob has no reload, so keep a local copy and refetch it on focus —
@@ -51,12 +51,15 @@ export default function JobDetailScreen() {
         .eq('id', id)
         .maybeSingle()
         .then(({ data }) => {
-          if (mounted && data) setJob(data as JobPosting);
+          if (mounted && data) {
+            const row = data as JobPosting;
+            setJob(canShowActorContent(row.posted_by, blockedIds) ? row : null);
+          }
         });
       return () => {
         mounted = false;
       };
-    }, [id]),
+    }, [id, blockedIds]),
   );
 
   // Report composer (Android — iOS uses Alert.prompt).
@@ -82,6 +85,8 @@ export default function JobDetailScreen() {
     };
   }, [job?.posted_by]);
 
+  const isBlockedPosting =
+    !!job && !canShowActorContent(job.posted_by, blockedIds);
   const isOwner = !!job && !!myUserId && (job.posted_by === myUserId || isAdmin(me));
 
   // ── Moderation (report posting) ────────────────────────────────────────────
@@ -166,7 +171,7 @@ export default function JobDetailScreen() {
         title=""
         onBack={() => router.back()}
         right={
-          job && myUserId && !isOwner
+          job && myUserId && !isOwner && !isBlockedPosting
             ? { icon: 'ellipsis-horizontal', onPress: startReport }
             : undefined
         }
@@ -176,7 +181,7 @@ export default function JobDetailScreen() {
         <View style={styles.center}>
           <ActivityIndicator color={colors.gold} />
         </View>
-      ) : !job ? (
+      ) : !job || isBlockedPosting ? (
         <View style={styles.center}>
           <Text style={styles.muted}>This posting couldn’t be found.</Text>
         </View>

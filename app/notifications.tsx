@@ -22,9 +22,9 @@ function appPath(url: string | null): string | null {
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  const { session } = useAuth();
+  const { session, blockedIds } = useAuth();
   const { loading, error, notifications, unreadCount, reload, markAllRead, markRead } =
-    useNotifications(session?.user?.id ?? null);
+    useNotifications(session?.user?.id ?? null, blockedIds);
 
   function open(item: AppNotification) {
     void markRead(item.id);

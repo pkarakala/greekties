@@ -17,8 +17,11 @@ import { colors, radius, spacing, typography } from '@/theme';
 
 export default function NetworkScreen() {
   const router = useRouter();
-  const { profile } = useAuth();
-  const { loading, error, breakdown, reload } = useNetworkBreakdown(profile?.chapter_id ?? null);
+  const { profile, blockedIds } = useAuth();
+  const { loading, error, breakdown, reload } = useNetworkBreakdown(
+    profile?.chapter_id ?? null,
+    blockedIds,
+  );
 
   // Deep-link home (where the InviteCard lives) rather than router.back():
   // this screen can also be reached directly via the /network URL.

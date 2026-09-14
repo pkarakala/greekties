@@ -174,7 +174,12 @@ export default function EditProfileScreen() {
             keyboardType="number-pad"
             maxLength={4}
           />
-          <TextField label="Role" value={role} onChangeText={setRole} placeholder="Active or Alumni" />
+          <TextField
+            label="Professional role"
+            value={role}
+            onChangeText={setRole}
+            placeholder="e.g. Product manager"
+          />
           <TextField
             label="Industry"
             value={industry}
@@ -182,7 +187,9 @@ export default function EditProfileScreen() {
             placeholder="Technology"
           />
           <TextField label="City" value={city} onChangeText={setCity} placeholder="Austin, TX" />
-          <Text style={styles.fieldHint}>Your city places you on the alumni map.</Text>
+          <Text style={styles.fieldHint}>
+            Alumni designated by a chapter admin can appear on the map.
+          </Text>
           <TextField label="Company" value={company} onChangeText={setCompany} placeholder="Acme Inc." />
           <TextField
             label="Job title"

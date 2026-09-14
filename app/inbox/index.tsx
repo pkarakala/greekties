@@ -19,9 +19,10 @@ function statusTone(s: RequestStatus): 'gold' | 'green' | 'neutral' {
 
 export default function InboxScreen() {
   const router = useRouter();
-  const { session } = useAuth();
+  const { session, blockedIds } = useAuth();
   const { loading, error, incoming, outgoing, profiles, reload } = useInbox(
     session?.user?.id ?? null,
+    blockedIds,
   );
 
   function row(req: MentorshipRequest, otherId: string) {

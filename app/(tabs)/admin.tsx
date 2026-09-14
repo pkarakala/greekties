@@ -70,7 +70,7 @@ export default function AdminScreen() {
         <NavRow
           icon="people-outline"
           title="Members"
-          subtitle="Roles and removals"
+          subtitle="Membership, roles, and removals"
           onPress={() => router.push('/admin/members')}
         />
         <NavRow

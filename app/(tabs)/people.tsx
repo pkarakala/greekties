@@ -32,7 +32,7 @@ const TABS = [
 ];
 
 export default function PeopleScreen() {
-  const { profile } = useAuth();
+  const { profile, blockedIds } = useAuth();
   // Home quick actions deep-link here: ?view=jobs opens the Jobs segment,
   // ?filter=mentors preselects the Mentors chip in the directory.
   const { view, filter } = useLocalSearchParams<{ view?: string; filter?: string }>();
@@ -51,9 +51,13 @@ export default function PeopleScreen() {
         <SegmentedControl options={TABS} value={tab} onChange={setTab} />
       </View>
       {tab === 'directory' ? (
-        <DirectoryView chapterId={chapterId} initialMentorsOnly={filter === 'mentors'} />
+        <DirectoryView
+          chapterId={chapterId}
+          blockedIds={blockedIds}
+          initialMentorsOnly={filter === 'mentors'}
+        />
       ) : (
-        <JobsView chapterId={chapterId} />
+        <JobsView chapterId={chapterId} blockedIds={blockedIds} />
       )}
     </SafeAreaView>
   );
@@ -61,14 +65,16 @@ export default function PeopleScreen() {
 
 function DirectoryView({
   chapterId,
+  blockedIds,
   initialMentorsOnly = false,
 }: {
   chapterId: string | null;
+  blockedIds: ReadonlySet<string>;
   initialMentorsOnly?: boolean;
 }) {
   const router = useRouter();
   const { loading, error, members, reload, loadMore, hasMore, loadingMore } =
-    useChapterMembers(chapterId);
+    useChapterMembers(chapterId, blockedIds);
 
   const [query, setQuery] = useState('');
   const [mentorsOnly, setMentorsOnly] = useState(initialMentorsOnly);
@@ -169,9 +175,18 @@ function DirectoryView({
   );
 }
 
-function JobsView({ chapterId }: { chapterId: string | null }) {
+function JobsView({
+  chapterId,
+  blockedIds,
+}: {
+  chapterId: string | null;
+  blockedIds: ReadonlySet<string>;
+}) {
   const router = useRouter();
-  const { loading, error, jobs, reload, loadMore, hasMore, loadingMore } = useJobs(chapterId);
+  const { loading, error, jobs, reload, loadMore, hasMore, loadingMore } = useJobs(
+    chapterId,
+    blockedIds,
+  );
 
   const [query, setQuery] = useState('');
   const [industry, setIndustry] = useState<string | null>(null);

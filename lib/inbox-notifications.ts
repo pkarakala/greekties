@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from './supabase';
+import { filterBlockedActors } from './moderation';
 
 // In-app notification center data layer. Backed by the `notifications` table
 // from supabase/migrations/app-v4-notifications.sql — rows are written ONLY
@@ -28,6 +29,8 @@ export interface AppNotification {
   type: NotificationType;
   title: string;
   body: string | null;
+  /** Auth user who caused the notification; null only for legacy/system rows. */
+  actor_user_id: string | null;
   /** In-app path ('/inbox/<id>'). Validate before routing — see app/notifications.tsx. */
   url: string | null;
   read: boolean;
@@ -54,7 +57,10 @@ export interface NotificationsData {
  * unread count for the Home bell badge. Empty inbox (no error) when the
  * notifications migration hasn't run yet.
  */
-export function useNotifications(userId: string | null): NotificationsData {
+export function useNotifications(
+  userId: string | null,
+  blockedIds: ReadonlySet<string>,
+): NotificationsData {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -75,7 +81,7 @@ export function useNotifications(userId: string | null): NotificationsData {
       try {
         const { data, error: err } = await supabase
           .from('notifications')
-          .select('id, user_id, type, title, body, url, read, created_at')
+          .select('id, user_id, actor_user_id, type, title, body, url, read, created_at')
           .eq('user_id', userId)
           .order('created_at', { ascending: false })
           .limit(PAGE_SIZE);
@@ -87,7 +93,13 @@ export function useNotifications(userId: string | null): NotificationsData {
           }
           setNotifications([]);
         } else {
-          setNotifications((data as AppNotification[]) ?? []);
+          setNotifications(
+            filterBlockedActors(
+              (data as AppNotification[]) ?? [],
+              blockedIds,
+              (notification) => notification.actor_user_id,
+            ),
+          );
         }
       } catch {
         if (!mounted) return;
@@ -101,7 +113,7 @@ export function useNotifications(userId: string | null): NotificationsData {
     return () => {
       mounted = false;
     };
-  }, [userId, nonce]);
+  }, [userId, blockedIds, nonce]);
 
   const markRead = useCallback(
     async (id: string) => {
@@ -153,7 +165,20 @@ export function useNotifications(userId: string | null): NotificationsData {
     }
   }, [userId, notifications]);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const visibleNotifications = filterBlockedActors(
+    notifications,
+    blockedIds,
+    (notification) => notification.actor_user_id,
+  );
+  const unreadCount = visibleNotifications.filter((n) => !n.read).length;
 
-  return { loading, error, notifications, unreadCount, reload, markAllRead, markRead };
+  return {
+    loading,
+    error,
+    notifications: visibleNotifications,
+    unreadCount,
+    reload,
+    markAllRead,
+    markRead,
+  };
 }

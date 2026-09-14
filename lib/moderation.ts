@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from './supabase';
-import { useAuth } from './auth';
 
 // UGC moderation (App Store guideline 1.2): report content + block users.
 // Backed by the `content_reports` and `user_blocks` tables. Both may not exist
@@ -16,6 +15,54 @@ function isMissingTable(message: string): boolean {
 
 const NOT_AVAILABLE =
   'This feature isn’t available yet. Email support@greekties.app and we’ll handle it.';
+
+export interface BlockListChange {
+  blockerId: string;
+  blockedId: string;
+  blocked: boolean;
+}
+
+type BlockListListener = (change: BlockListChange) => void;
+const blockListListeners = new Set<BlockListListener>();
+
+/** Pure immutable update used by AuthProvider and unit tests. */
+export function applyBlockListChange(
+  current: ReadonlySet<string>,
+  change: Pick<BlockListChange, 'blockedId' | 'blocked'>,
+): Set<string> {
+  const next = new Set(current);
+  if (change.blocked) next.add(change.blockedId);
+  else next.delete(change.blockedId);
+  return next;
+}
+
+/** Whether actor-owned content may be rendered by the current client. */
+export function canShowActorContent(
+  actorUserId: string | null | undefined,
+  blockedIds: ReadonlySet<string>,
+): boolean {
+  return !actorUserId || !blockedIds.has(actorUserId);
+}
+
+/** Defense-in-depth filtering for rows already fetched or delivered realtime. */
+export function filterBlockedActors<T>(
+  rows: readonly T[],
+  blockedIds: ReadonlySet<string>,
+  actorUserId: (row: T) => string | null | undefined,
+): T[] {
+  if (blockedIds.size === 0) return [...rows];
+  return rows.filter((row) => canShowActorContent(actorUserId(row), blockedIds));
+}
+
+/** Local block changes update every mounted surface without waiting for refetch. */
+export function subscribeToBlockListChanges(listener: BlockListListener): () => void {
+  blockListListeners.add(listener);
+  return () => blockListListeners.delete(listener);
+}
+
+function publishBlockListChange(change: BlockListChange): void {
+  for (const listener of blockListListeners) listener(change);
+}
 
 /** File a report against a piece of content. Reviewed by the Greek Ties team. */
 export async function reportContent(input: {
@@ -45,9 +92,15 @@ export async function blockUser(
     blocker_id: blockerId,
     blocked_id: blockedId,
   });
-  if (!error) return { error: null };
+  if (!error) {
+    publishBlockListChange({ blockerId, blockedId, blocked: true });
+    return { error: null };
+  }
   // Already blocked (unique violation) is a success from the user's POV.
-  if (/duplicate key/i.test(error.message)) return { error: null };
+  if (/duplicate key/i.test(error.message)) {
+    publishBlockListChange({ blockerId, blockedId, blocked: true });
+    return { error: null };
+  }
   return { error: isMissingTable(error.message) ? NOT_AVAILABLE : 'Couldn’t block this member. Please try again.' };
 }
 
@@ -60,7 +113,10 @@ export async function unblockUser(
     .delete()
     .eq('blocker_id', blockerId)
     .eq('blocked_id', blockedId);
-  if (!error) return { error: null };
+  if (!error) {
+    publishBlockListChange({ blockerId, blockedId, blocked: false });
+    return { error: null };
+  }
   return { error: isMissingTable(error.message) ? NOT_AVAILABLE : 'Couldn’t unblock this member. Please try again.' };
 }
 
@@ -249,6 +305,33 @@ export function useBlockedProfiles(userId: string | null): BlockedProfilesData {
 
     (async () => {
       try {
+        const { data: rpcRows, error: rpcError } = await supabase.rpc('list_blocked_profiles');
+        if (!mounted) return;
+        if (!rpcError) {
+          const entries = (rpcRows ?? []).map((row: Record<string, unknown>) => ({
+            blockedId: row.blocked_id as string,
+            profile: row.id
+              ? ({
+                  id: row.id,
+                  user_id: row.user_id,
+                  name: row.name,
+                  avatar_url: row.avatar_url,
+                  role: row.role,
+                  company: row.company,
+                } as BlockedMemberProfile)
+              : null,
+          }));
+          setBlocked(entries);
+          return;
+        }
+
+        // Before V8, fall back to the original two-query implementation.
+        if (!/function .* does not exist|schema cache|PGRST202/i.test(rpcError.message)) {
+          setError('Couldn’t load your blocked members. Pull to refresh to try again.');
+          setBlocked([]);
+          return;
+        }
+
         const { data: rows, error: blocksErr } = await supabase
           .from('user_blocks')
           .select('blocked_id')
@@ -300,25 +383,4 @@ export function useBlockedProfiles(userId: string | null): BlockedProfilesData {
   }, [userId, nonce]);
 
   return { loading, error, blocked, reload };
-}
-
-/** The signed-in user's block list, for filtering feeds/directories. */
-export function useBlockedIds(): { blockedIds: Set<string>; refresh: () => Promise<void> } {
-  const { session } = useAuth();
-  const userId = session?.user?.id ?? null;
-  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
-
-  const refresh = useCallback(async () => {
-    if (!userId) {
-      setBlockedIds(new Set());
-      return;
-    }
-    setBlockedIds(await fetchBlockedIds(userId));
-  }, [userId]);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  return { blockedIds, refresh };
 }

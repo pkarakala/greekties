@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { findRequestBetween, createMentorshipRequest } from '@/lib/mentorship';
-import { reportContent, blockUser } from '@/lib/moderation';
+import { blockUser, canShowActorContent, reportContent } from '@/lib/moderation';
 import { openExternalUrl } from '@/lib/url';
 import { Avatar } from '@/components/Avatar';
 import { Badge } from '@/components/Badge';
@@ -27,7 +27,7 @@ import type { MentorshipRequest, Profile } from '@/lib/types';
 export default function ProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { session, profile: me } = useAuth();
+  const { session, profile: me, blockedIds } = useAuth();
   const myUserId = session?.user?.id ?? null;
 
   const [loading, setLoading] = useState(true);
@@ -54,8 +54,11 @@ export default function ProfileScreen() {
         .eq('id', id)
         .maybeSingle();
       if (!mounted) return;
-      const p = (data as Profile) ?? null;
+      const fetched = (data as Profile) ?? null;
+      const p =
+        fetched && canShowActorContent(fetched.user_id, blockedIds) ? fetched : null;
       setProfile(p);
+      setExisting(null);
 
       if (p && myUserId && p.user_id !== myUserId) {
         setExisting(await findRequestBetween(myUserId, p.user_id));
@@ -65,9 +68,11 @@ export default function ProfileScreen() {
     return () => {
       mounted = false;
     };
-  }, [id, myUserId]);
+  }, [id, myUserId, blockedIds]);
 
   const isSelf = !!profile && profile.user_id === myUserId;
+  const isBlockedProfile =
+    !!profile && !canShowActorContent(profile.user_id, blockedIds);
 
   async function submitRequest() {
     if (!profile || !myUserId || !me?.chapter_id) return;
@@ -219,7 +224,7 @@ export default function ProfileScreen() {
         title=""
         onBack={() => router.back()}
         right={
-          !isSelf && profile
+          !isSelf && profile && !isBlockedProfile
             ? { icon: 'ellipsis-horizontal', onPress: showModerationMenu }
             : undefined
         }
@@ -229,7 +234,7 @@ export default function ProfileScreen() {
         <View style={styles.center}>
           <ActivityIndicator color={colors.gold} />
         </View>
-      ) : !profile ? (
+      ) : !profile || isBlockedProfile ? (
         <View style={styles.center}>
           <Text style={styles.muted}>This member couldn’t be found.</Text>
         </View>
@@ -246,7 +251,7 @@ export default function ProfileScreen() {
             <View style={styles.badges}>
               {profile.open_to_mentor && <Badge label="Mentor" tone="gold" />}
               {profile.is_hiring && <Badge label="Hiring" tone="green" />}
-              {profile.role === 'Alumni' && <Badge label="Alumni" />}
+              {profile.membership_type === 'alumni' && <Badge label="Alumni" />}
             </View>
           </View>
 

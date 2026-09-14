@@ -422,6 +422,84 @@ create unique index if not exists profiles_one_row_per_user_idx
   on public.profiles(user_id)
   where user_id is not null;
 
+-- The linked-project SQL runner may preserve objects from a previous failed
+-- submission even when this file's transaction reports an error. Drop only
+-- the replacement policies owned by this migration so a retry is safe. V7
+-- must still be run after V6 and must not be followed by a V6 rerun.
+do $$
+begin
+  drop policy if exists "Users request pending profile" on public.profiles;
+  drop policy if exists "Users read own profile" on public.profiles;
+  drop policy if exists "Approved members read approved chapter profiles" on public.profiles;
+  drop policy if exists "Approved admins read chapter profiles" on public.profiles;
+  drop policy if exists "Users update own profile" on public.profiles;
+
+  drop policy if exists "Approved members read own chapter" on public.chapters;
+  drop policy if exists "Approved admins update own chapter" on public.chapters;
+
+  drop policy if exists "Approved members see allowed channels" on public.channels;
+  drop policy if exists "Approved admins read channels" on public.channels;
+  drop policy if exists "Approved admins create channels" on public.channels;
+  drop policy if exists "Approved admins update channels" on public.channels;
+  drop policy if exists "Approved admins delete channels" on public.channels;
+
+  drop policy if exists "Approved members read visible channel messages" on public.channel_messages;
+  drop policy if exists "Approved members send visible channel messages" on public.channel_messages;
+  drop policy if exists "Approved members delete own channel messages" on public.channel_messages;
+  drop policy if exists "Approved admins delete chapter channel messages" on public.channel_messages;
+
+  drop policy if exists "Approved members read own channel membership" on public.channel_members;
+  drop policy if exists "Approved members join public chapter channels" on public.channel_members;
+  drop policy if exists "Approved members update own channel membership" on public.channel_members;
+  drop policy if exists "Approved members leave channels" on public.channel_members;
+  drop policy if exists "Approved admins read channel membership" on public.channel_members;
+  drop policy if exists "Approved admins add channel members" on public.channel_members;
+  drop policy if exists "Approved admins remove channel members" on public.channel_members;
+
+  drop policy if exists "Approved members read visible message reactions" on public.message_reactions;
+  drop policy if exists "Approved members react to visible messages" on public.message_reactions;
+  drop policy if exists "Approved members remove own reactions" on public.message_reactions;
+
+  drop policy if exists "Approved admins manage chapter invites" on public.chapter_invites;
+
+  drop policy if exists "Approved members read chapter jobs" on public.job_postings;
+  drop policy if exists "Approved members post jobs" on public.job_postings;
+  drop policy if exists "Approved members update own jobs" on public.job_postings;
+  drop policy if exists "Approved admins update chapter jobs" on public.job_postings;
+  drop policy if exists "Approved members delete own jobs" on public.job_postings;
+  drop policy if exists "Approved admins delete chapter jobs" on public.job_postings;
+
+  drop policy if exists "Approved participants read mentorship requests" on public.mentorship_requests;
+  drop policy if exists "Approved members create mentorship requests" on public.mentorship_requests;
+  drop policy if exists "Approved recipients respond to mentorship requests" on public.mentorship_requests;
+  drop policy if exists "Approved participants read accepted mentorship messages" on public.messages;
+  drop policy if exists "Approved participants send accepted mentorship messages" on public.messages;
+  drop policy if exists "Approved participants mark mentorship messages read" on public.messages;
+
+  drop policy if exists "Approved members file own reports" on public.content_reports;
+  drop policy if exists "Approved members read own reports" on public.content_reports;
+  drop policy if exists "Approved admins read chapter reports" on public.content_reports;
+  drop policy if exists "Approved admins update chapter reports" on public.content_reports;
+
+  drop policy if exists "Approved members read own blocks" on public.user_blocks;
+  drop policy if exists "Approved members create own blocks" on public.user_blocks;
+  drop policy if exists "Approved members delete own blocks" on public.user_blocks;
+
+  drop policy if exists "Approved members read chapter events" on public.events;
+  drop policy if exists "Approved members create chapter events" on public.events;
+  drop policy if exists "Approved creators update own events" on public.events;
+  drop policy if exists "Approved admins update chapter events" on public.events;
+  drop policy if exists "Approved creators delete own events" on public.events;
+  drop policy if exists "Approved admins delete chapter events" on public.events;
+
+  drop policy if exists "Approved members read chapter RSVPs" on public.event_rsvps;
+  drop policy if exists "Approved members manage own RSVPs" on public.event_rsvps;
+
+  drop policy if exists "Approved members read own notifications" on public.notifications;
+  drop policy if exists "Approved members update own notifications" on public.notifications;
+  drop policy if exists "Approved members delete own notifications" on public.notifications;
+end $$;
+
 drop policy if exists "Chapter members can read profiles" on public.profiles;
 drop policy if exists "Chapter president can update member status" on public.profiles;
 drop policy if exists "Users can insert their own profile" on public.profiles;

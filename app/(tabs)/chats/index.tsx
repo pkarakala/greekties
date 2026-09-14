@@ -19,10 +19,14 @@ import { colors, spacing, typography } from '@/theme';
 
 export default function ChannelListScreen() {
   const router = useRouter();
-  const { profile, session } = useAuth();
+  const { profile, session, blockedIds } = useAuth();
   const chapterId = profile?.chapter_id ?? null;
 
-  const { loading, error, sections, reload } = useChannels(chapterId, session?.user?.id ?? null);
+  const { loading, error, sections, reload } = useChannels(
+    chapterId,
+    session?.user?.id ?? null,
+    blockedIds,
+  );
   const [chapterName, setChapterName] = useState<string | null>(null);
 
   useEffect(() => {

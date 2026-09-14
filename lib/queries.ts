@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
+import { filterBlockedActors } from './moderation';
 import type { Profile } from './types';
 
 export interface HomeStats {
@@ -23,8 +24,9 @@ const EMPTY_STATS: HomeStats = { members: 0, industries: 0, newThisMonth: 0 };
 // UI never shows) so member PII isn't shipped to every client. Email is only
 // fetched where it's actually rendered (own account, admin approvals).
 const MEMBER_COLUMNS =
-  'id, user_id, chapter_id, name, avatar_url, class_year, role, industry, city, company, job_title, open_to_mentor, is_hiring, status, admin_role, linkedin_url, bio, created_at';
-const MAP_COLUMNS = 'id, user_id, name, avatar_url, city, class_year, lat, lng';
+  'id, user_id, chapter_id, name, avatar_url, class_year, role, membership_type, industry, city, company, job_title, open_to_mentor, is_hiring, status, admin_role, linkedin_url, bio, created_at';
+const MAP_COLUMNS =
+  'id, user_id, chapter_id, name, avatar_url, city, class_year, lat, lng, membership_type';
 
 function startOfMonthISO(): string {
   const now = new Date();
@@ -32,7 +34,11 @@ function startOfMonthISO(): string {
 }
 
 /** Loads everything the Home dashboard needs for the user's chapter. */
-export function useHomeData(chapterId: string | null, userId: string | null): HomeData {
+export function useHomeData(
+  chapterId: string | null,
+  userId: string | null,
+  blockedIds: ReadonlySet<string>,
+): HomeData {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<HomeStats>(EMPTY_STATS);
@@ -105,7 +111,11 @@ export function useHomeData(chapterId: string | null, userId: string | null): Ho
           newThisMonth: monthRes.count ?? 0,
         });
 
-        const recentRows = (recentRes.data as Profile[]) ?? [];
+        const recentRows = filterBlockedActors(
+          (recentRes.data as Profile[]) ?? [],
+          blockedIds,
+          (row) => row.user_id,
+        );
         setRecent(recentRows.slice(0, 5));
         setSuggested(recentRows.filter((p) => p.user_id !== userId).slice(0, 10));
         setLoading(false);
@@ -119,9 +129,16 @@ export function useHomeData(chapterId: string | null, userId: string | null): Ho
     return () => {
       mounted = false;
     };
-  }, [chapterId, userId, nonce]);
+  }, [chapterId, userId, blockedIds, nonce]);
 
-  return { loading, error, stats, suggested, recent, reload };
+  return {
+    loading,
+    error,
+    stats,
+    suggested: filterBlockedActors(suggested, blockedIds, (row) => row.user_id),
+    recent: filterBlockedActors(recent, blockedIds, (row) => row.user_id),
+    reload,
+  };
 }
 
 interface MembersResult {
@@ -148,7 +165,10 @@ export interface ChapterMembersResult extends MembersResult {
  * paginated via `.range()` offsets. Filtering is client-side, over the pages
  * loaded so far.
  */
-export function useChapterMembers(chapterId: string | null): ChapterMembersResult {
+export function useChapterMembers(
+  chapterId: string | null,
+  blockedIds: ReadonlySet<string>,
+): ChapterMembersResult {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [members, setMembers] = useState<Profile[]>([]);
@@ -188,7 +208,7 @@ export function useChapterMembers(chapterId: string | null): ChapterMembersResul
       if (err) setError(err.message);
       else {
         const page = (data as Profile[]) ?? [];
-        setMembers(page);
+        setMembers(filterBlockedActors(page, blockedIds, (row) => row.user_id));
         fetchedCountRef.current = page.length;
         setHasMore(page.length === MEMBERS_PAGE_SIZE);
       }
@@ -198,7 +218,7 @@ export function useChapterMembers(chapterId: string | null): ChapterMembersResul
     return () => {
       mounted = false;
     };
-  }, [chapterId, nonce, fetchPage]);
+  }, [chapterId, blockedIds, nonce, fetchPage]);
 
   const loadMore = useCallback(async () => {
     if (!chapterId || fetchedCountRef.current === 0 || loadingMoreRef.current) return;
@@ -213,21 +233,33 @@ export function useChapterMembers(chapterId: string | null): ChapterMembersResul
       fetchedCountRef.current += page.length;
       setHasMore(page.length === MEMBERS_PAGE_SIZE);
       if (page.length > 0) {
+        const visiblePage = filterBlockedActors(page, blockedIds, (row) => row.user_id);
         setMembers((prev) => {
           const seen = new Set(prev.map((m) => m.id));
-          return [...prev, ...page.filter((m) => !seen.has(m.id))];
+          return [...prev, ...visiblePage.filter((m) => !seen.has(m.id))];
         });
       }
     }
     loadingMoreRef.current = false;
     setLoadingMore(false);
-  }, [chapterId, fetchPage]);
+  }, [chapterId, blockedIds, fetchPage]);
 
-  return { loading, error, members, hasMore, loadingMore, loadMore, reload };
+  return {
+    loading,
+    error,
+    members: filterBlockedActors(members, blockedIds, (row) => row.user_id),
+    hasMore,
+    loadingMore,
+    loadMore,
+    reload,
+  };
 }
 
 /** Approved members that have map coordinates. */
-export function useMapMembers(chapterId: string | null): MembersResult {
+export function useMapMembers(
+  chapterId: string | null,
+  blockedIds: ReadonlySet<string>,
+): MembersResult {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [members, setMembers] = useState<Profile[]>([]);
@@ -248,21 +280,31 @@ export function useMapMembers(chapterId: string | null): MembersResult {
       .select(MAP_COLUMNS)
       .eq('chapter_id', chapterId)
       .eq('status', 'approved')
+      .eq('membership_type', 'alumni')
       .not('lat', 'is', null)
       .not('lng', 'is', null)
       .then(({ data, error: err }) => {
         if (!mounted) return;
         if (err) setError(err.message);
-        else setMembers((data as Profile[]) ?? []);
+        else {
+          setMembers(
+            filterBlockedActors((data as Profile[]) ?? [], blockedIds, (row) => row.user_id),
+          );
+        }
         setLoading(false);
       });
 
     return () => {
       mounted = false;
     };
-  }, [chapterId, nonce]);
+  }, [chapterId, blockedIds, nonce]);
 
-  return { loading, error, members, reload };
+  return {
+    loading,
+    error,
+    members: filterBlockedActors(members, blockedIds, (row) => row.user_id),
+    reload,
+  };
 }
 
 // ── Network breakdown (the "Network Net Worth" screen, app/network.tsx) ──────
@@ -378,7 +420,10 @@ function aggregateBreakdown(rows: BreakdownRow[]): NetworkBreakdown {
  * year), plus mentor/hiring/on-the-map counts. One select, aggregated
  * client-side. Degrades to an empty breakdown pre-migration.
  */
-export function useNetworkBreakdown(chapterId: string | null): NetworkBreakdownData {
+export function useNetworkBreakdown(
+  chapterId: string | null,
+  blockedIds: ReadonlySet<string>,
+): NetworkBreakdownData {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [breakdown, setBreakdown] = useState<NetworkBreakdown>(EMPTY_BREAKDOWN);
@@ -426,7 +471,7 @@ export function useNetworkBreakdown(chapterId: string | null): NetworkBreakdownD
     return () => {
       mounted = false;
     };
-  }, [chapterId, nonce]);
+  }, [chapterId, blockedIds, nonce]);
 
   return { loading, error, breakdown, reload };
 }

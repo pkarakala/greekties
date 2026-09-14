@@ -116,6 +116,7 @@ async function buildNotification(
 ): Promise<{
   userIds: string[];
   chapterId: string;
+  actorUserId: string;
   type: NotificationType;
   title: string;
   body: string;
@@ -144,6 +145,7 @@ async function buildNotification(
     return {
       userIds,
       chapterId: channel.chapter_id as string,
+      actorUserId: sender,
       type: 'channel_message',
       title: 'New message',
       body: `${await senderName(admin, sender)} posted in your chapter chat`,
@@ -157,6 +159,7 @@ async function buildNotification(
     return {
       userIds: [record.to_user_id as string],
       chapterId: record.chapter_id as string,
+      actorUserId: record.from_user_id as string,
       type: 'mentorship_request',
       title: 'New mentorship request',
       body: `${await senderName(admin, record.from_user_id as string)} sent you a mentorship request`,
@@ -178,6 +181,7 @@ async function buildNotification(
     return {
       userIds: [record.from_user_id as string],
       chapterId: record.chapter_id as string,
+      actorUserId: record.to_user_id as string,
       type: 'mentorship_accepted',
       title: 'Request accepted',
       body: `${await senderName(admin, record.to_user_id as string)} accepted your mentorship request`,
@@ -202,6 +206,7 @@ async function buildNotification(
     return {
       userIds: [recipient],
       chapterId: request.chapter_id as string,
+      actorUserId: sender,
       type: 'mentorship_message',
       title: 'New message',
       body: `${await senderName(admin, sender)} sent you a message`,
@@ -231,6 +236,7 @@ async function recordNotifications(
   admin,
   notification: {
     userIds: string[];
+    actorUserId: string;
     type: NotificationType;
     title: string;
     body: string;
@@ -239,6 +245,7 @@ async function recordNotifications(
 ): Promise<void> {
   const rows = notification.userIds.map((userId) => ({
     user_id: userId,
+    actor_user_id: notification.actorUserId,
     type: notification.type,
     title: notification.title,
     body: notification.body,
@@ -337,6 +344,7 @@ Deno.serve(async (req) => {
       admin,
       notification.userIds,
       notification.chapterId,
+      notification.actorUserId,
     );
     if (notification.userIds.length === 0) {
       return json({ skipped: true }, 200);

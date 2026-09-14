@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
+import { canShowActorContent, filterBlockedActors } from './moderation';
 import type { JobPosting } from './types';
 
 /** Jobs fetched per page (initial load + each loadMore). */
@@ -53,7 +54,10 @@ export async function fetchJobsPage(
 }
 
 /** Open job postings for a chapter, newest first, paginated. RLS scopes to the user's chapter. */
-export function useJobs(chapterId: string | null): JobsData {
+export function useJobs(
+  chapterId: string | null,
+  blockedIds: ReadonlySet<string>,
+): JobsData {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [jobs, setJobs] = useState<JobPosting[]>([]);
@@ -80,7 +84,7 @@ export function useJobs(chapterId: string | null): JobsData {
       if (!mounted) return;
       if (err) setError(err);
       else {
-        setJobs(page);
+        setJobs(filterBlockedActors(page, blockedIds, (row) => row.posted_by));
         oldestFetchedRef.current = page[page.length - 1]?.created_at ?? null;
         setHasMore(page.length === PAGE_SIZE);
       }
@@ -90,7 +94,7 @@ export function useJobs(chapterId: string | null): JobsData {
     return () => {
       mounted = false;
     };
-  }, [chapterId, nonce]);
+  }, [chapterId, blockedIds, nonce]);
 
   const loadMore = useCallback(async () => {
     const cursor = oldestFetchedRef.current;
@@ -104,21 +108,33 @@ export function useJobs(chapterId: string | null): JobsData {
     } else {
       if (page.length > 0) oldestFetchedRef.current = page[page.length - 1].created_at;
       setHasMore(page.length === PAGE_SIZE);
-      if (page.length > 0) {
+      const visiblePage = filterBlockedActors(page, blockedIds, (row) => row.posted_by);
+      if (visiblePage.length > 0) {
         setJobs((prev) => {
           const seen = new Set(prev.map((j) => j.id));
-          return [...prev, ...page.filter((j) => !seen.has(j.id))];
+          return [...prev, ...visiblePage.filter((j) => !seen.has(j.id))];
         });
       }
     }
     loadingMoreRef.current = false;
     setLoadingMore(false);
-  }, [chapterId]);
+  }, [chapterId, blockedIds]);
 
-  return { loading, error, jobs, hasMore, loadingMore, loadMore, reload };
+  return {
+    loading,
+    error,
+    jobs: filterBlockedActors(jobs, blockedIds, (row) => row.posted_by),
+    hasMore,
+    loadingMore,
+    loadMore,
+    reload,
+  };
 }
 
-export function useJob(jobId: string | null): { loading: boolean; job: JobPosting | null } {
+export function useJob(
+  jobId: string | null,
+  blockedIds: ReadonlySet<string>,
+): { loading: boolean; job: JobPosting | null } {
   const [loading, setLoading] = useState(true);
   const [job, setJob] = useState<JobPosting | null>(null);
 
@@ -135,15 +151,19 @@ export function useJob(jobId: string | null): { loading: boolean; job: JobPostin
       .maybeSingle()
       .then(({ data }) => {
         if (!mounted) return;
-        setJob((data as JobPosting) ?? null);
+        const row = (data as JobPosting) ?? null;
+        setJob(row && canShowActorContent(row.posted_by, blockedIds) ? row : null);
         setLoading(false);
       });
     return () => {
       mounted = false;
     };
-  }, [jobId]);
+  }, [jobId, blockedIds]);
 
-  return { loading, job };
+  return {
+    loading,
+    job: job && canShowActorContent(job.posted_by, blockedIds) ? job : null,
+  };
 }
 
 export async function createJob(input: {

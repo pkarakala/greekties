@@ -7,6 +7,9 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Supabase CLI generated link metadata
+supabase/.temp/
+
 # Native
 *.orig.*
 *.jks

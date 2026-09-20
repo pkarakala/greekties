@@ -13,6 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { storePendingInviteCode } from '@/lib/invite';
 import { Wordmark } from '@/components/Wordmark';
+import { InvitationContext } from '@/components/InvitationContext';
+import { parseInviteCode } from '@/lib/links';
 import { Button } from '@/components/Button';
 import { TextField } from '@/components/TextField';
 import { colors, spacing, typography } from '@/theme';
@@ -35,9 +37,9 @@ export default function LoginScreen() {
     }
 
     setLoading(true);
-    // Persist the invite code first so the auth gate resumes the join flow
-    // right after sign-in (it consumes the stored code and routes to /join).
-    if (code) await storePendingInviteCode(code);
+    // Persist before authentication; the gate reads without consuming it.
+    const normalized = parseInviteCode(code);
+    if (normalized) await storePendingInviteCode(normalized);
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
@@ -55,9 +57,7 @@ export default function LoginScreen() {
     // On success, the auth gate in _layout redirects to Home automatically.
   }
 
-  const signupHref: Href = code
-    ? { pathname: '/signup', params: { code } }
-    : '/signup';
+  const signupHref: Href = code ? { pathname: '/signup', params: { code } } : '/signup';
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -65,16 +65,14 @@ export default function LoginScreen() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-        >
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <Wordmark size={36} />
             <Text style={styles.tagline}>Your chapter, for life.</Text>
           </View>
 
           <View style={styles.form}>
+            <InvitationContext code={code} />
             <TextField
               label="Email"
               value={email}

@@ -1,153 +1,296 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/lib/auth';
 import {
-  consumePendingInviteCode,
+  clearPendingInvite,
   joinChapterWithInvite,
   resolveChapterInvite,
   storePendingInviteCode,
-  type ChapterInvitePreview,
+  type InviteResolution,
 } from '@/lib/invite';
+import { parseInviteCode } from '@/lib/links';
+import type { PendingInvite } from '@/lib/pending-invite';
 import { Wordmark } from '@/components/Wordmark';
 import { Button } from '@/components/Button';
+import { SUPPORT_EMAIL } from '@/lib/legal';
 import { colors, radius, spacing, typography } from '@/theme';
 
 export default function JoinScreen() {
-  const { code } = useLocalSearchParams<{ code: string }>();
-  const router = useRouter();
-  const { initializing, session, profile, refreshProfile } = useAuth();
+  const params = useLocalSearchParams<{ code: string }>();
+  // A changed deep link cannot briefly render or act on the previous preview.
+  return <InviteFlow key={params.code} input={params.code} />;
+}
 
-  const [loadingChapter, setLoadingChapter] = useState(true);
-  const [chapter, setChapter] = useState<ChapterInvitePreview | null>(null);
+function InviteFlow({ input }: { input: string }) {
+  const code = parseInviteCode(input);
+  const router = useRouter();
+  const {
+    initializing,
+    session,
+    profile,
+    profileState,
+    authError,
+    refreshProfile,
+    retrySession,
+    signOut,
+  } = useAuth();
+  const [resolution, setResolution] = useState<InviteResolution | null>(null);
+  const [saved, setSaved] = useState<PendingInvite | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
+  const [canceling, setCanceling] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Set once a join succeeds so the "already a member → Home" effect below
-  // can't stomp the redirect to /onboarding/complete-profile when the
-  // refreshed profile lands while this screen is still mounted.
-  const justJoined = useRef(false);
+  const [retry, setRetry] = useState(0);
+  const attempt = useRef(0);
+  const pendingSave = useRef<ReturnType<typeof storePendingInviteCode> | null>(null);
+  const cancelStarted = useRef(false);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const currentUser = useRef(session?.user.id);
+  useEffect(() => {
+    currentUser.current = session?.user.id;
+  }, [session?.user.id]);
 
   useEffect(() => {
-    let mounted = true;
+    const version = ++attempt.current;
+    // Reset display state when synchronizing a new external invitation.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setResolution(null);
+    setSaved(null);
+    setError(null);
+    setJoining(false);
     if (!code) {
-      setLoadingChapter(false);
+      setResolution({ kind: 'invalid' });
       return;
     }
-    resolveChapterInvite(code).then((c) => {
-      if (!mounted) return;
-      setChapter(c);
-      setLoadingChapter(false);
-    });
+    void (async () => {
+      // Save as soon as the link opens, even if preview/auth is offline.
+      const save = storePendingInviteCode(code);
+      pendingSave.current = save;
+      const stored = await save;
+      if (version !== attempt.current) return;
+      setSaved(stored.invite);
+      setWarning(stored.warning);
+      const next = await resolveChapterInvite(code);
+      if (version === attempt.current) setResolution(next);
+    })();
     return () => {
-      mounted = false;
+      attempt.current = version + 1;
     };
-  }, [code]);
+  }, [code, retry]);
 
-  // Already a member of this chapter → straight to Home. (Skipped right
-  // after a successful join — that flow routes to profile setup instead.)
-  useEffect(() => {
-    if (justJoined.current) return;
-    if (profile?.status === 'approved' && chapter && profile.chapter_id === chapter.id) {
-      router.replace('/');
+  async function leave() {
+    if (cancelStarted.current) return;
+    cancelStarted.current = true;
+    const version = ++attempt.current;
+    setCanceling(true);
+    // Cleanup is independent of React state and must finish even after
+    // unmount. The store compares revisions before removing anything.
+    const stored = await pendingSave.current;
+    const result = stored ? await clearPendingInvite(stored.invite) : null;
+    if (!mounted.current || version !== attempt.current) return;
+    pendingSave.current = null;
+    setSaved(null);
+    setCanceling(false);
+    cancelStarted.current = false;
+    if (result) {
+      if (!result.cleared) {
+        setError('Another invitation is now saved. Open it from membership help.');
+        return;
+      }
+      if (result.warning) {
+        setWarning(result.warning);
+        setJoining(false);
+        return;
+      }
     }
-  }, [profile, chapter, router]);
+    router.replace(session ? '/membership' : '/login');
+  }
 
-  const handleJoin = useCallback(async () => {
-    if (!chapter || joining) return;
-
-    // Must be signed in to attach a profile. Send to signup, carrying the code
-    // both as a param and in secure storage (survives email confirmation).
-    if (!session?.user) {
-      await storePendingInviteCode(code!);
+  async function handleJoin() {
+    if (!code || !saved || resolution?.kind !== 'valid' || joining || cancelStarted.current) return;
+    if (!session) {
       router.replace({ pathname: '/signup', params: { code } });
       return;
     }
-
-    setError(null);
+    const version = attempt.current;
+    const userId = session.user.id;
     setJoining(true);
-
-    // The RPC checks the code, enforces one-chapter-per-account, and creates
-    // the profile server-side. If it is unavailable, this path fails closed.
-    const { error: joinError } = await joinChapterWithInvite(code!);
-
-    if (!joinError) {
-      justJoined.current = true;
-      await consumePendingInviteCode(); // clear any stored copy of this code
-      await refreshProfile();
+    setError(null);
+    // Already-approved membership is an idempotent success even before V9.
+    const alreadyJoined =
+      profile?.status === 'approved' && profile.chapter_id === resolution.chapter.id;
+    const result = alreadyJoined ? { error: null } : await joinChapterWithInvite(code);
+    if (version !== attempt.current || currentUser.current !== userId) return;
+    if (result.error) {
       setJoining(false);
-      // Fresh member → capture the profile basics while they're engaged.
-      router.replace('/onboarding/complete-profile');
+      setError(result.error);
       return;
     }
-
+    const cleared = await clearPendingInvite(saved);
+    if (version !== attempt.current || currentUser.current !== userId) return;
+    if (!cleared.cleared) {
+      setJoining(false);
+      setError(
+        'Membership saved. Another invitation is now active; review it from membership help.',
+      );
+      return;
+    }
+    if (!alreadyJoined) await refreshProfile();
+    if (version !== attempt.current || currentUser.current !== userId) return;
     setJoining(false);
-    setError(joinError);
-  }, [chapter, joining, session, code, router, refreshProfile]);
-
-  if (initializing || loadingChapter) {
-    return (
-      <SafeAreaView style={styles.center}>
-        <ActivityIndicator color={colors.gold} />
-      </SafeAreaView>
-    );
+    if (cleared.warning) {
+      setWarning(cleared.warning);
+      setError('Membership saved. You can continue to your chapter.');
+      return;
+    }
+    router.replace(alreadyJoined ? '/' : '/onboarding/complete-profile');
   }
 
-  if (!chapter) {
-    return (
-      <SafeAreaView style={styles.center}>
-        <Wordmark size={28} />
-        <Text style={styles.invalid}>This invite link isn’t valid.</Text>
-        <Button
-          label={session ? 'Go home' : 'Go to login'}
-          variant="secondary"
-          fullWidth={false}
-          onPress={() => router.replace(session ? '/' : '/login')}
-        />
-      </SafeAreaView>
-    );
-  }
-
-  // Signed in but already in a different chapter → clear message, no join.
-  if (profile?.status === 'approved' && profile.chapter_id !== chapter.id) {
-    return (
-      <SafeAreaView style={styles.center}>
-        <Wordmark size={28} />
-        <Text style={styles.invalid}>
-          You’re already a member of another chapter. Each account can only
-          join one chapter.
-        </Text>
-        <Button
-          label="Go home"
-          variant="secondary"
-          fullWidth={false}
-          onPress={() => router.replace('/')}
-        />
-      </SafeAreaView>
-    );
-  }
+  const chapter = resolution?.kind === 'valid' ? resolution.chapter : null;
+  const checking = initializing || !resolution || (!!session && profileState === 'loading');
+  const profileError = !!authError || (!!session && profileState === 'error');
+  const wrongChapter = !!profile?.chapter_id && !!chapter && profile.chapter_id !== chapter.id;
+  const removed = profile?.status === 'rejected';
+  const pending = profile?.status === 'pending';
+  const approved = profile?.status === 'approved' && profile.chapter_id === chapter?.id;
+  const unknownProfile =
+    !!profile && (!profile.chapter_id || (!removed && !pending && profile.status !== 'approved'));
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content}>
         <Wordmark size={28} />
-
-        <View style={styles.card}>
-          <Text style={styles.invitedTo}>You’re invited to join</Text>
-          <Text style={styles.chapterName}>{chapter.designation ?? chapter.name}</Text>
-          {!!chapter.university && (
-            <Text style={styles.university}>{chapter.university}</Text>
+        {chapter && (
+          <View style={styles.card}>
+            <Text style={styles.invitedTo}>You’re invited to join</Text>
+            <Text style={styles.chapterName}>{chapter.name}</Text>
+            {!!chapter.designation && <Text style={styles.university}>{chapter.designation}</Text>}
+            {!!chapter.university && <Text style={styles.university}>{chapter.university}</Text>}
+          </View>
+        )}
+        {checking && <ActivityIndicator color={colors.gold} />}
+        {!!warning && (
+          <Text style={styles.invalid} accessibilityRole="alert">
+            {warning}
+          </Text>
+        )}
+        {!!error && (
+          <Text style={styles.error} accessibilityRole="alert">
+            {error}
+          </Text>
+        )}
+        {resolution?.kind === 'invalid' && (
+          <Text style={styles.invalid}>
+            This invitation is invalid, revoked, or expired. Ask your chapter for a current link, or
+            paste another invitation.
+          </Text>
+        )}
+        {resolution?.kind === 'error' && (
+          <>
+            <Text style={styles.invalid}>
+              We couldn’t check this invitation right now. It is saved for retry.
+            </Text>
+            <Button label="Retry invitation" onPress={() => setRetry((n) => n + 1)} />
+          </>
+        )}
+        {(profileError || unknownProfile) && (
+          <>
+            <Text style={styles.invalid}>
+              We couldn’t check your membership. Try again before joining.
+            </Text>
+            <Button
+              label="Retry membership check"
+              onPress={() => void (authError ? retrySession() : refreshProfile())}
+            />
+          </>
+        )}
+        {wrongChapter && (
+          <Text style={styles.invalid}>
+            This invitation is for a different chapter. Your account already belongs to another
+            chapter, including any pending or removed membership. Each account can join only one
+            chapter. Sign out to use the intended account, or contact your chapter admin.
+          </Text>
+        )}
+        {removed && (
+          <Text style={styles.invalid}>
+            Your chapter access was removed or declined. A chapter admin must reinstate you. A
+            shared invitation cannot restore access.
+          </Text>
+        )}
+        {pending && (
+          <Text style={styles.invalid}>
+            Your membership is awaiting chapter admin approval. An invitation cannot bypass this
+            review.
+          </Text>
+        )}
+        {!checking &&
+          !profileError &&
+          !unknownProfile &&
+          chapter &&
+          !wrongChapter &&
+          !removed &&
+          !pending && (
+            <Button
+              label={
+                approved ? 'Continue to chapter' : session ? 'Join chapter' : 'Sign up to join'
+              }
+              onPress={handleJoin}
+              loading={joining}
+              disabled={!saved || canceling}
+            />
           )}
-        </View>
-
-        {!!error && <Text style={styles.error}>{error}</Text>}
-
+        {!session && code && (
+          <Button
+            label="Already have an account? Log in"
+            variant="secondary"
+            onPress={() => router.replace({ pathname: '/login', params: { code } })}
+          />
+        )}
         <Button
-          label={session?.user ? 'Join instantly' : 'Sign up to join'}
-          onPress={handleJoin}
-          loading={joining}
+          label="Paste another invitation"
+          variant="secondary"
+          onPress={() => router.push('/onboarding/enter-code')}
+          disabled={joining || canceling}
         />
-      </View>
+        <Button
+          label="Cancel invitation"
+          variant="ghost"
+          onPress={leave}
+          disabled={joining}
+          loading={canceling}
+        />
+        {session && (
+          <Button
+            label="Membership and account help"
+            variant="secondary"
+            onPress={() => router.push('/membership')}
+          />
+        )}
+        {session && (
+          <Button
+            label="Sign out"
+            variant="ghost"
+            onPress={async () => {
+              try {
+                await signOut();
+              } catch {
+                setError('Couldn’t sign out. Please try again.');
+              }
+            }}
+          />
+        )}
+        <Text selectable style={styles.invalid}>
+          For help, contact your chapter admin or {SUPPORT_EMAIL}.
+        </Text>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -163,10 +306,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
+    paddingVertical: spacing.xl,
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,
-    gap: spacing.xl,
+    gap: spacing.lg,
   },
   card: {
     backgroundColor: colors.surface,

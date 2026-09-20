@@ -11,6 +11,7 @@ import {
 import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
+import { WEB_BASE_URL } from '@/lib/links';
 import { Wordmark } from '@/components/Wordmark';
 import { Button } from '@/components/Button';
 import { TextField } from '@/components/TextField';
@@ -32,10 +33,10 @@ export default function ForgotPasswordScreen() {
     }
 
     setLoading(true);
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-      email.trim(),
-      { redirectTo: 'greekties://reset-password' },
-    );
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo:
+        Platform.OS === 'web' ? `${WEB_BASE_URL}/reset-password` : 'greekties://reset-password',
+    });
     setLoading(false);
 
     if (resetError) {
@@ -51,10 +52,7 @@ export default function ForgotPasswordScreen() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-        >
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <Wordmark size={36} />
             <Text style={styles.tagline}>Reset your password</Text>

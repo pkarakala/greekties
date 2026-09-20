@@ -6,9 +6,8 @@ import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { colors, radius, spacing, typography } from '@/theme';
 
-// The profile fields that make a member findable — an avatar, a city (map
-// pin), an industry, a role or job title, a bio, and a LinkedIn link.
-const NUDGE_TOTAL = 6;
+// Optional city and map participation never affect profile completeness.
+const NUDGE_TOTAL = 5;
 
 /**
  * Count how many of the fields that make a profile useful are filled.
@@ -22,7 +21,6 @@ export function profileCompleteness(profile: Profile | null): {
 
   const filledChecks = [
     !!profile.avatar_url,
-    !!profile.city?.trim(),
     !!profile.industry?.trim(),
     !!(profile.job_title?.trim() || profile.role?.trim()),
     !!profile.bio?.trim(),
@@ -32,8 +30,8 @@ export function profileCompleteness(profile: Profile | null): {
 }
 
 /**
- * Home-screen nudge shown while a profile is mostly empty (< 4 of 6 fields).
- * An empty profile makes the directory, map, and mentorship inert — this
+ * Home-screen nudge shown while a profile is mostly empty (< 4 of 5 fields).
+ * An empty profile makes the directory and mentorship inert — this
  * keeps a gentle pointer to /profile/edit until the basics are in.
  */
 export function ProfileNudgeCard({ profile }: { profile: Profile | null }) {
@@ -49,7 +47,7 @@ export function ProfileNudgeCard({ profile }: { profile: Profile | null }) {
         <Text style={styles.title}>Complete your profile</Text>
       </View>
       <Text style={styles.blurb}>
-        A finished profile helps brothers find you for jobs, mentorship, and meetups.
+        A finished profile helps chapter members find you for jobs, mentorship, and meetups.
       </Text>
 
       <View style={styles.track}>

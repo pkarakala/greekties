@@ -2,7 +2,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Card } from './Card';
 import { Badge } from './Badge';
-import { clockTime } from '@/lib/time';
+import { eventClockTime } from '@/lib/time';
 import { colors, radius, spacing, typography } from '@/theme';
 import type { Event, EventCategory } from '@/lib/types';
 
@@ -24,21 +24,15 @@ export function NextEventCard({ event }: NextEventCardProps) {
 
   const starts = new Date(event.starts_at);
   const valid = !Number.isNaN(starts.getTime());
-  const month = valid
-    ? starts.toLocaleDateString([], { month: 'short' }).toUpperCase()
-    : '';
+  const month = valid ? starts.toLocaleDateString([], { month: 'short' }).toUpperCase() : '';
   const day = valid ? String(starts.getDate()) : '–';
 
-  const meta = [clockTime(event.starts_at), event.location]
-    .filter(Boolean)
-    .join(' · ');
+  const meta = [eventClockTime(event.starts_at), event.location].filter(Boolean).join(' · ');
 
   return (
     <Card
       style={styles.card}
-      onPress={() =>
-        router.push({ pathname: '/events/[id]', params: { id: event.id } })
-      }
+      onPress={() => router.push({ pathname: '/events/[id]', params: { id: event.id } })}
     >
       <View style={styles.dateBlock}>
         <Text style={styles.dateMonth}>{month}</Text>

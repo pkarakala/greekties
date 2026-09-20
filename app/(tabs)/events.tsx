@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import {
   View,
+  ActivityIndicator,
   Text,
   StyleSheet,
   SectionList,
@@ -51,8 +52,7 @@ export default function EventsScreen() {
   );
 
   const sections = useMemo<DaySection[]>(() => {
-    const filtered =
-      selected.size === 0 ? events : events.filter((e) => selected.has(e.category));
+    const filtered = selected.size === 0 ? events : events.filter((e) => selected.has(e.category));
 
     const byDay = new Map<string, DaySection>();
     for (const event of filtered) {
@@ -79,9 +79,7 @@ export default function EventsScreen() {
         renderItem={({ item }) => (
           <EventCard
             event={item}
-            onPress={() =>
-              router.push({ pathname: '/events/[id]', params: { id: item.id } })
-            }
+            onPress={() => router.push({ pathname: '/events/[id]', params: { id: item.id } })}
           />
         )}
         renderSectionHeader={({ section }) => (
@@ -94,23 +92,33 @@ export default function EventsScreen() {
           <RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.gold} />
         }
         ListHeaderComponent={
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chips}
-          >
-            {EVENT_CATEGORIES.map((cat) => (
-              <Chip
-                key={cat.value}
-                label={cat.label}
-                selected={selected.has(cat.value)}
-                onPress={() => toggleCategory(cat.value)}
-              />
-            ))}
-          </ScrollView>
+          <View>
+            {(error || loading) && (
+              <View>
+                <Text style={styles.emptyText}>{error ?? 'Loading events…'}</Text>
+                {!!error && <Button label="Retry" onPress={reload} />}
+              </View>
+            )}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chips}
+            >
+              {EVENT_CATEGORIES.map((cat) => (
+                <Chip
+                  key={cat.value}
+                  label={cat.label}
+                  selected={selected.has(cat.value)}
+                  onPress={() => toggleCategory(cat.value)}
+                />
+              ))}
+            </ScrollView>
+          </View>
         }
         ListEmptyComponent={
-          loading ? null : (
+          loading ? (
+            <ActivityIndicator color={colors.gold} />
+          ) : (
             <View style={styles.empty}>
               <Ionicons name="calendar-outline" size={40} color={colors.textTertiary} />
               <Text style={styles.emptyText}>
@@ -119,11 +127,13 @@ export default function EventsScreen() {
                     ? 'No upcoming events match your filters.'
                     : 'No upcoming events. Get something on the calendar.')}
               </Text>
-              <Button
-                label="Create an event"
-                fullWidth={false}
-                onPress={() => router.push('/events/new')}
-              />
+              {!error && (
+                <Button
+                  label="Create an event"
+                  fullWidth={false}
+                  onPress={() => router.push('/events/new')}
+                />
+              )}
             </View>
           )
         }

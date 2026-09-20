@@ -1,9 +1,27 @@
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import { supabase } from './supabase';
+import { createPendingInviteStore } from './pending-invite';
+import { parseInviteCode } from './links';
 
 // Invite codes must survive the email-confirmation round trip: the user signs
 // up with a code, confirms in Mail, then logs in — the code is restored here.
-const KEY = 'gt.pending_invite_code';
+const pending = createPendingInviteStore({
+  async getItem(key) {
+    return Platform.OS === 'web' ? localStorage.getItem(key) : SecureStore.getItemAsync(key);
+  },
+  async setItem(key, value) {
+    if (Platform.OS === 'web') localStorage.setItem(key, value);
+    else await SecureStore.setItemAsync(key, value);
+  },
+  async removeItem(key) {
+    if (Platform.OS === 'web') localStorage.removeItem(key);
+    else await SecureStore.deleteItemAsync(key);
+  },
+});
+export const readPendingInvite = pending.read;
+export const storePendingInviteCode = pending.save;
+export const clearPendingInvite = pending.clear;
 
 export interface ChapterInvitePreview {
   id: string;
@@ -23,26 +41,33 @@ const JOIN_NOT_AVAILABLE =
   'Secure chapter joining isn’t available right now. Please try again later.';
 
 /** Resolve only the display fields exposed by the server-side invite RPC. */
-export async function resolveChapterInvite(code: string): Promise<ChapterInvitePreview | null> {
-  const normalized = code.trim().toLowerCase();
-  if (!normalized) return null;
+export type InviteResolution =
+  { kind: 'valid'; chapter: ChapterInvitePreview } | { kind: 'invalid' } | { kind: 'error' };
+
+export async function resolveChapterInvite(code: string): Promise<InviteResolution> {
+  const normalized = parseInviteCode(code);
+  if (!normalized) return { kind: 'invalid' };
 
   try {
     const { data, error } = await supabase.rpc('resolve_chapter_invite', {
       invite_code: normalized,
     });
-    if (error) return null;
+    if (error) return { kind: 'error' };
 
     const row = (Array.isArray(data) ? data[0] : data) as InvitePreviewRow | null;
-    if (!row?.chapter_id || !row.chapter_name) return null;
+    if (!row) return { kind: 'invalid' };
+    if (!row.chapter_id || !row.chapter_name) return { kind: 'error' };
     return {
-      id: row.chapter_id,
-      name: row.chapter_name,
-      designation: row.chapter_designation,
-      university: row.chapter_university,
+      kind: 'valid',
+      chapter: {
+        id: row.chapter_id,
+        name: row.chapter_name,
+        designation: row.chapter_designation,
+        university: row.chapter_university,
+      },
     };
   } catch {
-    return null;
+    return { kind: 'error' };
   }
 }
 
@@ -57,30 +82,11 @@ export async function joinChapterWithInvite(code: string): Promise<{ error: stri
     });
     if (!error) return { error: null };
 
-    if (/not valid|revoked|expired|already belong/i.test(error.message)) {
+    if (/not valid|revoked|expired|already belong|reinstat|pending/i.test(error.message)) {
       return { error: error.message };
     }
     return { error: JOIN_NOT_AVAILABLE };
   } catch {
     return { error: JOIN_NOT_AVAILABLE };
-  }
-}
-
-export async function storePendingInviteCode(code: string): Promise<void> {
-  try {
-    await SecureStore.setItemAsync(KEY, code);
-  } catch {
-    // Non-fatal: worst case the user re-opens the invite link.
-  }
-}
-
-/** Returns the stored code (if any) and clears it. */
-export async function consumePendingInviteCode(): Promise<string | null> {
-  try {
-    const code = await SecureStore.getItemAsync(KEY);
-    if (code) await SecureStore.deleteItemAsync(KEY);
-    return code;
-  } catch {
-    return null;
   }
 }

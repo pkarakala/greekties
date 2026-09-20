@@ -8,20 +8,21 @@ import {
   ScrollView,
   Pressable,
 } from 'react-native';
-import { Link, useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { Link, useLocalSearchParams, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { storePendingInviteCode } from '@/lib/invite';
 import { TERMS_URL, PRIVACY_URL } from '@/lib/legal';
 import { openExternalUrl } from '@/lib/url';
 import { Wordmark } from '@/components/Wordmark';
+import { InvitationContext } from '@/components/InvitationContext';
+import { parseInviteCode } from '@/lib/links';
 import { Button } from '@/components/Button';
 import { TextField } from '@/components/TextField';
 import { colors, spacing, typography } from '@/theme';
 
 export default function SignupScreen() {
   const { code } = useLocalSearchParams<{ code?: string }>();
-  const router = useRouter();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -44,6 +45,8 @@ export default function SignupScreen() {
     }
 
     setLoading(true);
+    const normalized = parseInviteCode(code);
+    if (normalized) await storePendingInviteCode(normalized);
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
@@ -59,18 +62,13 @@ export default function SignupScreen() {
     // Email confirmation enabled → no session until the user confirms. Keep
     // the invite code so the join flow resumes after they confirm + log in.
     if (!data.session) {
-      if (code) await storePendingInviteCode(code);
-      setNotice('Check your email to confirm your account, then log in.');
+      setNotice(
+        'Check your email to confirm your account, then return here and log in. Keep your original invitation link if you switch devices or install the app.',
+      );
       return;
     }
 
-    // Signed in immediately. Send them to join their chapter if we have a code,
-    // otherwise let the auth gate land them on Home.
-    if (code) {
-      router.replace({ pathname: '/join/[code]', params: { code } });
-    } else {
-      router.replace('/');
-    }
+    // The root gate alone resumes the invitation after the profile check.
   }
 
   const loginHref: Href = code ? { pathname: '/login', params: { code } } : '/login';
@@ -81,16 +79,14 @@ export default function SignupScreen() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-        >
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <Wordmark size={36} />
             <Text style={styles.tagline}>Create your account</Text>
           </View>
 
           <View style={styles.form}>
+            <InvitationContext code={code} />
             <TextField
               label="Full name"
               value={name}

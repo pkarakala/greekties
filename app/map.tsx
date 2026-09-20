@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
+import { hasMapLocation } from '@/lib/map-consent';
 import { useMapMembers } from '@/lib/queries';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { colors, spacing, typography } from '@/theme';
@@ -23,9 +24,14 @@ try {
 export default function MapScreen() {
   const router = useRouter();
   const { profile, blockedIds } = useAuth();
-  const { loading, error, members } = useMapMembers(
+  const { loading, error, members, reload } = useMapMembers(
     profile?.chapter_id ?? null,
     blockedIds,
+  );
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload]),
   );
   const [tokenReady, setTokenReady] = useState(false);
 
@@ -40,18 +46,14 @@ export default function MapScreen() {
     }
   }, []);
 
-  // The signed-in user's own pin renders separately (distinct style), so it
-  // shows even before the members query includes them — the first user in a
-  // chapter still sees themselves on the map.
-  const selfLat = profile?.lat ?? null;
-  const selfLng = profile?.lng ?? null;
+  // Self and peer pins use exactly the same consent and designation check.
   const selfCoordinate = useMemo<[number, number] | null>(() => {
-    if (profile?.membership_type !== 'alumni' || selfLat == null || selfLng == null) return null;
-    return [selfLng, selfLat];
-  }, [profile?.membership_type, selfLat, selfLng]);
+    if (loading || error || !hasMapLocation(profile)) return null;
+    return [profile!.lng!, profile!.lat!];
+  }, [profile, loading, error]);
 
   const otherMembers = useMemo(
-    () => members.filter((m) => m.id !== profile?.id),
+    () => members.filter((m) => m.id !== profile?.id && hasMapLocation(m)),
     [members, profile?.id],
   );
 
@@ -59,10 +61,7 @@ export default function MapScreen() {
 
   // Center on the average of all pin coordinates (members + self).
   const center = useMemo<[number, number]>(() => {
-    const coords: [number, number][] = otherMembers.map((m) => [
-      m.lng as number,
-      m.lat as number,
-    ]);
+    const coords: [number, number][] = otherMembers.map((m) => [m.lng as number, m.lat as number]);
     if (selfCoordinate) coords.push(selfCoordinate);
     if (coords.length === 0) return [-98.5795, 39.8283]; // continental US fallback
     const sum = coords.reduce((acc, c) => [acc[0] + c[0], acc[1] + c[1]], [0, 0]);
@@ -77,8 +76,7 @@ export default function MapScreen() {
           <Ionicons name="map-outline" size={44} color={colors.gold} />
           <Text style={styles.fallbackTitle}>Map isn’t available yet</Text>
           <Text style={styles.fallbackBody}>
-            The map needs a development build and a Mapbox token — it can’t
-            render in Expo Go.
+            The map needs a development build and a Mapbox token — it can’t render in Expo Go.
           </Text>
         </View>
       </SafeAreaView>
@@ -106,9 +104,7 @@ export default function MapScreen() {
                 key={m.id}
                 id={m.id}
                 coordinate={[m.lng as number, m.lat as number]}
-                onSelected={() =>
-                  router.push({ pathname: '/profile/[id]', params: { id: m.id } })
-                }
+                onSelected={() => router.push({ pathname: '/profile/[id]', params: { id: m.id } })}
               >
                 <View style={styles.pin} />
               </Mapbox.PointAnnotation>
@@ -130,8 +126,8 @@ export default function MapScreen() {
           {!!error && <Text style={styles.error}>Couldn’t load pins: {error}</Text>}
           {!error && pinCount === 0 && (
             <Text style={styles.overlayNote}>
-              No members have shared a location yet. Add your city in Edit profile to
-              put yourself on the map.
+              No alumni have shared a location yet. Map sharing is optional and can be managed in
+              Edit profile.
             </Text>
           )}
         </View>

@@ -53,14 +53,21 @@ export function Button({
         {loading && (
           <ActivityIndicator
             size="small"
-            color={variant === 'primary' ? colors.cream : colors.textPrimary}
+            color={
+              isDisabled
+                ? colors.textSecondary
+                : variant === 'primary'
+                  ? colors.cream
+                  : colors.textPrimary
+            }
             style={styles.spinner}
           />
         )}
         <Text
           style={[
             styles.label,
-            variant === 'primary' ? styles.labelOnGold : styles.labelOnDark,
+            variant === 'primary' ? styles.labelOnPrimary : styles.labelOnLight,
+            isDisabled && styles.disabledLabel,
           ]}
         >
           {label}
@@ -72,25 +79,31 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
-    height: 52,
-    borderRadius: radius.full,
+    minHeight: 48,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,
   },
   fullWidth: { alignSelf: 'stretch' },
-  primary: { backgroundColor: colors.gold },
+  primary: { backgroundColor: colors.navy },
   secondary: {
     backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
   },
   ghost: { backgroundColor: 'transparent' },
-  pressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
-  disabled: { opacity: 0.5 },
-  content: { flexDirection: 'row', alignItems: 'center' },
+  pressed: { opacity: 0.85 },
+  disabled: {
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surfaceHover,
+  },
+  disabledLabel: { color: colors.textSecondary },
+  content: { flexDirection: 'row', alignItems: 'center', maxWidth: '100%' },
   spinner: { marginRight: spacing.sm },
-  label: { ...typography.h3 },
-  labelOnGold: { color: colors.cream },
-  labelOnDark: { color: colors.textPrimary },
+  label: { ...typography.h3, flexShrink: 1, textAlign: 'center' },
+  labelOnPrimary: { color: colors.cream },
+  labelOnLight: { color: colors.textPrimary },
 });

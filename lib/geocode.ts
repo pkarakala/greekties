@@ -1,5 +1,5 @@
 // Forward-geocode a city name to coordinates via Mapbox Geocoding v6.
-// Used on profile save so the alumni map can place a pin for the member.
+// Called only after explicit map consent has been persisted and the old pin cleared.
 //
 // Deliberately best-effort: geocoding must NEVER block or fail a profile
 // save, so every failure path (missing token, network error, non-200,
@@ -26,40 +26,54 @@ export async function geocodeCity(city: string): Promise<Coordinates | null> {
   if (!token || token.startsWith('PASTE_')) return null;
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      resolve(null);
+    }, TIMEOUT_MS);
+  });
 
+  const lookup = async (): Promise<Coordinates | null> => {
+    try {
+      const url =
+        `${GEOCODE_ENDPOINT}?q=${encodeURIComponent(query)}` +
+        `&types=place&limit=1&access_token=${encodeURIComponent(token)}`;
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) return null;
+
+      const body = (await response.json()) as {
+        features?: { geometry?: { coordinates?: number[] } }[];
+      };
+      const coordinates = body?.features?.[0]?.geometry?.coordinates;
+      if (!Array.isArray(coordinates) || coordinates.length < 2) return null;
+
+      // Mapbox returns GeoJSON order: [lng, lat].
+      const [lng, lat] = coordinates;
+      if (typeof lng !== 'number' || typeof lat !== 'number') return null;
+      if (
+        !Number.isFinite(lng) ||
+        !Number.isFinite(lat) ||
+        Math.abs(lat) > 90 ||
+        Math.abs(lng) > 180
+      )
+        return null;
+
+      return { lat, lng };
+    } catch {
+      // Network failure, abort/timeout, or malformed JSON — the save goes on.
+      return null;
+    }
+  };
   try {
-    const url =
-      `${GEOCODE_ENDPOINT}?q=${encodeURIComponent(query)}` +
-      `&types=place&limit=1&access_token=${encodeURIComponent(token)}`;
-    const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) return null;
-
-    const body = (await response.json()) as {
-      features?: { geometry?: { coordinates?: number[] } }[];
-    };
-    const coordinates = body?.features?.[0]?.geometry?.coordinates;
-    if (!Array.isArray(coordinates) || coordinates.length < 2) return null;
-
-    // Mapbox returns GeoJSON order: [lng, lat].
-    const [lng, lat] = coordinates;
-    if (typeof lng !== 'number' || typeof lat !== 'number') return null;
-    if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null;
-
-    return { lat, lng };
-  } catch {
-    // Network failure, abort/timeout, or malformed JSON — the save goes on.
-    return null;
+    // Bound even transports / response bodies that ignore AbortController.
+    return await Promise.race([lookup(), timeout]);
   } finally {
-    clearTimeout(timer);
+    clearTimeout(timer!);
   }
 }
 
 /** True when two coordinate pairs are within epsilon on both axes. */
-export function coordsRoughlyEqual(
-  a: Coordinates,
-  b: Coordinates,
-  epsilon = 1e-6,
-): boolean {
+export function coordsRoughlyEqual(a: Coordinates, b: Coordinates, epsilon = 1e-6): boolean {
   return Math.abs(a.lat - b.lat) <= epsilon && Math.abs(a.lng - b.lng) <= epsilon;
 }

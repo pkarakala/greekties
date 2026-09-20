@@ -1,14 +1,116 @@
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { supabase } from './supabase';
 import type { Profile } from './types';
+import { geocodeCity } from './geocode';
+
+export type EditableProfileFields = Partial<
+  Pick<
+    Profile,
+    | 'name'
+    | 'class_year'
+    | 'role'
+    | 'industry'
+    | 'company'
+    | 'job_title'
+    | 'linkedin_url'
+    | 'bio'
+    | 'open_to_mentor'
+    | 'is_hiring'
+    | 'avatar_url'
+  >
+>;
 
 /** Update the caller's own profile row. RLS restricts writes to the owner. */
 export async function updateProfile(
   profileId: string,
-  fields: Partial<Profile>,
+  fields: EditableProfileFields,
 ): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('profiles').update(fields).eq('id', profileId);
-  return { error: error?.message ?? null };
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(fields)
+      .eq('id', profileId)
+      .select('id')
+      .single();
+    return { error: error?.message ?? (data ? null : 'Profile was not saved.') };
+  } catch {
+    return { error: 'Couldn’t save your profile. Please try again.' };
+  }
+}
+
+/** Clear the old pin durably before lookup; never fall back to direct coordinates. */
+export async function saveProfileWithMap(
+  profile: Profile,
+  fields: EditableProfileFields,
+  city: string,
+  sharing: boolean,
+  isCurrent: () => boolean = () => true,
+): Promise<{ error: string | null; revision?: string }> {
+  const trimmedCity = city.trim();
+  let revision: string | null = null;
+  let locationError: string | null = null;
+  try {
+    if (!profile.map_revision || typeof profile.map_sharing_enabled !== 'boolean') {
+      locationError =
+        'City and map settings could not be saved because map privacy controls are unavailable. Try again after the app service is updated.';
+    } else {
+      const { data, error } = await supabase.rpc('set_profile_map_sharing', {
+        target_profile_id: profile.id,
+        expected_revision: profile.map_revision,
+        profile_city: trimmedCity || null,
+        sharing_enabled: sharing && !!trimmedCity,
+      });
+      if (error || typeof data !== 'string') {
+        locationError =
+          'City and map settings could not be confirmed. Your previous map setting may still be in effect. Close and reopen Edit profile before trying again.';
+      } else revision = data;
+    }
+  } catch {
+    locationError =
+      'City and map settings could not be confirmed. Your previous map setting may still be in effect. Close and reopen Edit profile before trying again.';
+  }
+
+  // Independent valid edits survive a failed lookup or unavailable consent API.
+  const { error: profileError } = await updateProfile(profile.id, fields);
+  if (profileError)
+    return {
+      revision: revision ?? undefined,
+      error: [
+        locationError ?? 'City and map settings saved; the previous pin was removed.',
+        'Other profile edits could not be saved. Please try again.',
+      ].join(' '),
+    };
+  if (locationError || !revision) return { error: `Other profile edits saved. ${locationError}` };
+  if (!isCurrent() || !sharing || !trimmedCity || profile.membership_type !== 'alumni')
+    return { error: null, revision };
+
+  const coords = await geocodeCity(trimmedCity);
+  if (!isCurrent()) return { error: null, revision };
+  if (!coords)
+    return {
+      revision,
+      error:
+        'Profile and city saved. We couldn’t find this city’s map location. Your pin is removed. Check the city and save again to retry, or turn map sharing off.',
+    };
+  try {
+    const { data, error } = await supabase.rpc('complete_profile_map_location', {
+      target_profile_id: profile.id,
+      expected_revision: revision,
+      latitude: coords.lat,
+      longitude: coords.lng,
+    });
+    if (error || typeof data !== 'string')
+      return {
+        error:
+          'Profile and city saved, but the map update could not be confirmed. Close and reopen Edit profile before retrying.',
+      };
+    return { error: null, revision: data };
+  } catch {
+    return {
+      error:
+        'Profile and city saved, but the map update could not be confirmed. Close and reopen Edit profile before retrying.',
+    };
+  }
 }
 
 /**

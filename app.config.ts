@@ -59,6 +59,8 @@ const config: ConfigWithLegacyKeys = {
   },
   plugins: [
     'expo-router',
+    'expo-font',
+    'expo-image',
     'expo-secure-store',
     'expo-notifications',
     [

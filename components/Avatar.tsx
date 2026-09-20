@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { colors, typography } from '@/theme';
 
@@ -21,22 +21,22 @@ function initials(name?: string | null): string {
 }
 
 export function Avatar({ uri, name, size = 'md' }: AvatarProps) {
+  const { fontScale } = useWindowDimensions();
   const dim = SIZES[size];
+  const fallbackDim = dim * Math.max(1, fontScale);
   const dimStyle = { width: dim, height: dim, borderRadius: dim / 2 };
 
   if (uri) {
-    return (
-      <Image
-        source={{ uri }}
-        style={[styles.image, dimStyle]}
-        contentFit="cover"
-        transition={150}
-      />
-    );
+    return <Image source={{ uri }} style={[styles.image, dimStyle]} contentFit="cover" />;
   }
 
   return (
-    <View style={[styles.fallback, dimStyle]}>
+    <View
+      style={[
+        styles.fallback,
+        { width: fallbackDim, height: fallbackDim, borderRadius: fallbackDim / 2 },
+      ]}
+    >
       <Text style={[styles.initials, { fontSize: dim * 0.36 }]}>{initials(name)}</Text>
     </View>
   );

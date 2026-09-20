@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { hasMapLocation } from './map-consent';
 import { supabase } from './supabase';
 import { filterBlockedActors } from './moderation';
 import type { Profile } from './types';
@@ -26,7 +27,7 @@ const EMPTY_STATS: HomeStats = { members: 0, industries: 0, newThisMonth: 0 };
 const MEMBER_COLUMNS =
   'id, user_id, chapter_id, name, avatar_url, class_year, role, membership_type, industry, city, company, job_title, open_to_mentor, is_hiring, status, admin_role, linkedin_url, bio, created_at';
 const MAP_COLUMNS =
-  'id, user_id, chapter_id, name, avatar_url, city, class_year, lat, lng, membership_type';
+  'id, user_id, chapter_id, name, avatar_url, city, class_year, lat, lng, membership_type, status, map_sharing_enabled';
 
 function startOfMonthISO(): string {
   const now = new Date();
@@ -148,112 +149,7 @@ interface MembersResult {
   reload: () => void;
 }
 
-/** Members fetched per page (initial load + each loadMore). */
-const MEMBERS_PAGE_SIZE = 100;
-
-export interface ChapterMembersResult extends MembersResult {
-  /** True when more members exist beyond what's loaded. */
-  hasMore: boolean;
-  /** True while a loadMore() page is in flight. */
-  loadingMore: boolean;
-  /** Fetch the next page (offset-based, name order) and append it. */
-  loadMore: () => Promise<void>;
-}
-
-/**
- * Approved members in a chapter (for the directory), ordered by name and
- * paginated via `.range()` offsets. Filtering is client-side, over the pages
- * loaded so far.
- */
-export function useChapterMembers(
-  chapterId: string | null,
-  blockedIds: ReadonlySet<string>,
-): ChapterMembersResult {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [members, setMembers] = useState<Profile[]>([]);
-  const [hasMore, setHasMore] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [nonce, setNonce] = useState(0);
-  const reload = useCallback(() => setNonce((n) => n + 1), []);
-
-  // Offset cursor: how many rows have been fetched so far.
-  const fetchedCountRef = useRef(0);
-  const loadingMoreRef = useRef(false);
-
-  const fetchPage = useCallback(
-    (from: number) =>
-      supabase
-        .from('profiles')
-        .select(MEMBER_COLUMNS)
-        .eq('chapter_id', chapterId!)
-        .eq('status', 'approved')
-        .order('name', { ascending: true })
-        .range(from, from + MEMBERS_PAGE_SIZE - 1),
-    [chapterId],
-  );
-
-  useEffect(() => {
-    if (!chapterId) {
-      setLoading(false);
-      return;
-    }
-    let mounted = true;
-    setLoading(true);
-    setError(null);
-    fetchedCountRef.current = 0;
-
-    fetchPage(0).then(({ data, error: err }) => {
-      if (!mounted) return;
-      if (err) setError(err.message);
-      else {
-        const page = (data as Profile[]) ?? [];
-        setMembers(filterBlockedActors(page, blockedIds, (row) => row.user_id));
-        fetchedCountRef.current = page.length;
-        setHasMore(page.length === MEMBERS_PAGE_SIZE);
-      }
-      setLoading(false);
-    });
-
-    return () => {
-      mounted = false;
-    };
-  }, [chapterId, blockedIds, nonce, fetchPage]);
-
-  const loadMore = useCallback(async () => {
-    if (!chapterId || fetchedCountRef.current === 0 || loadingMoreRef.current) return;
-    loadingMoreRef.current = true;
-    setLoadingMore(true);
-
-    const { data, error: err } = await fetchPage(fetchedCountRef.current);
-    if (err) {
-      setError(err.message);
-    } else {
-      const page = (data as Profile[]) ?? [];
-      fetchedCountRef.current += page.length;
-      setHasMore(page.length === MEMBERS_PAGE_SIZE);
-      if (page.length > 0) {
-        const visiblePage = filterBlockedActors(page, blockedIds, (row) => row.user_id);
-        setMembers((prev) => {
-          const seen = new Set(prev.map((m) => m.id));
-          return [...prev, ...visiblePage.filter((m) => !seen.has(m.id))];
-        });
-      }
-    }
-    loadingMoreRef.current = false;
-    setLoadingMore(false);
-  }, [chapterId, blockedIds, fetchPage]);
-
-  return {
-    loading,
-    error,
-    members: filterBlockedActors(members, blockedIds, (row) => row.user_id),
-    hasMore,
-    loadingMore,
-    loadMore,
-    reload,
-  };
-}
+export { useChapterMembers } from './directory';
 
 /** Approved members that have map coordinates. */
 export function useMapMembers(
@@ -268,10 +164,12 @@ export function useMapMembers(
 
   useEffect(() => {
     if (!chapterId) {
+      setMembers([]);
       setLoading(false);
       return;
     }
     let mounted = true;
+    setMembers([]);
     setLoading(true);
     setError(null);
 
@@ -281,18 +179,31 @@ export function useMapMembers(
       .eq('chapter_id', chapterId)
       .eq('status', 'approved')
       .eq('membership_type', 'alumni')
+      .eq('map_sharing_enabled', true)
       .not('lat', 'is', null)
       .not('lng', 'is', null)
-      .then(({ data, error: err }) => {
-        if (!mounted) return;
-        if (err) setError(err.message);
-        else {
-          setMembers(
-            filterBlockedActors((data as Profile[]) ?? [], blockedIds, (row) => row.user_id),
-          );
-        }
-        setLoading(false);
-      });
+      .then(
+        ({ data, error: err }) => {
+          if (!mounted) return;
+          if (err) setError('Map sharing is unavailable. Please try again later.');
+          else {
+            setMembers(
+              filterBlockedActors(
+                ((data as Profile[]) ?? []).filter(hasMapLocation),
+                blockedIds,
+                (row) => row.user_id,
+              ),
+            );
+          }
+          setLoading(false);
+        },
+        () => {
+          if (!mounted) return;
+          setMembers([]);
+          setError('Map sharing is unavailable. Please try again later.');
+          setLoading(false);
+        },
+      );
 
     return () => {
       mounted = false;
@@ -302,7 +213,14 @@ export function useMapMembers(
   return {
     loading,
     error,
-    members: filterBlockedActors(members, blockedIds, (row) => row.user_id),
+    members:
+      loading || error
+        ? []
+        : filterBlockedActors(
+            members.filter((m) => m.chapter_id === chapterId && hasMapLocation(m)),
+            blockedIds,
+            (row) => row.user_id,
+          ),
     reload,
   };
 }
@@ -325,7 +243,7 @@ export interface NetworkBreakdown {
   mentors: number;
   /** Members with is_hiring set. */
   hiring: number;
-  /** Members with map coordinates (lat present). */
+  /** Consenting approved alumni with valid map coordinates. */
   onMap: number;
 }
 
@@ -349,7 +267,8 @@ const EMPTY_BREAKDOWN: NetworkBreakdown = {
 
 // Aggregate-only columns — no names, emails, or anything identifying. The
 // breakdown screen renders counts, so counts are all we ship to the client.
-const BREAKDOWN_COLUMNS = 'industry, company, city, class_year, open_to_mentor, is_hiring, lat';
+const BREAKDOWN_COLUMNS =
+  'industry, company, city, class_year, open_to_mentor, is_hiring, lat, lng, membership_type, status, map_sharing_enabled';
 
 /**
  * One un-paginated select capped at 1,000 rows — far above any current chapter
@@ -362,7 +281,7 @@ const BREAKDOWN_ROW_CAP = 1000;
 /** Entries kept per list (industries/companies/cities/class years). */
 const BREAKDOWN_TOP_N = 8;
 
-interface BreakdownRow {
+interface BreakdownRow extends Partial<Profile> {
   industry: string | null;
   company: string | null;
   city: string | null;
@@ -410,7 +329,7 @@ function aggregateBreakdown(rows: BreakdownRow[]): NetworkBreakdown {
       .slice(0, BREAKDOWN_TOP_N),
     mentors: rows.filter((r) => r.open_to_mentor === true).length,
     hiring: rows.filter((r) => r.is_hiring === true).length,
-    onMap: rows.filter((r) => r.lat != null).length,
+    onMap: rows.filter(hasMapLocation).length,
   };
 }
 

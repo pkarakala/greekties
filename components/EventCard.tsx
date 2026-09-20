@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, type PressableProps } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from './Card';
 import { Badge } from './Badge';
-import { clockTime } from '@/lib/time';
+import { eventClockTime, eventPhase } from '@/lib/time';
 import { colors, spacing, typography } from '@/theme';
 import type { EventWithMeta } from '@/lib/events';
 import type { EventCategory } from '@/lib/types';
@@ -25,10 +25,11 @@ export function EventCard({ event, onPress }: EventCardProps) {
   return (
     <Card style={styles.card} onPress={onPress}>
       <View style={styles.top}>
-        <Text style={styles.time}>{clockTime(event.starts_at)}</Text>
+        <Text style={styles.time}>{eventClockTime(event.starts_at)}</Text>
         <Badge label={CATEGORY_LABELS[event.category]} tone="gold" />
       </View>
 
+      <Text style={styles.metaText}>{eventPhase(event)}</Text>
       <Text style={styles.title} numberOfLines={2}>
         {event.title}
       </Text>
@@ -42,17 +43,18 @@ export function EventCard({ event, onPress }: EventCardProps) {
             </Text>
           </View>
         )}
-        {event.goingCount > 0 && (
+        {
           <View style={styles.metaItem}>
             <Ionicons name="people-outline" size={14} color={colors.textTertiary} />
             <Text style={styles.metaText}>
-              {event.goingCount} going
+              {event.goingCount === null
+                ? 'Attendance unavailable'
+                : `${event.goingCount} going · visible to you`}
+              {event.metaError && event.goingCount !== null ? ' · Refresh unavailable' : ''}
             </Text>
           </View>
-        )}
-        {event.myStatus === 'going' && (
-          <Badge label="You’re going" tone="green" />
-        )}
+        }
+        {event.myStatus === 'going' && <Badge label="You’re going" tone="green" />}
       </View>
     </Card>
   );

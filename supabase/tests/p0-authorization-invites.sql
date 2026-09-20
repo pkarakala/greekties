@@ -1,5 +1,6 @@
+-- Requires V10; map coordinates are no longer ordinary self-edit columns.
 -- P0 authorization + invite acceptance checks.
--- Run after app-v6-p0-authorization-invites.sql and app-v7-p0-followup.sql.
+-- Run only on a confirmed disposable local database after all migrations through V9.
 
 begin;
 set local role postgres;
@@ -26,7 +27,8 @@ begin
     raise exception 'P0 acceptance: authenticated has unrestricted profile insert';
   end if;
   foreach column_name in array array[
-    'status', 'chapter_id', 'user_id', 'admin_role'
+    'status', 'chapter_id', 'user_id', 'admin_role', 'lat', 'lng',
+    'map_sharing_enabled', 'map_revision'
   ]
   loop
     if has_column_privilege(
@@ -38,7 +40,7 @@ begin
   end loop;
   foreach column_name in array array[
     'name', 'class_year', 'role', 'industry', 'city', 'company', 'job_title',
-    'linkedin_url', 'bio', 'open_to_mentor', 'is_hiring', 'avatar_url', 'lat', 'lng'
+    'linkedin_url', 'bio', 'open_to_mentor', 'is_hiring', 'avatar_url'
   ]
   loop
     if not has_column_privilege(
@@ -238,8 +240,8 @@ begin
     raise exception 'P0 acceptance: non-admin saw pending, rejected, or cross-chapter profile';
   end if;
 
-  -- This matches every field written by app/profile/edit.tsx and
-  -- app/onboarding/complete-profile.tsx. It must update the caller's row.
+  -- Ordinary profile fields remain self-editable after V10. Map writes
+  -- require explicit consent RPCs, covered in pilot-map-consent.sql.
   update public.profiles
   set name = 'Edited Approved A',
       class_year = 2028,
@@ -252,9 +254,7 @@ begin
       bio = 'Profile edit acceptance',
       open_to_mentor = true,
       is_hiring = true,
-      avatar_url = 'https://example.invalid/avatar.jpg',
-      lat = 30.2672,
-      lng = -97.7431
+      avatar_url = 'https://example.invalid/avatar.jpg'
   where user_id = auth.uid();
 
   if not exists (
@@ -272,8 +272,8 @@ begin
       and open_to_mentor
       and is_hiring
       and avatar_url = 'https://example.invalid/avatar.jpg'
-      and lat = 30.2672
-      and lng = -97.7431
+      and lat is null
+      and lng is null
   ) then
     raise exception 'P0 acceptance: normal owner profile edit did not persist';
   end if;
@@ -463,18 +463,21 @@ begin
 end;
 $$;
 
--- A rejected member may rejoin only with a valid invite for the same chapter.
+-- Policy correction: a same-chapter invite cannot undo removal/rejection.
 set local role postgres;
 select set_config('request.jwt.claims', '{"sub":"10000000-0000-4000-8000-000000000003","role":"authenticated"}', true);
 set local role authenticated;
 do $$
 declare
-  joined uuid;
+  denied boolean := false;
 begin
-  joined := public.join_chapter('secure-code-a');
-  if joined <> 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid
-     or (select status from public.profiles where user_id = auth.uid()) <> 'approved' then
-    raise exception 'P0 acceptance: rejected same-chapter rejoin was not safely reactivated';
+  begin
+    perform public.join_chapter('secure-code-a');
+  exception when others then
+    denied := true;
+  end;
+  if not denied or (select status from public.profiles where user_id = auth.uid()) <> 'rejected' then
+    raise exception 'V9 acceptance: rejected member self-restored using shared invite';
   end if;
 end;
 $$;
@@ -494,6 +497,41 @@ begin
   end;
   if joined or (select status from public.profiles where user_id = auth.uid()) <> 'rejected' then
     raise exception 'P0 acceptance: rejected cross-chapter profile rejoined';
+  end if;
+end;
+$$;
+
+-- Invalid, revoked, and expired invites expose no preview and cannot join.
+set local role postgres;
+insert into public.chapter_invites (chapter_id, code, created_by, revoked, expires_at)
+values
+  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'revoked-code', '10000000-0000-4000-8000-000000000004', true, null),
+  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'expired-code', '10000000-0000-4000-8000-000000000004', false, now() - interval '1 day');
+select set_config('request.jwt.claims', '{"sub":"10000000-0000-4000-8000-000000000007","role":"authenticated"}', true);
+set local role authenticated;
+do $$
+declare code text; denied boolean;
+begin
+  foreach code in array array['invalid-code', 'revoked-code', 'expired-code'] loop
+    if exists (select 1 from public.resolve_chapter_invite(code)) then
+      raise exception 'V9 acceptance: unusable invite previewed';
+    end if;
+    denied := false;
+    begin perform public.join_chapter(code);
+    exception when others then denied := true;
+    end;
+    if not denied then raise exception 'V9 acceptance: unusable invite joined'; end if;
+  end loop;
+end;
+$$;
+
+-- Reinstatement must deny anonymous, pending, removed, ordinary approved,
+-- and cross-chapter admins; none of these failures may change the target.
+set local role postgres;
+do $$
+begin
+  if has_function_privilege('anon', 'public.reinstate_chapter_member(uuid)', 'execute') then
+    raise exception 'V9 acceptance: anonymous reinstatement privilege';
   end if;
 end;
 $$;
@@ -531,4 +569,159 @@ end;
 $$;
 
 set local role postgres;
+select set_config('request.jwt.claims', '{"sub":"10000000-0000-4000-8000-000000000001","role":"authenticated"}', true);
+set local role authenticated;
+do $$
+declare denied boolean := false;
+begin
+  begin
+    perform public.reinstate_chapter_member('20000000-0000-4000-8000-000000000003');
+  exception when others then denied := true;
+  end;
+  if not denied then raise exception 'V9 acceptance: unauthorized reinstatement by 001'; end if;
+end;
+$$;
+
+set local role postgres;
+select set_config('request.jwt.claims', '{"sub":"10000000-0000-4000-8000-000000000003","role":"authenticated"}', true);
+set local role authenticated;
+do $$
+declare denied boolean := false;
+begin
+  begin
+    perform public.reinstate_chapter_member('20000000-0000-4000-8000-000000000003');
+  exception when others then denied := true;
+  end;
+  if not denied then raise exception 'V9 acceptance: unauthorized reinstatement by 003'; end if;
+end;
+$$;
+
+set local role postgres;
+select set_config('request.jwt.claims', '{"sub":"10000000-0000-4000-8000-000000000008","role":"authenticated"}', true);
+set local role authenticated;
+do $$
+declare denied boolean := false;
+begin
+  begin
+    perform public.reinstate_chapter_member('20000000-0000-4000-8000-000000000003');
+  exception when others then denied := true;
+  end;
+  if not denied then raise exception 'V9 acceptance: unauthorized reinstatement by 008'; end if;
+end;
+$$;
+
+set local role postgres;
+select set_config('request.jwt.claims', '{"sub":"10000000-0000-4000-8000-000000000006","role":"authenticated"}', true);
+set local role authenticated;
+do $$
+declare denied boolean := false;
+begin
+  begin
+    perform public.reinstate_chapter_member('20000000-0000-4000-8000-000000000003');
+  exception when others then denied := true;
+  end;
+  if not denied then raise exception 'V9 acceptance: unauthorized reinstatement by 006'; end if;
+end;
+$$;
+
+-- The pending state cannot use an invite to skip admin review, and an
+-- approved member cannot use another chapter's invite to move chapters.
+set local role postgres;
+select set_config('request.jwt.claims', '{"sub":"10000000-0000-4000-8000-000000000001","role":"authenticated"}', true);
+set local role authenticated;
+do $$
+declare denied boolean := false;
+begin
+  begin perform public.join_chapter('secure-code-a');
+  exception when others then denied := true;
+  end;
+  if not denied or (select status from public.profiles where user_id = auth.uid()) <> 'pending' then
+    raise exception 'V9 acceptance: pending review bypassed';
+  end if;
+end;
+$$;
+set local role postgres;
+select set_config('request.jwt.claims', '{"sub":"10000000-0000-4000-8000-000000000008","role":"authenticated"}', true);
+set local role authenticated;
+do $$
+declare denied boolean := false;
+begin
+  begin perform public.join_chapter('secure-code-b');
+  exception when others then denied := true;
+  end;
+  if not denied then raise exception 'V9 acceptance: approved member moved chapters'; end if;
+end;
+$$;
+
+-- Block state must survive removal and reinstatement unchanged.
+set local role postgres;
+insert into public.user_blocks (blocker_id, blocked_id)
+values ('10000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000005');
+
+-- Remove a manager, then explicitly reinstate as a regular member. Also
+-- verify the pending-only approval RPC cannot act as a reinstatement bypass.
+set local role postgres;
+select set_config('request.jwt.claims', '{"sub":"10000000-0000-4000-8000-000000000004","role":"authenticated"}', true);
+set local role authenticated;
+do $$
+declare denied boolean := false;
+begin
+  if (select status from public.profiles where id = '20000000-0000-4000-8000-000000000003') <> 'rejected' then
+    raise exception 'V9 acceptance: denied reinstatement changed the target';
+  end if;
+  begin
+    perform public.approve_chapter_member('20000000-0000-4000-8000-000000000003');
+  exception when others then denied := true;
+  end;
+  if not denied then raise exception 'V9 acceptance: ordinary approval bypassed reinstatement'; end if;
+  perform public.set_chapter_member_membership_type('20000000-0000-4000-8000-000000000002', 'alumni');
+  perform public.reject_chapter_member('20000000-0000-4000-8000-000000000002');
+  perform public.reinstate_chapter_member('20000000-0000-4000-8000-000000000002');
+  if not exists (select 1 from public.profiles where id = '20000000-0000-4000-8000-000000000002'
+    and status = 'approved' and admin_role is null and membership_type = 'alumni'
+    and chapter_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') then
+    raise exception 'V9 acceptance: reinstatement restored admin or changed designation/tenancy';
+  end if;
+  perform public.reinstate_chapter_member('20000000-0000-4000-8000-000000000003');
+  denied := false;
+  begin
+    perform public.reinstate_chapter_member('20000000-0000-4000-8000-000000000001');
+  exception when others then denied := true;
+  end;
+  if not denied then raise exception 'V9 acceptance: reinstatement approved a pending member'; end if;
+  perform public.set_chapter_member_admin_role('20000000-0000-4000-8000-000000000002', 'manager');
+  perform public.reject_chapter_member('20000000-0000-4000-8000-000000000003');
+end;
+$$;
+
+-- A same-chapter manager can explicitly reinstate; shared invite retries by
+-- an approved member are idempotent and preserve their admin role.
+set local role postgres;
+select set_config('request.jwt.claims', '{"sub":"10000000-0000-4000-8000-000000000002","role":"authenticated"}', true);
+set local role authenticated;
+do $$
+begin
+  perform public.reinstate_chapter_member('20000000-0000-4000-8000-000000000003');
+  perform public.join_chapter('secure-code-a');
+  perform public.join_chapter('secure-code-a');
+  if (select admin_role from public.profiles where user_id = auth.uid()) <> 'manager' then
+    raise exception 'V9 acceptance: invite retry changed admin role';
+  end if;
+  if not exists (select 1 from public.profiles where id = '20000000-0000-4000-8000-000000000003'
+    and status = 'approved' and admin_role is null) then
+    raise exception 'V9 acceptance: manager reinstatement failed';
+  end if;
+end;
+$$;
+
+set local role postgres;
+do $$
+begin
+  if not exists (select 1 from public.user_blocks
+    where blocker_id = '10000000-0000-4000-8000-000000000002'
+      and blocked_id = '10000000-0000-4000-8000-000000000005') then
+    raise exception 'V9 acceptance: reinstatement altered block state';
+  end if;
+end;
+$$;
 rollback;

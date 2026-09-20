@@ -1,9 +1,46 @@
 # Greek Ties — Working Status / Handoff
 
-*Updated 2026-08-30. If you're an AI assistant or a new contributor picking this up,
-read this file, then `docs/LAUNCH_RUNBOOK.md`, then `docs/PRODUCTION_ROADMAP.md`.*
+*Updated 2026-09-17. Read this current status, [Slice 6 readiness](SLICE_6_READINESS.md),
+then [the launch runbook](LAUNCH_RUNBOOK.md). Older entries below are historical.*
 
-## Latest change set (v4 — launch polish + notification center)
+## Current pilot status — no launch approval
+
+- Slices 1–5 are accepted locally for source/tested behavior. The latest
+  independent review recorded **34 suites / 564 tests**, typecheck and diff
+  checks passing, and lint **0 errors / 24 warnings**. These are prior review
+  results, not checks rerun for Slice 6 documentation.
+- Slice 6 distribution preparation is documented in the
+  [readiness report](SLICE_6_READINESS.md) and unsent
+  [steward runbook](STEWARD_DISTRIBUTION_RUNBOOK.md) for Sigma Phi Epsilon, UCSB
+  and Pi Beta Phi, UCSB. Execution of release QA is blocked on prerequisites.
+- **Owner-reported historical remote state:** TestFlight build 11 and V6–V8
+  live. Neither was independently verified here. V9–V11 remain local unapplied
+  drafts. Apply V9 → V10 → V11 only after validation and separate authorization,
+  before distributing the dependent client. Do not replay older migrations.
+- All four SQL suites, real concurrent-session tests, rendered visual QA,
+  native picker, browser/device journeys, and exact-build checks remain open.
+  No authoritative base schema or confirmed disposable local database was
+  found. PostgreSQL/container tools are absent from PATH; Supabase CLI alone
+  does not establish a usable backend. The prior browser URL block remains
+  unresolved; compatible isolated native runtime is unconfirmed.
+- Current source has five visible tabs (Home, Chats, Events, People, Me), admin
+  access through Me, useful chapter activity on Home, a profile hub on Me,
+  optional explicit map consent, recoverable chat/mentorship sends, and the
+  Slice 5 event/directory/job/share refinements. Runtime verification is separate.
+- `app.config.ts` already contains an EAS project ID. Do not run `eas init`
+  based on older setup notes. Picker package 9.1.0 requires a compatible native
+  binary; build 11 is not evidence that the current picker is installed.
+- V10 clears legacy coordinates while retaining city and defaults consent off;
+  older clients that send coordinates fail the whole profile save. V11 backfills
+  message identities and preserves them after deletion. See the readiness report
+  for compatibility, locks, and the complete verification sequence.
+
+Next bounded action: obtain an authoritative schema-only artifact with provenance
+and a confirmed disposable local synthetic database, then execute the documented
+SQL/concurrency QA. No feature expansion, live access, distribution, build,
+deployment, commit, push, or external message is authorized by this status.
+
+## Historical change set (2026-08-30: v4 — launch polish + notification center)
 
 - **In-app notification center**: `lib/inbox-notifications.ts`,
   `app/notifications.tsx`, Home bell badge, and `app-v4-notifications.sql`.
@@ -37,15 +74,16 @@ read this file, then `docs/LAUNCH_RUNBOOK.md`, then `docs/PRODUCTION_ROADMAP.md`
 - **Launch guide**: `docs/LAUNCH_RUNBOOK.md` is now the end-to-end go-live checklist
   (migrations → accounts → verification → submission → day-1 ops).
 
-Migrations now number 15 — run order in `supabase/migrations/README.md`.
+The historical inventory was 15 migrations. The current migration README
+extends it through V11; use its dependency order and the Slice 6 readiness gates.
 
 ## Context
 
 - Repo: https://github.com/pkarakala/greekties — Expo SDK 56 / RN 0.85 / React 19,
   expo-router, shared Supabase backend (`sdscrvoorrygesrhjeee.supabase.co`).
-- **Cross-device workflow:** development happens on a laptop WITHOUT Xcode; the iOS
-  Simulator runs on a different machine. Commit + push everything; the repo is the
-  single source of truth.
+- **Historical cross-device workflow:** development originally used a laptop
+  without Xcode and a separate simulator machine. Slice 6 now finds local
+  Xcode/simctl; installed candidate/backend compatibility remains unverified.
 - Design direction: **cream / gold / navy** light theme (matches the Greek Ties
   website). Done — see `theme/colors.ts`.
 
@@ -84,7 +122,10 @@ Migrations now number 15 — run order in `supabase/migrations/README.md`.
   missing-.env screen, lazy Mapbox import (Expo Go safe), home quick actions route
   correctly, light-theme legibility pass, CI workflow (typecheck on push/PR).
 
-## Immediate next steps
+## Historical next steps (2026-08-30; superseded by current status)
+
+The following records the earlier handoff, not current commands or permission.
+The “never run” claim below predates owner-reported TestFlight build 11.
 
 1. **Commit + push this readiness update** so the Xcode machine sees the v4
    runbook and lint cleanup.
@@ -108,7 +149,8 @@ Migrations now number 15 — run order in `supabase/migrations/README.md`.
 - Every Supabase call that touches a table/RPC that may not exist yet (pre-migration)
   must degrade gracefully — catch, fall back, never surface raw Postgres errors.
 - Data hooks live in `lib/`, follow the existing `{ loading, error, data, reload }` shape.
-- Commit + push after every coherent change set (cross-device workflow).
+- Commit/push only within separately authorized scope; preserve uncommitted
+  implementation work during local QA and documentation sessions.
 
 ## v3.1 (ops + polish)
 

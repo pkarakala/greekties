@@ -1,16 +1,10 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useAuth } from '@/lib/auth';
-import { isAdmin } from '@/lib/types';
 import { colors } from '@/theme';
 
-// The Robinhood-style bottom bar. Admin renders only for owners/managers.
-// Inbox (mentorship DMs) is a top-right icon on Home, not a tab (Phase 3).
+// Five member tabs for every role. Authorized admin access lives in Me.
 export default function TabsLayout() {
-  const { profile } = useAuth();
-  const admin = isAdmin(profile);
-
   return (
     <Tabs
       screenListeners={{
@@ -20,7 +14,7 @@ export default function TabsLayout() {
       }}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.gold,
+        tabBarActiveTintColor: colors.navy,
         tabBarInactiveTintColor: colors.textTertiary,
         tabBarStyle: {
           backgroundColor: colors.surface,
@@ -63,8 +57,8 @@ export default function TabsLayout() {
         name="admin"
         options={{
           title: 'Admin',
-          // Hide entirely for non-admins.
-          href: admin ? undefined : null,
+          // Preserve the route and deep links without a sixth tab.
+          href: null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="shield-checkmark" size={size} color={color} />
           ),

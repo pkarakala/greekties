@@ -11,6 +11,31 @@
 
 export const WEB_BASE_URL = 'https://pkarakala.github.io/greekties';
 
+/** Accept only our supported links or a bounded, path-safe raw code. */
+export function parseInviteCode(input: unknown): string | null {
+  if (typeof input !== 'string') return null;
+  let value = input.trim();
+  if (value.includes('://')) {
+    try {
+      const url = new URL(value);
+      if (url.username || url.password || url.port) return null;
+      const path =
+        url.protocol === 'greekties:' && url.hostname === 'join'
+          ? url.pathname
+          : url.protocol === 'https:' &&
+              url.origin === new URL(WEB_BASE_URL).origin &&
+              url.pathname.startsWith('/greekties/join/')
+            ? url.pathname.slice('/greekties/join'.length)
+            : null;
+      if (!path || !/^\/[^/]+\/?$/.test(path)) return null;
+      value = decodeURIComponent(path.replace(/^\//, '').replace(/\/$/, ''));
+    } catch {
+      return null;
+    }
+  }
+  return /^[a-z0-9_-]{1,128}$/i.test(value) ? value.toLowerCase() : null;
+}
+
 /** Web invite link for a chapter invite code — works with or without the app. */
 export function joinLink(code: string): string {
   // Codes are alphanumeric today, but encode defensively so a code with

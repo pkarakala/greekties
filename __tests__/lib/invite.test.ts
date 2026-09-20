@@ -1,12 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import * as SecureStore from 'expo-secure-store';
 import type { Mock } from 'jest-mock';
-import {
-  consumePendingInviteCode,
-  joinChapterWithInvite,
-  resolveChapterInvite,
-  storePendingInviteCode,
-} from '../../lib/invite';
+import { joinChapterWithInvite, resolveChapterInvite } from '../../lib/invite';
 import { fetchChapterInvite } from '../../lib/chapters';
 import { supabase } from '../../lib/supabase';
 
@@ -21,63 +15,9 @@ jest.mock('../../lib/supabase', () => ({
   supabaseConfigError: null,
 }));
 
-const mockedStore = jest.mocked(SecureStore);
 const mockedRpc = supabase.rpc as unknown as Mock<
   (fn: string, args?: Record<string, unknown>) => unknown
 >;
-
-describe('pending invite code persistence', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockedStore.setItemAsync.mockResolvedValue(undefined);
-    mockedStore.getItemAsync.mockResolvedValue(null);
-    mockedStore.deleteItemAsync.mockResolvedValue(undefined);
-  });
-
-  it('stores and consumes a code round trip', async () => {
-    await storePendingInviteCode('ABC123');
-    expect(mockedStore.setItemAsync).toHaveBeenCalledWith(expect.any(String), 'ABC123');
-
-    // Simulate the code being present in storage.
-    const [key] = mockedStore.setItemAsync.mock.calls[0];
-    mockedStore.getItemAsync.mockResolvedValue('ABC123');
-
-    const code = await consumePendingInviteCode();
-    expect(code).toBe('ABC123');
-    expect(mockedStore.getItemAsync).toHaveBeenCalledWith(key);
-  });
-
-  it('clears the stored code on consume', async () => {
-    mockedStore.getItemAsync.mockResolvedValue('ABC123');
-
-    await consumePendingInviteCode();
-    expect(mockedStore.deleteItemAsync).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not clear anything when no code is stored', async () => {
-    mockedStore.getItemAsync.mockResolvedValue(null);
-
-    const code = await consumePendingInviteCode();
-    expect(code).toBeNull();
-    expect(mockedStore.deleteItemAsync).not.toHaveBeenCalled();
-  });
-
-  it('swallows storage errors on store', async () => {
-    mockedStore.setItemAsync.mockRejectedValue(new Error('keychain unavailable'));
-    await expect(storePendingInviteCode('ABC123')).resolves.toBeUndefined();
-  });
-
-  it('returns null when consume fails instead of throwing', async () => {
-    mockedStore.getItemAsync.mockRejectedValue(new Error('keychain unavailable'));
-    await expect(consumePendingInviteCode()).resolves.toBeNull();
-  });
-
-  it('returns null when the delete fails mid-consume', async () => {
-    mockedStore.getItemAsync.mockResolvedValue('ABC123');
-    mockedStore.deleteItemAsync.mockRejectedValue(new Error('keychain unavailable'));
-    await expect(consumePendingInviteCode()).resolves.toBeNull();
-  });
-});
 
 describe('secure invite RPCs', () => {
   beforeEach(() => {
@@ -98,10 +38,13 @@ describe('secure invite RPCs', () => {
     } as never);
 
     await expect(resolveChapterInvite('  INVITE42  ')).resolves.toEqual({
-      id: 'chapter-a',
-      name: 'Alpha Beta',
-      designation: 'Gamma',
-      university: 'State U',
+      kind: 'valid',
+      chapter: {
+        id: 'chapter-a',
+        name: 'Alpha Beta',
+        designation: 'Gamma',
+        university: 'State U',
+      },
     });
     expect(mockedRpc).toHaveBeenCalledWith('resolve_chapter_invite', {
       invite_code: 'invite42',
@@ -113,7 +56,7 @@ describe('secure invite RPCs', () => {
       data: null,
       error: { code: 'PGRST202', message: 'function missing from schema cache' },
     } as never);
-    await expect(resolveChapterInvite('invite42')).resolves.toBeNull();
+    await expect(resolveChapterInvite('invite42')).resolves.toEqual({ kind: 'error' });
   });
 
   it('joins only through join_chapter', async () => {

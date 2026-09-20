@@ -99,12 +99,15 @@ describe('geocodeCity', () => {
   });
 
   it('returns null when json() itself throws', async () => {
-    mockFetch(async () => ({
-      ok: true,
-      json: async () => {
-        throw new Error('invalid json');
-      },
-    }) as unknown as Response);
+    mockFetch(
+      async () =>
+        ({
+          ok: true,
+          json: async () => {
+            throw new Error('invalid json');
+          },
+        }) as unknown as Response,
+    );
     await expect(geocodeCity('Austin, TX')).resolves.toBeNull();
   });
 });
@@ -126,14 +129,38 @@ describe('coordsRoughlyEqual', () => {
   });
 
   it('is false outside epsilon', () => {
-    expect(
-      coordsRoughlyEqual({ lat: 30.2672, lng: -97.7431 }, { lat: 30.28, lng: -97.7431 }),
-    ).toBe(false);
+    expect(coordsRoughlyEqual({ lat: 30.2672, lng: -97.7431 }, { lat: 30.28, lng: -97.7431 })).toBe(
+      false,
+    );
   });
 
   it('respects a custom epsilon', () => {
-    expect(
-      coordsRoughlyEqual({ lat: 30, lng: -97 }, { lat: 30.4, lng: -97.4 }, 0.5),
-    ).toBe(true);
+    expect(coordsRoughlyEqual({ lat: 30, lng: -97 }, { lat: 30.4, lng: -97.4 }, 0.5)).toBe(true);
   });
+});
+
+it('bounds lookup even when fetch ignores abort, and ignores its late response', async () => {
+  jest.useFakeTimers();
+  const priorToken = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
+  const priorFetch = global.fetch;
+  process.env.EXPO_PUBLIC_MAPBOX_TOKEN = 'pk.test-token';
+  let resolve!: (response: Response) => void;
+  global.fetch = jest.fn(
+    () =>
+      new Promise<Response>((done) => {
+        resolve = done;
+      }),
+  ) as typeof fetch;
+  try {
+    const result = geocodeCity('Austin');
+    jest.advanceTimersByTime(5000);
+    await expect(result).resolves.toBeNull();
+    resolve(jsonResponse({ features: [{ geometry: { coordinates: [-97, 30] } }] }));
+    await expect(result).resolves.toBeNull();
+  } finally {
+    global.fetch = priorFetch;
+    if (priorToken === undefined) delete process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
+    else process.env.EXPO_PUBLIC_MAPBOX_TOKEN = priorToken;
+    jest.useRealTimers();
+  }
 });

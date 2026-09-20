@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from './supabase';
 import { canShowActorContent, filterBlockedActors } from './moderation';
-import { createRealtimeTopic } from './realtime';
+import { useMessageThread } from './message-thread';
 import type { Message, MentorshipRequest, Profile, RequestStatus } from './types';
 
 /** Fetch profiles for a set of auth user ids, keyed by user_id. */
@@ -90,150 +90,23 @@ export function useInbox(
   };
 }
 
-export interface ThreadData {
-  loading: boolean;
-  error: string | null;
-  request: MentorshipRequest | null;
-  messages: Message[];
-  other: Profile | null;
-  reload: () => void;
-}
-
 export function useThread(
   requestId: string | null,
   userId: string | null,
   blockedIds: ReadonlySet<string>,
-): ThreadData {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [request, setRequest] = useState<MentorshipRequest | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [other, setOther] = useState<Profile | null>(null);
-  const [nonce, setNonce] = useState(0);
-  const reload = useCallback(() => setNonce((n) => n + 1), []);
-
-  // Users this viewer has blocked — their messages are hidden (initial + realtime).
-  const blockedRef = useRef<ReadonlySet<string>>(blockedIds);
-  useEffect(() => {
-    blockedRef.current = blockedIds;
-  }, [blockedIds]);
-
-  useEffect(() => {
-    if (!requestId) {
-      setLoading(false);
-      return;
-    }
-    let mounted = true;
-    setLoading(true);
-    setError(null);
-
-    (async () => {
-      const reqRes = await supabase
-        .from('mentorship_requests')
-        .select('*')
-        .eq('id', requestId)
-        .maybeSingle();
-
-      if (!mounted) return;
-      if (reqRes.error) {
-        setError(reqRes.error.message);
-        setLoading(false);
-        return;
-      }
-      const req = (reqRes.data as MentorshipRequest) ?? null;
-      const otherId = req
-        ? req.from_user_id === userId
-          ? req.to_user_id
-          : req.from_user_id
-        : null;
-      const visibleRequest = req && canShowActorContent(otherId, blockedIds) ? req : null;
-      setRequest(visibleRequest);
-
-      if (visibleRequest && otherId) {
-        const [msgRes, profMap] = await Promise.all([
-          supabase
-            .from('messages')
-            .select('*')
-            .eq('request_id', requestId)
-            .order('created_at', { ascending: true }),
-          profilesByUser([otherId]),
-        ]);
-        if (!mounted) return;
-        if (msgRes.error) setError(msgRes.error.message);
-        else {
-          const msgs = (msgRes.data as Message[]) ?? [];
-          setMessages(filterBlockedActors(msgs, blockedRef.current, (m) => m.sender_id));
-        }
-        setOther(profMap[otherId] ?? null);
-      }
-      setLoading(false);
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, [requestId, userId, blockedIds, nonce]);
-
-  // Realtime (mirrors lib/chat.ts): append new messages as they arrive (deduped by
-  // id, blocked filtered) and pick up status changes (pending → accepted/declined)
-  // so 'Waiting for a response…' flips live for the requester.
-  useEffect(() => {
-    if (!requestId) return;
-
-    const sub = supabase
-      .channel(createRealtimeTopic('thread', requestId))
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `request_id=eq.${requestId}`,
-        },
-        (payload) => {
-          const msg = payload.new as Message;
-          if (!canShowActorContent(msg.sender_id, blockedRef.current)) return;
-          setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'mentorship_requests',
-          filter: `id=eq.${requestId}`,
-        },
-        (payload) => {
-          const next = payload.new as MentorshipRequest;
-          const otherId = next.from_user_id === userId ? next.to_user_id : next.from_user_id;
-          if (!canShowActorContent(otherId, blockedRef.current)) return;
-          setRequest(next);
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(sub);
-    };
-  }, [requestId, userId]);
-
-  const otherUserId = request
-    ? request.from_user_id === userId
-      ? request.to_user_id
-      : request.from_user_id
-    : null;
-  const visibleRequest =
-    request && canShowActorContent(otherUserId, blockedIds) ? request : null;
+) {
+  const thread = useMessageThread('mentorship', requestId, userId, blockedIds);
+  const request = thread.parent as MentorshipRequest | null;
+  const otherId = request?.from_user_id === userId ? request?.to_user_id : request?.from_user_id;
+  const visible = request && canShowActorContent(otherId, blockedIds);
   return {
-    loading,
-    error,
-    request: visibleRequest,
-    messages: visibleRequest
-      ? filterBlockedActors(messages, blockedIds, (message) => message.sender_id)
-      : [],
-    other: visibleRequest ? other : null,
-    reload,
+    loading: thread.loading,
+    error: thread.error,
+    request: visible ? request : null,
+    messages: visible ? (thread.messages as Message[]) : [],
+    other: visible && otherId ? (thread.profiles[otherId] ?? null) : null,
+    reload: thread.reload,
+    composer: thread.composer,
   };
 }
 
@@ -288,16 +161,5 @@ export async function respondToRequest(
     .from('mentorship_requests')
     .update({ status })
     .eq('id', requestId);
-  return error?.message ?? null;
-}
-
-export async function sendMessage(
-  requestId: string,
-  senderId: string,
-  content: string,
-): Promise<string | null> {
-  const { error } = await supabase
-    .from('messages')
-    .insert({ request_id: requestId, sender_id: senderId, content });
   return error?.message ?? null;
 }

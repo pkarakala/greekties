@@ -1,9 +1,35 @@
 # Greek Ties — Mobile App
 
 LinkedIn for Greek life. React Native (Expo) frontend on the shared Supabase backend.
-See the orientation docs in `../greek-ties-app-docs/` (`CLAUDE.md`, `START_HERE.md`, `docs/`).
+The old companion `../greek-ties-app-docs/` directory is absent on this machine.
+Start with [current status](docs/STATUS.md) and [pilot readiness](docs/SLICE_6_READINESS.md).
 
 ## Status
+
+As of 2026-09-17, Slices 1–5 are accepted locally; Slice 6 documentation is
+prepared. **Distribution and launch remain blocked.** The latest independent
+review recorded 34 suites / 564 tests, typecheck and diff checks passing; lint
+0 errors / 24 warnings. Slice 6 did not rerun the full suite for documentation.
+
+TestFlight build 11 and live V6–V8 are owner-reported history, not independently
+verified here. V9–V11 remain drafted/unapplied; all four SQL suites, concurrency,
+rendered UI, installed native picker, and browser/device checks remain open.
+The authoritative base schema and confirmed disposable local backend are missing.
+Use [the steward runbook](docs/STEWARD_DISTRIBUTION_RUNBOOK.md) only after the
+owner clears the [release gates](docs/SLICE_6_READINESS.md) and authorizes distribution.
+
+Current source exposes Home, Chats, Events, People, Me; Admin is reached through
+Me. Home shows existing chapter events/jobs/conversations; Me is a profile hub.
+Map sharing is explicit and optional, and both chat types have retry/discard
+recovery. Native event entry uses picker 9.1.0 and requires a compatible binary.
+`app.config.ts` already contains an EAS project ID; initialization is not a
+current prerequisite. V9 → V10 → V11 must precede dependent-client distribution;
+see readiness for V10 coordinate-reset/old-client save costs and V11 identity backfill.
+
+## Historical implementation record
+
+The Phase 0–6 descriptions and V1 status below retain the earlier source/build
+record. They do not describe current deployment, tab layout, or release readiness.
 
 ### Phase 0 — foundation ✅ verified
 Expo SDK 56 / RN 0.85.3 / React 19.2.3 on Node 24.17.0. `npm install` clean ·
@@ -69,10 +95,10 @@ Expo SDK 56 / RN 0.85.3 / React 19.2.3 on Node 24.17.0. `npm install` clean ·
   (`room:<channelId>` INSERT subscription, deduped append).
 - `lib/reads.ts` (secure-store unread tracking) and `lib/time.ts` (relative/clock time).
 
-> **Migrations not run by me.** The SQL targets the shared **production** database, so I
-> placed the files in `supabase/migrations/` but did not execute them. Run them yourself
-> in the Supabase SQL Editor (order in the migrations README), and enable Realtime on
-> `channel_messages`. The channel list shows a clear empty state until then.
+> **Historical migration note:** the original implementation only placed SQL
+> files in the repository. Current owner-reported V6–V8 state and unapplied
+> V9–V11 are distinguished above. Do not replay this original migration sequence
+> on an existing database; use the current readiness and migration runbooks.
 
 ### Phase 5 — job board ✅ typecheck + bundle verified
 - `app/(tabs)/people.tsx` — the Jobs toggle now renders the **"Currently Hiring"** board:
@@ -111,11 +137,19 @@ dev client (not Expo Go).
 > Verified by typecheck and a full Metro bundle. Not yet run on a simulator/device —
 > that needs the real `EXPO_PUBLIC_SUPABASE_ANON_KEY` in `.env` and a working account.
 
-**Invite-code note:** invite previews use `resolve_chapter_invite(code)` and joins
+**Current invite-code note:** invite previews use `resolve_chapter_invite(code)` and joins
 use `join_chapter(code)`. Clients never read `chapter_invites` or accept a raw
-chapter UUID as an invite. Apply `app-v6-p0-authorization-invites.sql` last.
+chapter UUID as an invite. V6 is no longer the final migration; follow V9 → V10
+→ V11 and the current validation/authorization gates. Installation links and
+chapter invitations are separate, as explained in the steward runbook.
 
 ## Running it
+
+These are historical development commands, not Slice 6 QA instructions. Do not
+start against existing app environment credentials for isolated QA. Supply a
+confirmed disposable synthetic backend/config first. Expo Go does not establish
+Mapbox or the candidate native-picker build's compatibility. No environment
+changes, installations, or builds were executed during Slice 6.
 
 Node is installed via nvm (v24.17.0). If `node` isn't on your PATH in a fresh shell:
 

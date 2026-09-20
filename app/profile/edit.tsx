@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -14,9 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/lib/auth';
-import { geocodeCity } from '@/lib/geocode';
-import { updateProfile, uploadAvatar } from '@/lib/profile';
-import type { Profile } from '@/lib/types';
+import { saveProfileWithMap, uploadAvatar } from '@/lib/profile';
+import { MapConsentField } from '@/components/MapConsentField';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextField } from '@/components/TextField';
 import { Button } from '@/components/Button';
@@ -32,6 +31,18 @@ export default function EditProfileScreen() {
   const [role, setRole] = useState(profile?.role ?? '');
   const [industry, setIndustry] = useState(profile?.industry ?? '');
   const [city, setCity] = useState(profile?.city ?? '');
+  const [mapSharing, setMapSharing] = useState(profile?.map_sharing_enabled === true);
+  // A background refresh must not attach a stale form's consent to a newer
+  // server revision (for example, an opt-out from another session).
+  const mapRevision = useRef(profile?.map_revision);
+  const mounted = useRef(true);
+  const savingRef = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const [company, setCompany] = useState(profile?.company ?? '');
   const [jobTitle, setJobTitle] = useState(profile?.job_title ?? '');
   const [linkedinUrl, setLinkedinUrl] = useState(profile?.linkedin_url ?? '');
@@ -75,7 +86,7 @@ export default function EditProfileScreen() {
   }
 
   async function save() {
-    if (!profile) return;
+    if (!profile || savingRef.current) return;
     setError(null);
 
     const linkedin = linkedinUrl.trim();
@@ -89,45 +100,37 @@ export default function EditProfileScreen() {
       return;
     }
 
+    savingRef.current = true;
     setSaving(true);
-
-    // Geocode the city so the alumni map can place a pin. Best-effort — a
-    // failed lookup never blocks the save (the map just won't show a pin).
-    const trimmedCity = city.trim();
-    const coordFields: Partial<Profile> = {};
-    if (!trimmedCity) {
-      coordFields.lat = null;
-      coordFields.lng = null;
-    } else if (trimmedCity !== profile.city || profile.lat == null) {
-      const coords = await geocodeCity(trimmedCity);
-      if (coords) {
-        coordFields.lat = coords.lat;
-        coordFields.lng = coords.lng;
-      }
-    }
-
-    const { error: saveError } = await updateProfile(profile.id, {
-      name: name.trim() || null,
-      class_year: year,
-      role: role.trim() || null,
-      industry: industry.trim() || null,
-      city: trimmedCity || null,
-      company: company.trim() || null,
-      job_title: jobTitle.trim() || null,
-      linkedin_url: linkedin || null,
-      bio: bio.trim() || null,
-      open_to_mentor: openToMentor,
-      is_hiring: isHiring,
-      avatar_url: avatarUrl,
-      ...coordFields,
-    });
+    const { error: saveError, revision } = await saveProfileWithMap(
+      { ...profile, map_revision: mapRevision.current },
+      {
+        name: name.trim() || null,
+        class_year: year,
+        role: role.trim() || null,
+        industry: industry.trim() || null,
+        company: company.trim() || null,
+        job_title: jobTitle.trim() || null,
+        linkedin_url: linkedin || null,
+        bio: bio.trim() || null,
+        open_to_mentor: openToMentor,
+        is_hiring: isHiring,
+        avatar_url: avatarUrl,
+      },
+      city,
+      mapSharing,
+      () => mounted.current,
+    );
+    if (revision) mapRevision.current = revision;
+    await refreshProfile();
+    savingRef.current = false;
+    if (!mounted.current) return;
     setSaving(false);
-
     if (saveError) {
-      setError('Couldn’t save your profile. Please try again.');
+      setError(saveError);
       return;
     }
-    await refreshProfile();
+    if (!city.trim()) setMapSharing(false);
     router.back();
   }
 
@@ -165,7 +168,12 @@ export default function EditProfileScreen() {
             </Pressable>
           </View>
 
-          <TextField label="Name" value={name} onChangeText={setName} placeholder="Your full name" />
+          <TextField
+            label="Name"
+            value={name}
+            onChangeText={setName}
+            placeholder="Your full name"
+          />
           <TextField
             label="Class year"
             value={classYear}
@@ -186,11 +194,26 @@ export default function EditProfileScreen() {
             onChangeText={setIndustry}
             placeholder="Technology"
           />
-          <TextField label="City" value={city} onChangeText={setCity} placeholder="Austin, TX" />
-          <Text style={styles.fieldHint}>
-            Alumni designated by a chapter admin can appear on the map.
-          </Text>
-          <TextField label="Company" value={company} onChangeText={setCompany} placeholder="Acme Inc." />
+          <TextField
+            label="City (optional)"
+            accessibilityLabel="City (optional)"
+            value={city}
+            onChangeText={setCity}
+            editable={!saving}
+            placeholder="Austin, TX"
+          />
+          <MapConsentField
+            enabled={mapSharing}
+            onChange={setMapSharing}
+            disabled={saving}
+            available={!!profile.map_revision && typeof profile.map_sharing_enabled === 'boolean'}
+          />
+          <TextField
+            label="Company"
+            value={company}
+            onChangeText={setCompany}
+            placeholder="Acme Inc."
+          />
           <TextField
             label="Job title"
             value={jobTitle}
@@ -282,12 +305,5 @@ const styles = StyleSheet.create({
   },
   toggleLabel: { ...typography.h3, color: colors.textPrimary },
   toggleHint: { ...typography.bodySmall, color: colors.textSecondary },
-  // Tucks under the City field (TextField carries its own bottom margin).
-  fieldHint: {
-    ...typography.bodySmall,
-    color: colors.textTertiary,
-    marginTop: -spacing.md,
-    marginBottom: spacing.lg,
-  },
   error: { ...typography.bodySmall, color: colors.red, marginBottom: spacing.lg },
 });

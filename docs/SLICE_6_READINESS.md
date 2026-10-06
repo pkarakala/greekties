@@ -205,6 +205,13 @@ gates.
   and the membership and rejection race repros now reject the stale manager
   action. The fix remains pending in draft PR #7 and is not live until V9 is
   reviewed and applied.
+- **Production push wiring:** The deployed `send-push` source was downloaded
+  read-only; both source-file hashes match merged `main`. Catalog inspection
+  found all four expected database webhooks enabled, configured for POST to the
+  function endpoint with an `x-webhook-secret` header. The `WEBHOOK_SECRET`
+  secret name is present in Supabase; secret values were not read. Actual
+  delivery, secret-value matching, and physical-device receipt remain
+  unverified, so do not treat this as end-to-end push acceptance.
 - **Web distribution:** GitHub reports Pages disabled and no repository Actions
   variables; `https://pkarakala.github.io/greekties/` returned HTTP 404.
 - **EAS:** Build 12 completed from source commit `4e30050` but is not submitted;

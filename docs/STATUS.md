@@ -1,28 +1,32 @@
 # Greek Ties — Working Status / Handoff
 
-*Updated 2026-09-17. Read this current status, [Slice 6 readiness](SLICE_6_READINESS.md),
+*Updated 2026-10-06. Read this current status, [Slice 6 readiness](SLICE_6_READINESS.md),
 then [the launch runbook](LAUNCH_RUNBOOK.md). Older entries below are historical.*
 
 ## Current pilot status — no launch approval
 
-- Slices 1–5 are accepted locally for source/tested behavior. The latest
-  independent review recorded **34 suites / 564 tests**, typecheck and diff
-  checks passing, and lint **0 errors / 24 warnings**. These are prior review
-  results, not checks rerun for Slice 6 documentation.
-- Slice 6 distribution preparation is documented in the
-  [readiness report](SLICE_6_READINESS.md) and unsent
-  [steward runbook](STEWARD_DISTRIBUTION_RUNBOOK.md) for Sigma Phi Epsilon, UCSB
-  and Pi Beta Phi, UCSB. Execution of release QA is blocked on prerequisites.
-- **Owner-reported historical remote state:** TestFlight build 11 and V6–V8
-  live. Neither was independently verified here. V9–V11 remain local unapplied
-  drafts. Apply V9 → V10 → V11 only after validation and separate authorization,
-  before distributing the dependent client. Do not replay older migrations.
-- All four SQL suites, real concurrent-session tests, rendered visual QA,
-  native picker, browser/device journeys, and exact-build checks remain open.
-  No authoritative base schema or confirmed disposable local database was
-  found. PostgreSQL/container tools are absent from PATH; Supabase CLI alone
-  does not establish a usable backend. The prior browser URL block remains
-  unresolved; compatible isolated native runtime is unconfirmed.
+- PR #4 is merged as `c165c7a`. GitHub CI passed typecheck, all tests, and lint.
+  A clean local checkout also passes typecheck and **34 suites / 564 tests**;
+  lint reports **0 errors / 24 warnings**. iOS and web bundle exports pass.
+- The four SQL suites passed with `ON_ERROR_STOP=1` against the disposable local
+  PostgreSQL 17.6 `greekties_qa` database; each rolled back its fixtures. A
+  same-UUID concurrent insert race produced one commit and one rejection;
+  first-insert rollback left no reservation; deleted-message retry did not
+  resurrect it. Synthetic fixtures were removed and the QA container stopped.
+  See the dated refresh in the [Slice 6 readiness report](SLICE_6_READINESS.md).
+- **Read-only live Supabase inventory on 2026-10-06:** V8 membership marker is
+  present; V9 reinstatement RPC, V10 map-consent column, and V11 retry ledger
+  are absent. Do not distribute the dependent client until the reviewed V9 →
+  V10 → V11 rollout is authorized and completed. V10 clears existing map
+  coordinates and defaults sharing off; preserve that data impact in the owner
+  approval and member communication.
+- GitHub Pages is disabled, no Actions variables are configured, and the invite
+  URL returns HTTP 404. EAS shows Build 12 completed but not submitted; Build 11
+  is the latest submission. App Store Connect review/metadata state and physical
+  device journeys were not independently verified.
+- Draft dependency PR #5 passes CI and Expo compatibility checks; it does not
+  clear the audit. Its candidate still reports **61 advisories (49 high, 12
+  moderate)**. See the readiness refresh for the exact scope and remaining gates.
 - Current source has five visible tabs (Home, Chats, Events, People, Me), admin
   access through Me, useful chapter activity on Home, a profile hub on Me,
   optional explicit map consent, recoverable chat/mentorship sends, and the
@@ -35,10 +39,10 @@ then [the launch runbook](LAUNCH_RUNBOOK.md). Older entries below are historical
   message identities and preserves them after deletion. See the readiness report
   for compatibility, locks, and the complete verification sequence.
 
-Next bounded action: obtain an authoritative schema-only artifact with provenance
-and a confirmed disposable local synthetic database, then execute the documented
-SQL/concurrency QA. No feature expansion, live access, distribution, build,
-deployment, commit, push, or external message is authorized by this status.
+Next owner actions: review PR #5; configure Pages and its public build variables;
+review V10's map-coordinate reset; authorize the production migration window;
+then verify PostgREST/Realtime and run exact-build browser/device acceptance
+before inviting more testers. No production change or launch approval is implied.
 
 ## Historical change set (2026-08-30: v4 — launch polish + notification center)
 

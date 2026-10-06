@@ -158,3 +158,101 @@ the snapshot's version from its filename. Missing prerequisites stay open.
 
 The installed native picker and rendered/browser/device gates remain separate
 from SQL acceptance. No production access or rollout is authorized by this review.
+
+## Verification Refresh — 2026-10-06
+
+This dated addendum supersedes the 2026-09-17 statements above that local SQL
+execution and the remote migration inventory were unverified. It does not
+supersede the still-open browser, native, physical-device, or launch-approval
+gates.
+
+### Verified
+
+- **Merged source:** `main` is `c165c7a8e3ed7511fa82892201a61f1d883cbdf7`
+  (PR #4). GitHub CI passed typecheck, tests, and lint. In a clean detached
+  checkout, `npm ci`, typecheck, 34 Jest suites / 564 tests, lint (0 errors / 24
+  warnings), and iOS/web Expo bundle exports passed. Exports used placeholder
+  public environment values; they are not signed native builds or deployment
+  evidence. The post-merge Pages workflow built and uploaded the web artifact,
+  but its deploy job failed with GitHub 404 because Pages is not enabled.
+- **Local SQL:** A local Docker container named `greekties-qa-standard` exposed
+  only `127.0.0.1:55433`, used the `greekties_qa` database on PostgreSQL 17.6,
+  and had V9/V10/V11 schema markers. All four SQL suites passed with
+  `ON_ERROR_STOP=1`; each ended in `ROLLBACK`.
+- **Additional concurrency:** A committed first-insert rollback left no message
+  or reservation. Two real PostgreSQL sessions inserted the same channel
+  message UUID concurrently: one committed; the other failed on the retry
+  ledger's primary key. After deleting the committed message, retrying the same
+  UUID failed and the message remained absent while its ledger identity
+  remained. Synthetic account/chapter/channel/message fixtures were removed;
+  post-cleanup checks returned zero fixtures. The container was stopped.
+- **Read-only production inventory:** On 2026-10-06, a fresh schema-only dump
+  matched the 2026-09-19 snapshot by SHA-256. The linked project has the V8
+  membership column, but lacks the V9 reinstatement RPC, V10 map-consent
+  column, and V11 retry ledger. Aggregate catalog queries returned exactly 4
+  `channel_messages`, 34 `messages`, and 206 `profiles`; the message tables
+  occupy about 80 KB combined. This indicates a small V11 backfill, but does
+  not measure lock waits or guarantee migration duration. A separate
+  aggregate-only query found complete coordinates on 124 profiles and no
+  partially populated coordinate pairs. V10 intentionally clears those 124
+  pairs and defaults map sharing off; members must explicitly opt in again.
+  Treat this as a data-impact decision and obtain owner sign-off before rollout.
+  No production schema or rows were changed. The live V8
+  membership-designation and V6 approval,
+  rejection, and admin-role RPCs lacked actor/target row locks. Two
+  manager-versus-owner races were reproduced locally. Revised V9 serializes
+  authorization checks across all four RPCs; local acceptance suites passed,
+  and the membership and rejection race repros now reject the stale manager
+  action. The fix remains pending in draft PR #7 and is not live until V9 is
+  reviewed and applied.
+- **Production Edge Functions:** Read-only downloads of `send-push` (deployed
+  version 3) and `delete-account` (deployed version 2) have SHA-256 hashes
+  matching both source files on merged `main`. No function was invoked or
+  deployed. Catalog inspection found all four expected push webhooks enabled,
+  configured for POST to the function endpoint with an `x-webhook-secret`
+  header. The `WEBHOOK_SECRET` name is present in Supabase; secret values were
+  not read. Actual delivery, secret-value matching, physical-device receipt,
+  and account-deletion behavior remain unverified.
+- **Web distribution:** GitHub reports Pages disabled and no repository Actions
+  variables; `https://pkarakala.github.io/greekties/` returned HTTP 404.
+- **EAS:** Build 12 completed from source commit `4e30050` but is not submitted;
+  Build 11 is the latest EAS submission. This does not establish current App
+  Store Connect review status.
+- **Dependency candidate:** Draft PR #5 has green CI. Its local clean install
+  passes Expo SDK compatibility, typecheck, all 564 tests, lint, and iOS/web
+  exports. It aligns compatible Expo patches and overrides
+  `decode-uri-component` to 0.5.0. A fresh 2026-10-06 audit reports 61
+  findings with `--omit=dev` (49 high, 12 moderate) and 64 for the full install
+  (52 high, 12 moderate); neither has critical findings. `npm audit fix
+  --dry-run` proposes no automatic changes and suggests major version changes
+  for test/native dependencies. Those compatibility-sensitive changes were
+  not applied. Do not characterize the audit as clean.
+  A fresh local iOS export with source maps includes React Native Mapbox,
+  DateTimePicker, Reanimated, and Worklets sources. It contains no source-map
+  entries for the direct advisory packages `braces`, `image-size`, `node-forge`,
+  `sprintf-js`, or `uuid` (nor `micromatch`). This narrows exposure in the
+  shipped JavaScript bundle; it does not clear build-tool, native binary, or
+  supply-chain risk, and the full audit remains a release-review item.
+
+### Still Open / Owner Actions
+
+- Review PRs #5–#7. Passing checks do not clear the remaining audit findings or
+  deploy the V9 authorization-race fix.
+- Enable/configure GitHub Pages and set the three public build variables used by
+  the workflow (`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`,
+  `EXPO_PUBLIC_MAPBOX_TOKEN`) before relying on invite web links.
+- Explicitly accept the clearing of 124 existing coordinate pairs and the
+  default-off map consent, and communicate the opt-in change to members. Then
+  authorize the production change window separately and apply only missing
+  V9 → V10 → V11 in order and verify each step. Do not rerun V6–V8.
+- The prior disposable-database report records the stale map completion and
+  access-revocation race checks. Full PostgREST behavior, Realtime ordering,
+  actual V11 lock-wait duration, current native-picker compatibility,
+  browser rendering/navigation, and physical-device journeys remain unverified.
+- Verify the exact post-migration candidate build, its App Store Connect state,
+  metadata, and real-device onboarding/chat/map flows before expanding TestFlight
+  or approving launch.
+
+**Decision remains NO-GO.** Local database and source checks now pass, but they
+do not authorize production migrations, public web publication, candidate
+distribution, or App Store release.

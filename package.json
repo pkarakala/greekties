@@ -28,7 +28,7 @@
     "expo-image-manipulator": "~56.0.26",
     "expo-image-picker": "~56.0.25",
     "expo-linking": "~56.0.18",
-    "expo-notifications": "~56.0.25",
+    "expo-notifications": "~56.0.26",
     "expo-router": "~56.2.21",
     "expo-secure-store": "~56.0.4",
     "expo-status-bar": "~56.0.4",
@@ -55,6 +55,9 @@
     "prettier": "^3.9.6",
     "react-test-renderer": "^19.2.3",
     "typescript": "~6.0.3"
+  },
+  "overrides": {
+    "decode-uri-component": "^0.5.0"
   },
   "private": true
 }

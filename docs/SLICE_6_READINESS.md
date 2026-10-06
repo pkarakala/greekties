@@ -192,7 +192,9 @@ gates.
   `channel_messages`, 34 `messages`, and 206 `profiles`; the message tables
   occupy about 80 KB combined. This indicates a small V11 backfill, but does
   not measure lock waits or guarantee migration duration. No production schema
-  or rows were changed.
+  or rows were changed. The live V8 membership-designation RPC also lacks
+  actor/target row locks; a manager-versus-owner race was reproduced locally.
+  The correction is in draft PR #7 and is not live until revised V9 is applied.
 - **Web distribution:** GitHub reports Pages disabled and no repository Actions
   variables; `https://pkarakala.github.io/greekties/` returned HTTP 404.
 - **EAS:** Build 12 completed from source commit `4e30050` but is not submitted;
@@ -211,7 +213,8 @@ gates.
 
 ### Still Open / Owner Actions
 
-- Review PR #5. Its passing checks do not address all remaining audit findings.
+- Review PR #5 and PR #7. Their passing checks do not clear the remaining
+  audit findings or deploy the V9 authorization-race fix.
 - Enable/configure GitHub Pages and set the three public build variables used by
   the workflow (`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`,
   `EXPO_PUBLIC_MAPBOX_TOKEN`) before relying on invite web links.

@@ -208,13 +208,18 @@ gates.
 - **Dependency candidate:** Draft PR #5 has green CI. Its local clean install
   passes Expo SDK compatibility, typecheck, all 564 tests, lint, and iOS/web
   exports. It aligns compatible Expo patches and overrides
-  `decode-uri-component` to 0.5.0. At the 2026-10-06 audit snapshot,
-  `npm audit --omit=dev` reports 61 findings (49 high, 12 moderate), down from
-  67 (54 high, 13 moderate) on merged `main`; a full install audit reports 70
-  (57 high, 13 moderate). Do not characterize the audit as clean.
-  The iOS bundle source map did not include `braces`, `micromatch`, `image-size`,
-  `node-forge`, or `uuid`; this narrows JS bundle exposure but does not clear
-  build-tool, native binary, or supply-chain risk.
+  `decode-uri-component` to 0.5.0. A fresh 2026-10-06 audit reports 61
+  findings with `--omit=dev` (49 high, 12 moderate) and 64 for the full install
+  (52 high, 12 moderate); neither has critical findings. `npm audit fix
+  --dry-run` proposes no automatic changes and suggests major version changes
+  for test/native dependencies. Those compatibility-sensitive changes were
+  not applied. Do not characterize the audit as clean.
+  A fresh local iOS export with source maps includes React Native Mapbox,
+  DateTimePicker, Reanimated, and Worklets sources. It contains no source-map
+  entries for the direct advisory packages `braces`, `image-size`, `node-forge`,
+  `sprintf-js`, or `uuid` (nor `micromatch`). This narrows exposure in the
+  shipped JavaScript bundle; it does not clear build-tool, native binary, or
+  supply-chain risk, and the full audit remains a release-review item.
 
 ### Still Open / Owner Actions
 

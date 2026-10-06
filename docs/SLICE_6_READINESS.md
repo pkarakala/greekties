@@ -185,9 +185,14 @@ gates.
   UUID failed and the message remained absent while its ledger identity
   remained. Synthetic account/chapter/channel/message fixtures were removed;
   post-cleanup checks returned zero fixtures. The container was stopped.
-- **Read-only production inventory:** On 2026-10-06, the linked project had the
-  V8 membership column, but lacked the V9 reinstatement RPC, V10 map-consent
-  column, and V11 retry ledger. No production schema/data was changed.
+- **Read-only production inventory:** On 2026-10-06, a fresh schema-only dump
+  matched the 2026-09-19 snapshot by SHA-256. The linked project has the V8
+  membership column, but lacks the V9 reinstatement RPC, V10 map-consent
+  column, and V11 retry ledger. Aggregate catalog queries returned exactly 4
+  `channel_messages`, 34 `messages`, and 206 `profiles`; the message tables
+  occupy about 80 KB combined. This indicates a small V11 backfill, but does
+  not measure lock waits or guarantee migration duration. No production schema
+  or rows were changed.
 - **Web distribution:** GitHub reports Pages disabled and no repository Actions
   variables; `https://pkarakala.github.io/greekties/` returned HTTP 404.
 - **EAS:** Build 12 completed from source commit `4e30050` but is not submitted;
@@ -196,8 +201,10 @@ gates.
 - **Dependency candidate:** Draft PR #5 has green CI. Its local clean install
   passes Expo SDK compatibility, typecheck, all 564 tests, lint, and iOS/web
   exports. It aligns compatible Expo patches and overrides
-  `decode-uri-component` to 0.5.0. `npm audit --omit=dev` still reports 61
-  findings (49 high, 12 moderate); do not characterize the audit as clean.
+  `decode-uri-component` to 0.5.0. At the 2026-10-06 audit snapshot,
+  `npm audit --omit=dev` reports 61 findings (49 high, 12 moderate), down from
+  67 (54 high, 13 moderate) on merged `main`; a full install audit reports 70
+  (57 high, 13 moderate). Do not characterize the audit as clean.
   The iOS bundle source map did not include `braces`, `micromatch`, `image-size`,
   `node-forge`, or `uuid`; this narrows JS bundle exposure but does not clear
   build-tool, native binary, or supply-chain risk.
@@ -213,7 +220,7 @@ gates.
   V9 → V10 → V11 in order and verify each step. Do not rerun V6–V8.
 - The prior disposable-database report records the stale map completion and
   access-revocation race checks. Full PostgREST behavior, Realtime ordering,
-  production-sized V11 lock duration, current native-picker compatibility,
+  actual V11 lock-wait duration, current native-picker compatibility,
   browser rendering/navigation, and physical-device journeys remain unverified.
 - Verify the exact post-migration candidate build, its App Store Connect state,
   metadata, and real-device onboarding/chat/map flows before expanding TestFlight

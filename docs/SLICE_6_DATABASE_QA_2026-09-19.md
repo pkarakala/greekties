@@ -103,3 +103,18 @@ After applying the revised V9 to the disposable database, all four SQL
 acceptance suites passed again with `ON_ERROR_STOP=1` and rolled back their
 fixtures. The synthetic race fixtures were explicitly deleted and verified at
 zero; the QA container was stopped. Production was not changed.
+
+## Acceptance rerun — 2026-10-06
+
+After the PR #4 merge, the disposable PostgreSQL 17.6 container was restarted
+and its current V9 function definitions were checked: all four admin RPCs
+contain actor `FOR SHARE` and target `FOR UPDATE` locks. The four acceptance
+suites (`p0-authorization-invites.sql`, `p0-membership-blocks.sql`,
+`pilot-map-consent.sql`, and `pilot-message-retries.sql`) were rerun with
+`ON_ERROR_STOP=1`; each exited successfully.
+
+This database contains a pre-existing synthetic QA baseline (3 profiles, 1
+chapter, 3 auth users, and 5 durable retry identities). These rows were
+preserved. The counts were unchanged after the acceptance rerun, whose fixtures
+are transactional. The container was stopped again. No production schema,
+data, or credentials were touched.

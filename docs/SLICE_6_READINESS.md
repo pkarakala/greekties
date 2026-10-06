@@ -192,8 +192,13 @@ gates.
   column, and V11 retry ledger. Aggregate catalog queries returned exactly 4
   `channel_messages`, 34 `messages`, and 206 `profiles`; the message tables
   occupy about 80 KB combined. This indicates a small V11 backfill, but does
-  not measure lock waits or guarantee migration duration. No production schema
-  or rows were changed. The live V8 membership-designation and V6 approval,
+  not measure lock waits or guarantee migration duration. A separate
+  aggregate-only query found complete coordinates on 124 profiles and no
+  partially populated coordinate pairs. V10 intentionally clears those 124
+  pairs and defaults map sharing off; members must explicitly opt in again.
+  Treat this as a data-impact decision and obtain owner sign-off before rollout.
+  No production schema or rows were changed. The live V8
+  membership-designation and V6 approval,
   rejection, and admin-role RPCs lacked actor/target row locks. Two
   manager-versus-owner races were reproduced locally. Revised V9 serializes
   authorization checks across all four RPCs; local acceptance suites passed,
@@ -228,8 +233,9 @@ gates.
 - Enable/configure GitHub Pages and set the three public build variables used by
   the workflow (`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`,
   `EXPO_PUBLIC_MAPBOX_TOKEN`) before relying on invite web links.
-- Review V10's deliberate legacy-coordinate clearing and default-off consent;
-  authorize the production change window separately. Then apply only missing
+- Explicitly accept the clearing of 124 existing coordinate pairs and the
+  default-off map consent, and communicate the opt-in change to members. Then
+  authorize the production change window separately and apply only missing
   V9 → V10 → V11 in order and verify each step. Do not rerun V6–V8.
 - The prior disposable-database report records the stale map completion and
   access-revocation race checks. Full PostgREST behavior, Realtime ordering,

@@ -80,3 +80,41 @@ defect.
   applying only missing V9, V10, and V11 in order.
 
 Release remains **NO-GO** until these gates are closed.
+
+## Admin authorization race follow-up — 2026-10-06
+
+An independent review found concurrent role-change races in the V8
+`set_chapter_member_membership_type` RPC and the V6 `reject_chapter_member`
+RPC. On the disposable PostgreSQL 17.6 database, an owner transaction
+promoted a regular member to manager while a manager call was in flight. The
+pre-fix membership RPC still changed the new manager's designation
+(`manager:alumni`); the pre-fix reject RPC still removed the new manager
+(`rejected:null`).
+
+The un-applied V9 migration now replaces the approval, rejection, admin-role,
+and membership-designation RPCs with actor row locks and `FOR UPDATE` on the
+target before checking authorization. Repeating the membership overlap made
+the manager call wait, re-read the promoted role, and reject; the target
+remained `manager:active`. Repeating the rejection overlap also made the
+manager wait and reject its stale request; the target remained
+`approved:manager`.
+
+After applying the revised V9 to the disposable database, all four SQL
+acceptance suites passed again with `ON_ERROR_STOP=1` and rolled back their
+fixtures. The synthetic race fixtures were explicitly deleted and verified at
+zero; the QA container was stopped. Production was not changed.
+
+## Acceptance rerun — 2026-10-06
+
+After the PR #4 merge, the disposable PostgreSQL 17.6 container was restarted
+and its current V9 function definitions were checked: all four admin RPCs
+contain actor `FOR SHARE` and target `FOR UPDATE` locks. The four acceptance
+suites (`p0-authorization-invites.sql`, `p0-membership-blocks.sql`,
+`pilot-map-consent.sql`, and `pilot-message-retries.sql`) were rerun with
+`ON_ERROR_STOP=1`; each exited successfully.
+
+This database contains a pre-existing synthetic QA baseline (3 profiles, 1
+chapter, 3 auth users, and 5 durable retry identities). These rows were
+preserved. The counts were unchanged after the acceptance rerun, whose fixtures
+are transactional. The container was stopped again. No production schema,
+data, or credentials were touched.

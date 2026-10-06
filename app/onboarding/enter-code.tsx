@@ -1,40 +1,26 @@
 import { useState } from 'react';
-import {
-  Text,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
+import { Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextField } from '@/components/TextField';
 import { Button } from '@/components/Button';
 import { colors, spacing, typography } from '@/theme';
+import { parseInviteCode } from '@/lib/links';
 
 /**
  * Accepts a raw invite code or a full invite link
  * (greekties://join/<code> or https://…/join/<code>) and extracts the code.
  */
-function extractCode(input: string): string {
-  const trimmed = input.trim();
-  if (!trimmed.includes('/join/')) return trimmed;
-  const afterJoin = trimmed.split('/join/').pop() ?? '';
-  // Last path segment, stripped of any query string.
-  const segment = afterJoin.split('/').filter(Boolean).pop() ?? '';
-  return segment.split('?')[0].trim();
-}
-
 export default function EnterCodeScreen() {
   const router = useRouter();
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   function handleJoin() {
-    const code = extractCode(input);
+    const code = parseInviteCode(input);
     if (!code) {
-      setError('Enter your invite code or paste the invite link.');
+      setError('Enter a valid code or the complete Greek Ties invitation link.');
       return;
     }
     setError(null);
@@ -54,7 +40,9 @@ export default function EnterCodeScreen() {
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.hint}>
-            Paste the invite code or link your chapter shared with you.
+            Paste the invite code or link your chapter shared with you. If you just installed the
+            app, reopen your original invitation or paste it here. Opening another invitation
+            replaces your saved invitation.
           </Text>
 
           <TextField

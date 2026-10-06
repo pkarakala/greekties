@@ -1,15 +1,9 @@
 import { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth';
 import { Wordmark } from '@/components/Wordmark';
 import { Button } from '@/components/Button';
 import { TextField } from '@/components/TextField';
@@ -19,6 +13,7 @@ import { colors, spacing, typography } from '@/theme';
 // the user in first — the auth gate allows this segment with a session.
 export default function ResetPasswordScreen() {
   const router = useRouter();
+  const { initializing, session, authError } = useAuth();
 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -54,10 +49,7 @@ export default function ResetPasswordScreen() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-        >
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <Wordmark size={36} />
             <Text style={styles.tagline}>Choose a new password</Text>
@@ -87,7 +79,23 @@ export default function ResetPasswordScreen() {
 
             {!!error && <Text style={styles.error}>{error}</Text>}
 
-            <Button label="Update password" onPress={handleUpdate} loading={loading} />
+            {!!authError && <Text style={styles.error}>{authError}</Text>}
+            {!initializing && !session && (
+              <Text style={styles.error}>
+                Open the reset link from your email to choose a new password.
+              </Text>
+            )}
+            <Button
+              label="Update password"
+              onPress={handleUpdate}
+              loading={loading || initializing}
+              disabled={!session || !!authError}
+            />
+            <Button
+              label="Request a new reset link"
+              variant="secondary"
+              onPress={() => router.replace('/forgot-password')}
+            />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

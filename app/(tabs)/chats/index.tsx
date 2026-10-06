@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,13 +11,21 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '@/lib/supabase';
+import { chapterIdentity, memberScope, useChapterIdentity } from '@/lib/home';
+import { Button } from '@/components/Button';
+import { ReadStatus } from '@/components/ReadStatus';
 import { useAuth } from '@/lib/auth';
 import { useChannels, type ChannelListItem } from '@/lib/chat';
 import { timeAgoShort } from '@/lib/time';
 import { colors, spacing, typography } from '@/theme';
 
 export default function ChannelListScreen() {
+  const { profile, session } = useAuth();
+  const scope = memberScope(profile, session?.user.id ?? null);
+  return scope ? <ChannelList key={scope} scope={scope} /> : null;
+}
+
+function ChannelList({ scope }: { scope: string }) {
   const router = useRouter();
   const { profile, session, blockedIds } = useAuth();
   const chapterId = profile?.chapter_id ?? null;
@@ -27,51 +35,35 @@ export default function ChannelListScreen() {
     session?.user?.id ?? null,
     blockedIds,
   );
-  const [chapterName, setChapterName] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!chapterId) return;
-    let mounted = true;
-    supabase
-      .from('chapters')
-      .select('name, designation, university')
-      .eq('id', chapterId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!mounted || !data) return;
-        const parts = [data.designation ?? data.name, data.university].filter(Boolean);
-        setChapterName(parts.join(' · '));
-      });
-    return () => {
-      mounted = false;
-    };
-  }, [chapterId]);
-
+  const chapter = useChapterIdentity(scope, chapterId);
+  const reloadChapter = chapter.reload;
   // Refresh unread state + previews whenever the list regains focus.
   useFocusEffect(
     useCallback(() => {
       reload();
-    }, [reload]),
+      reloadChapter();
+    }, [reload, reloadChapter]),
   );
 
   function renderItem({ item }: { item: ChannelListItem }) {
     const { channel, lastMessage, lastActivity, unread } = item;
     return (
       <Pressable
+        accessibilityRole="button"
         style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-        onPress={() => router.push({ pathname: '/chats/[channelId]', params: { channelId: channel.id } })}
+        onPress={() =>
+          router.push({ pathname: '/chats/[channelId]', params: { channelId: channel.id } })
+        }
       >
         <Text style={styles.hash}>#</Text>
         <View style={styles.rowBody}>
-          <Text style={[styles.channelName, unread && styles.unreadText]} numberOfLines={1}>
-            {channel.name}
-          </Text>
-          <Text style={styles.preview} numberOfLines={1}>
+          <Text style={[styles.channelName, unread && styles.unreadText]}>{channel.name}</Text>
+          <Text style={styles.preview}>
             {lastMessage?.content ?? channel.description ?? 'No messages yet'}
           </Text>
         </View>
         <View style={styles.rowMeta}>
-          <Text style={styles.time}>{timeAgoShort(lastActivity)}</Text>
+          <Text style={styles.time}>{lastMessage ? timeAgoShort(lastActivity) : ''}</Text>
           {unread && <View style={styles.dot} />}
         </View>
       </Pressable>
@@ -82,9 +74,23 @@ export default function ChannelListScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Chats</Text>
-        {!!chapterName && <Text style={styles.subtitle}>{chapterName}</Text>}
+        {chapter.data && <Text style={styles.subtitle}>{chapterIdentity(chapter.data)}</Text>}
+        <ReadStatus section={chapter} label="chapter identity" />
+        <Button
+          label="Mentorship conversations"
+          variant="secondary"
+          onPress={() => router.push('/inbox')}
+        />
       </View>
 
+      {!!error && (
+        <View style={styles.recovery}>
+          <Text accessibilityRole="alert" style={styles.subtitle}>
+            Couldn’t refresh channels.
+          </Text>
+          <Button label="Retry channels" variant="secondary" onPress={reload} />
+        </View>
+      )}
       {loading && sections.length === 0 ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.gold} />
@@ -122,10 +128,17 @@ export default function ChannelListScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  header: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  header: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.md },
+  recovery: { padding: spacing.lg, gap: spacing.sm },
   title: { ...typography.h1, color: colors.textPrimary },
   subtitle: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, padding: spacing.xl },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+    padding: spacing.xl,
+  },
   emptyText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
   list: { paddingBottom: spacing.xxxl },
   sectionHeader: {
@@ -138,6 +151,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   row: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,

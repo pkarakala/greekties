@@ -1,10 +1,11 @@
+import { ChatShareReview } from '@/components/ChatShareReview';
+import { ChannelMessageText } from '@/components/ChannelMessageText';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
-  TextInput,
   Pressable,
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -13,9 +14,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '@/lib/auth';
+import { forgetDeletedMessage } from '@/lib/message-recovery';
 import { useChannelThread, deleteMessage } from '@/lib/chat';
 import { reportContent } from '@/lib/moderation';
 import { markChannelRead } from '@/lib/reads';
@@ -25,6 +26,7 @@ import { clockTime } from '@/lib/time';
 import { Avatar } from '@/components/Avatar';
 import { ReactionPills } from '@/components/ReactionPills';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { MessageComposer } from '@/components/MessageComposer';
 import { colors, radius, spacing, typography } from '@/theme';
 import { isAdmin } from '@/lib/types';
 import type { ChannelMessage } from '@/lib/types';
@@ -33,7 +35,11 @@ import type { ChannelMessage } from '@/lib/types';
  * Pure toggle of one (message, emoji) in the aggregated reactions map. It's
  * its own inverse, so the optimistic update and its error-revert both call it.
  */
-function toggleInMap(map: ReactionsByMessage, messageId: string, emoji: string): ReactionsByMessage {
+function toggleInMap(
+  map: ReactionsByMessage,
+  messageId: string,
+  emoji: string,
+): ReactionsByMessage {
   const next = new Map(map);
   const list = (next.get(messageId) ?? []).map((r) => ({ ...r }));
   const entry = list.find((r) => r.emoji === emoji);
@@ -50,15 +56,24 @@ function toggleInMap(map: ReactionsByMessage, messageId: string, emoji: string):
 }
 
 export default function ChannelThreadScreen() {
-  const { channelId } = useLocalSearchParams<{ channelId: string }>();
+  const { channelId, shareId } = useLocalSearchParams<{ channelId: string; shareId?: string }>();
   const router = useRouter();
   const { session, profile, blockedIds } = useAuth();
   const myUserId = session?.user?.id ?? null;
 
-  const { loading, error, channel, messages, senders, hasMore, loadingEarlier, loadEarlier, send } =
-    useChannelThread(channelId ?? null, myUserId, blockedIds);
+  const {
+    loading,
+    error,
+    channel,
+    messages,
+    senders,
+    hasMore,
+    loadingEarlier,
+    loadEarlier,
+    composer,
+    reload,
+  } = useChannelThread(channelId ?? null, myUserId, blockedIds);
 
-  const [draft, setDraft] = useState('');
   const listRef = useRef<FlatList<ChannelMessage>>(null);
   // Last message id we auto-scrolled to — lets us skip the scroll-to-bottom when
   // loadEarlier() prepends older messages (the newest message doesn't change).
@@ -84,9 +99,7 @@ export default function ChannelThreadScreen() {
   // Fetch reactions whenever new message ids appear (extends the message-page
   // loads without touching useChannelThread). Empty map pre-migration.
   useEffect(() => {
-    const missing = messages
-      .map((m) => m.id)
-      .filter((id) => !reactionsFetchedRef.current.has(id));
+    const missing = messages.map((m) => m.id).filter((id) => !reactionsFetchedRef.current.has(id));
     if (missing.length === 0) return;
     for (const id of missing) reactionsFetchedRef.current.add(id);
     void fetchReactions(missing, myUserId).then((fetched) => {
@@ -149,27 +162,31 @@ export default function ChannelThreadScreen() {
   const visibleMessages =
     hiddenIds.size === 0 ? messages : messages.filter((m) => !hiddenIds.has(m.id));
 
-  const confirmDelete = useCallback((messageId: string) => {
-    Alert.alert('Delete message?', 'This removes the message for everyone.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => {
-          setHiddenIds((prev) => new Set(prev).add(messageId));
-          void deleteMessage(messageId).then(({ error: err }) => {
-            if (!err || !mountedRef.current) return;
-            setHiddenIds((prev) => {
-              const next = new Set(prev);
-              next.delete(messageId);
-              return next;
+  const confirmDelete = useCallback(
+    (messageId: string) => {
+      Alert.alert('Delete message?', 'This removes the message for everyone.', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            setHiddenIds((prev) => new Set(prev).add(messageId));
+            void deleteMessage(messageId).then(({ error: err }) => {
+              if (!err && composer.entry) forgetDeletedMessage(composer.entry, messageId);
+              if (!err || !mountedRef.current) return;
+              setHiddenIds((prev) => {
+                const next = new Set(prev);
+                next.delete(messageId);
+                return next;
+              });
+              Alert.alert('Message not deleted', err);
             });
-            Alert.alert('Message not deleted', err);
-          });
+          },
         },
-      },
-    ]);
-  }, []);
+      ]);
+    },
+    [composer.entry],
+  );
 
   // Report another member's message (App Store 1.2) — same prompt pattern as
   // the mentorship thread (app/inbox/[requestId].tsx).
@@ -271,14 +288,6 @@ export default function ChannelThreadScreen() {
     if (channelId && messages.length > 0) void markChannelRead(channelId, myUserId ?? '');
   }, [channelId, myUserId, messages.length]);
 
-  async function handleSend() {
-    const content = draft.trim();
-    if (!content) return;
-    setDraft('');
-    Haptics.selectionAsync().catch(() => {});
-    await send(content);
-  }
-
   function renderItem({ item, index }: { item: ChannelMessage; index: number }) {
     const mine = item.sender_id === myUserId;
     const prev = index > 0 ? visibleMessages[index - 1] : null;
@@ -307,7 +316,10 @@ export default function ChannelThreadScreen() {
             onLongPress={() => openReactionSheet(item)}
             style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}
           >
-            <Text style={[styles.bubbleText, mine && styles.bubbleTextMine]}>{item.content}</Text>
+            <ChannelMessageText
+              style={[styles.bubbleText, mine && styles.bubbleTextMine]}
+              content={item.content}
+            />
           </Pressable>
           <Text style={styles.bubbleTime}>{clockTime(item.created_at)}</Text>
         </View>
@@ -326,7 +338,10 @@ export default function ChannelThreadScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title={channel ? `# ${channel.name}` : 'Channel'} onBack={() => router.back()} />
+      <ScreenHeader
+        title={channel ? `# ${channel.name}` : 'Channel'}
+        onBack={() => router.back()}
+      />
 
       {loading ? (
         <View style={styles.center}>
@@ -361,7 +376,10 @@ export default function ChannelThreadScreen() {
                 <Pressable
                   onPress={loadEarlier}
                   disabled={loadingEarlier}
-                  style={({ pressed }) => [styles.loadEarlier, pressed && styles.loadEarlierPressed]}
+                  style={({ pressed }) => [
+                    styles.loadEarlier,
+                    pressed && styles.loadEarlierPressed,
+                  ]}
                 >
                   {loadingEarlier ? (
                     <ActivityIndicator size="small" color={colors.gold} />
@@ -380,24 +398,22 @@ export default function ChannelThreadScreen() {
             }
           />
 
-          <View style={styles.composer}>
-            <TextInput
-              style={styles.input}
-              value={draft}
-              onChangeText={setDraft}
-              placeholder={channel ? `Message #${channel.name}` : 'Message'}
-              placeholderTextColor={colors.textTertiary}
-              selectionColor={colors.gold}
-              multiline
-            />
+          {!!error && (
             <Pressable
-              onPress={handleSend}
-              disabled={!draft.trim()}
-              style={[styles.sendBtn, !draft.trim() && styles.sendDisabled]}
+              accessibilityRole="button"
+              accessibilityLabel="Reload messages"
+              onPress={reload}
+              style={styles.loadEarlier}
             >
-              <Ionicons name="arrow-up" size={20} color={colors.background} />
+              <Text style={styles.emptyText}>{error} Tap to reload.</Text>
             </Pressable>
-          </View>
+          )}
+          {!!channel && (
+            <View>
+              <ChatShareReview entry={composer.entry} shareId={shareId} />
+              <MessageComposer composer={composer} placeholder={`Message #${channel.name}`} />
+            </View>
+          )}
         </KeyboardAvoidingView>
       )}
     </SafeAreaView>
@@ -430,36 +446,4 @@ const styles = StyleSheet.create({
   bubbleTextMine: { color: colors.background },
   bubbleTime: { ...typography.caption, color: colors.textTertiary },
   reactionsRow: { maxWidth: '85%' },
-
-  composer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.background,
-  },
-  input: {
-    flex: 1,
-    maxHeight: 120,
-    ...typography.body,
-    color: colors.textPrimary,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  sendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.full,
-    backgroundColor: colors.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sendDisabled: { opacity: 0.4 },
 });

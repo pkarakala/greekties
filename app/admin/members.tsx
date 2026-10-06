@@ -18,12 +18,14 @@ import {
   setMemberRole,
   setMemberMembershipType,
   removeMember,
+  reinstateMember,
 } from '@/lib/admin';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Card } from '@/components/Card';
 import { Avatar } from '@/components/Avatar';
 import { Badge } from '@/components/Badge';
 import { SearchBar } from '@/components/SearchBar';
+import { Button } from '@/components/Button';
 import { colors, spacing, typography } from '@/theme';
 import type { AdminRole, MembershipType, Profile } from '@/lib/types';
 
@@ -44,10 +46,7 @@ function canModify(me: Profile | null, target: Pick<Profile, 'admin_role'>): boo
   return me?.admin_role === 'owner' || me?.admin_role === 'manager';
 }
 
-function canChangeMembership(
-  me: Profile | null,
-  target: Pick<Profile, 'admin_role'>,
-): boolean {
+function canChangeMembership(me: Profile | null, target: Pick<Profile, 'admin_role'>): boolean {
   if (me?.admin_role === 'owner') return true;
   return me?.admin_role === 'manager' && target.admin_role === null;
 }
@@ -55,27 +54,34 @@ function canChangeMembership(
 export default function MembersScreen() {
   const router = useRouter();
   const { profile } = useAuth();
-  const { loading, error, members, reload } = useChapterMemberList(profile?.chapter_id ?? null);
+  const [status, setStatus] = useState<'approved' | 'rejected'>('approved');
+  const isAdmin = profile?.status === 'approved' && !!profile.admin_role;
+  const { loading, error, members, reload } = useChapterMemberList(
+    isAdmin ? profile.chapter_id : null,
+    status,
+  );
+  const [reinstating, setReinstating] = useState<Profile | null>(null);
+  const [reinstateError, setReinstateError] = useState<string | null>(null);
 
   const [query, setQuery] = useState('');
   // Optimistic overrides so role changes / removals feel instant.
   const [roleOverrides, setRoleOverrides] = useState<Record<string, AdminRole>>({});
-  const [membershipOverrides, setMembershipOverrides] = useState<
-    Record<string, MembershipType>
-  >({});
+  const [membershipOverrides, setMembershipOverrides] = useState<Record<string, MembershipType>>(
+    {},
+  );
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return members.filter((m) => {
-      if (removedIds.has(m.id)) return false;
+      if (m.status !== status || (status === 'approved' && removedIds.has(m.id))) return false;
       if (!q) return true;
       return [m.name, m.company]
         .filter(Boolean)
         .some((v) => (v as string).toLowerCase().includes(q));
     });
-  }, [members, query, removedIds]);
+  }, [members, query, removedIds, status]);
 
   function effectiveRole(p: Profile): AdminRole {
     return p.id in roleOverrides ? roleOverrides[p.id] : p.admin_role;
@@ -123,7 +129,7 @@ export default function MembersScreen() {
   function confirmRemove(p: Profile) {
     Alert.alert(
       'Remove from chapter?',
-      `${p.name ?? 'This member'} will lose access to the chapter and can rejoin only with a valid invite for this chapter.`,
+      `${p.name ?? 'This member'} will lose chapter access. A chapter admin must explicitly reinstate them; an invitation cannot restore access.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -186,12 +192,62 @@ export default function MembersScreen() {
     Alert.alert(p.name ?? 'Member', undefined, actions);
   }
 
+  if (!isAdmin)
+    return (
+      <SafeAreaView style={styles.safe}>
+        <Text>Chapter admin access required.</Text>
+      </SafeAreaView>
+    );
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenHeader title="Members" onBack={() => router.back()} />
 
       <View style={styles.searchWrap}>
+        <Button
+          label={
+            status === 'approved' ? 'View removed / declined members' : 'View approved members'
+          }
+          variant="secondary"
+          onPress={() => {
+            setStatus(status === 'approved' ? 'rejected' : 'approved');
+            setReinstating(null);
+            setReinstateError(null);
+            setRemovedIds(new Set());
+            setRoleOverrides({});
+            setMembershipOverrides({});
+          }}
+        />
         <SearchBar value={query} onChangeText={setQuery} placeholder="Search name or company" />
+        {reinstating && (
+          <View>
+            <Text style={styles.emptyText}>
+              Reinstate {reinstating.name ?? 'this member'}? Chapter access will return without
+              admin privileges.
+            </Text>
+            {!!reinstateError && <Text accessibilityRole="alert">{reinstateError}</Text>}
+            <Button
+              label="Confirm reinstatement"
+              loading={busyId === reinstating.id}
+              onPress={async () => {
+                setBusyId(reinstating.id);
+                const result = await reinstateMember(reinstating.id);
+                setBusyId(null);
+                setReinstateError(result);
+                if (!result) {
+                  setReinstating(null);
+                  reload();
+                }
+              }}
+            />
+            <Button
+              label="Cancel"
+              variant="ghost"
+              disabled={!!busyId}
+              onPress={() => setReinstating(null)}
+            />
+          </View>
+        )}
       </View>
 
       <FlatList
@@ -224,19 +280,31 @@ export default function MembersScreen() {
                   {roleLine(item)}
                 </Text>
               </View>
-              {showActions && (
-                <Pressable
-                  onPress={() => openActions(item)}
-                  hitSlop={12}
-                  disabled={busyId === item.id}
-                  accessibilityLabel={`Actions for ${item.name ?? 'member'}`}
-                >
-                  <Ionicons
-                    name="ellipsis-horizontal"
-                    size={20}
-                    color={busyId === item.id ? colors.textTertiary : colors.textSecondary}
-                  />
-                </Pressable>
+              {status === 'rejected' ? (
+                <Button
+                  label="Reinstate"
+                  fullWidth={false}
+                  disabled={!!busyId}
+                  onPress={() => {
+                    setReinstating(item);
+                    setReinstateError(null);
+                  }}
+                />
+              ) : (
+                showActions && (
+                  <Pressable
+                    onPress={() => openActions(item)}
+                    hitSlop={12}
+                    disabled={busyId === item.id}
+                    accessibilityLabel={`Actions for ${item.name ?? 'member'}`}
+                  >
+                    <Ionicons
+                      name="ellipsis-horizontal"
+                      size={20}
+                      color={busyId === item.id ? colors.textTertiary : colors.textSecondary}
+                    />
+                  </Pressable>
+                )
               )}
             </Card>
           );
@@ -250,7 +318,9 @@ export default function MembersScreen() {
                   ? `Couldn’t load members: ${error}`
                   : query
                     ? 'No members match your search.'
-                    : 'No approved members yet.'}
+                    : status === 'rejected'
+                      ? 'No removed or declined members.'
+                      : 'No approved members yet.'}
               </Text>
             </View>
           )

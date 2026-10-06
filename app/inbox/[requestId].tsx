@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   Pressable,
   ActivityIndicator,
   Alert,
@@ -14,11 +13,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
-import { useThread, respondToRequest, sendMessage } from '@/lib/mentorship';
+import { useThread, respondToRequest } from '@/lib/mentorship';
 import { reportContent, blockUser } from '@/lib/moderation';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { MessageComposer } from '@/components/MessageComposer';
 import { Button } from '@/components/Button';
 import { showMessageActions } from '@/components/MessageActions';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -29,14 +28,12 @@ export default function ThreadScreen() {
   const { session, profile, blockedIds } = useAuth();
   const myUserId = session?.user?.id ?? null;
 
-  const { loading, error, request, messages, other, reload } = useThread(
+  const { loading, error, request, messages, other, reload, composer } = useThread(
     requestId ?? null,
     myUserId,
     blockedIds,
   );
 
-  const [draft, setDraft] = useState('');
-  const [sending, setSending] = useState(false);
   const [responding, setResponding] = useState(false);
 
   const isRecipient = !!request && request.to_user_id === myUserId;
@@ -48,17 +45,6 @@ export default function ThreadScreen() {
     const err = await respondToRequest(request.id, status);
     setResponding(false);
     if (!err) reload();
-  }
-
-  async function send() {
-    if (!draft.trim() || !request || !myUserId) return;
-    const content = draft.trim();
-    setDraft('');
-    setSending(true);
-    const err = await sendMessage(request.id, myUserId, content);
-    setSending(false);
-    if (err) setDraft(content);
-    else reload();
   }
 
   // ── Moderation (long-press another member's bubble) ────────────────────────
@@ -86,7 +72,8 @@ export default function ThreadScreen() {
           {
             text: 'Report',
             style: 'destructive',
-            onPress: (reason?: string) => void submitReport(messageId, reason || 'Reported from thread'),
+            onPress: (reason?: string) =>
+              void submitReport(messageId, reason || 'Reported from thread'),
           },
         ],
         'plain-text',
@@ -128,6 +115,7 @@ export default function ThreadScreen() {
       ) : !request ? (
         <View style={styles.center}>
           <Text style={styles.muted}>{error ?? 'This request couldn’t be found.'}</Text>
+          <Button label="Reload conversation" onPress={reload} variant="secondary" />
         </View>
       ) : (
         <KeyboardAvoidingView
@@ -204,27 +192,16 @@ export default function ThreadScreen() {
             )}
           </ScrollView>
 
-          {/* Composer — only when accepted */}
-          {accepted && (
-            <View style={styles.composer}>
-              <TextInput
-                style={styles.input}
-                value={draft}
-                onChangeText={setDraft}
-                placeholder="Message"
-                placeholderTextColor={colors.textTertiary}
-                selectionColor={colors.gold}
-                multiline
-              />
-              <Pressable
-                onPress={send}
-                disabled={!draft.trim() || sending}
-                style={[styles.sendBtn, (!draft.trim() || sending) && styles.sendDisabled]}
-              >
-                <Ionicons name="arrow-up" size={20} color={colors.background} />
-              </Pressable>
-            </View>
+          {!!error && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Reload messages"
+              onPress={reload}
+            >
+              <Text style={styles.muted}>{error} Tap to reload.</Text>
+            </Pressable>
           )}
+          {accepted && <MessageComposer composer={composer} />}
         </KeyboardAvoidingView>
       )}
     </SafeAreaView>
@@ -272,36 +249,4 @@ const styles = StyleSheet.create({
   bubbleTheirs: { alignSelf: 'flex-start', backgroundColor: colors.surfaceElevated },
   bubbleText: { ...typography.body, color: colors.textPrimary },
   bubbleTextMine: { color: colors.background },
-
-  composer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.background,
-  },
-  input: {
-    flex: 1,
-    maxHeight: 120,
-    ...typography.body,
-    color: colors.textPrimary,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  sendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.full,
-    backgroundColor: colors.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sendDisabled: { opacity: 0.4 },
 });

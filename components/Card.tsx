@@ -13,7 +13,7 @@ interface CardProps {
   style?: StyleProp<ViewStyle>;
   /** Use the elevated surface (modals, highlighted cards). */
   elevated?: boolean;
-  /** Makes the card pressable with a dim + scale press state. */
+  /** Makes the card pressable with a quiet surface press state. */
   onPress?: PressableProps['onPress'];
 }
 
@@ -42,7 +42,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.lg,
     padding: spacing.lg,
+    minHeight: 44,
   },
   elevated: { backgroundColor: colors.surfaceElevated },
-  pressed: { backgroundColor: colors.surfaceHover, transform: [{ scale: 0.98 }] },
+  pressed: { backgroundColor: colors.surfaceHover },
 });

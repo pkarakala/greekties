@@ -79,7 +79,10 @@ export interface ChapterMemberListData {
 }
 
 /** Approved members in a chapter, ordered by name, for the admin member list. */
-export function useChapterMemberList(chapterId: string | null): ChapterMemberListData {
+export function useChapterMemberList(
+  chapterId: string | null,
+  status: 'approved' | 'rejected' = 'approved',
+): ChapterMemberListData {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [members, setMembers] = useState<Profile[]>([]);
@@ -99,7 +102,7 @@ export function useChapterMemberList(chapterId: string | null): ChapterMemberLis
       .from('profiles')
       .select(ADMIN_MEMBER_COLUMNS)
       .eq('chapter_id', chapterId)
-      .eq('status', 'approved')
+      .eq('status', status)
       .order('name', { ascending: true })
       .then(({ data, error: err }) => {
         if (!mounted) return;
@@ -111,9 +114,23 @@ export function useChapterMemberList(chapterId: string | null): ChapterMemberLis
     return () => {
       mounted = false;
     };
-  }, [chapterId, nonce]);
+  }, [chapterId, nonce, status]);
 
   return { loading, error, members, reload };
+}
+
+/** No direct-write fallback: V9 authorizes the actor and clears admin_role. */
+export async function reinstateMember(profileId: string): Promise<string | null> {
+  try {
+    const { error } = await supabase.rpc('reinstate_chapter_member', {
+      target_profile_id: profileId,
+    });
+    return error
+      ? 'Couldn’t reinstate this member. Confirm your admin access and try again. Reinstatement requires the chapter policy update.'
+      : null;
+  } catch {
+    return 'Couldn’t reinstate this member. Check your connection and try again.';
+  }
 }
 
 /**

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { ShareToChat } from '@/components/ShareToChat';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -16,7 +17,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { useJob } from '@/lib/jobs';
 import { canShowActorContent, reportContent } from '@/lib/moderation';
-import { openExternalUrl } from '@/lib/url';
+import { jobApplicationState, openJobApplication } from '@/lib/job-application';
 import { isAdmin } from '@/lib/types';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Badge } from '@/components/Badge';
@@ -25,42 +26,64 @@ import { Avatar } from '@/components/Avatar';
 import { TextField } from '@/components/TextField';
 import { timeAgoShort } from '@/lib/time';
 import { colors, radius, spacing, typography } from '@/theme';
-import type { JobPosting, Profile } from '@/lib/types';
+import type { Profile } from '@/lib/types';
 
 export default function JobDetailScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { session, profile, blockedIds } = useAuth();
+  return (
+    <JobDetailContent
+      key={JSON.stringify([
+        id,
+        session?.user.id,
+        profile?.chapter_id,
+        profile?.status,
+        profile?.admin_role,
+        [...blockedIds].sort(),
+      ])}
+    />
+  );
+}
+function JobDetailContent() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { session, profile: me, blockedIds } = useAuth();
   const myUserId = session?.user?.id ?? null;
-  const { loading, job: fetchedJob } = useJob(id ?? null, blockedIds);
-  const [poster, setPoster] = useState<Profile | null>(null);
-
-  // useJob has no reload, so keep a local copy and refetch it on focus —
-  // returning from the edit screen should show the saved changes.
-  const [job, setJob] = useState<JobPosting | null>(null);
+  const { loading, error: loadError, job, reload } = useJob(id ?? null, blockedIds);
+  const [poster, setPoster] = useState<Pick<Profile, 'id' | 'name' | 'avatar_url'> | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [applying, setApplying] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState(false);
+  const actionGuard = useRef(false);
+  const confirmRef = useRef(false);
+  const live = useRef(true);
+  const focusVersion = useRef(0);
   useEffect(() => {
-    setJob(fetchedJob);
-  }, [fetchedJob]);
+    live.current = true;
+    return () => {
+      live.current = false;
+    };
+  }, []);
   useFocusEffect(
     useCallback(() => {
-      if (!id) return;
-      let mounted = true;
-      supabase
-        .from('job_postings')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (mounted && data) {
-            const row = data as JobPosting;
-            setJob(canShowActorContent(row.posted_by, blockedIds) ? row : null);
-          }
-        });
+      reload();
       return () => {
-        mounted = false;
+        focusVersion.current++;
+        confirmRef.current = false;
+        setDeleteConfirmation(false);
       };
-    }, [id, blockedIds]),
+    }, [reload]),
   );
+  async function apply() {
+    if (!job || loading || loadError || actionGuard.current || !live.current) return;
+    actionGuard.current = true;
+    setApplying(true);
+    const error = await openJobApplication(job);
+    if (!live.current) return;
+    actionGuard.current = false;
+    setApplying(false);
+    setActionError(error);
+  }
 
   // Report composer (Android — iOS uses Alert.prompt).
   const [reporting, setReporting] = useState(false);
@@ -74,19 +97,29 @@ export default function JobDetailScreen() {
     let mounted = true;
     supabase
       .from('profiles')
-      .select('*')
+      .select('id, name, avatar_url')
       .eq('user_id', job.posted_by)
       .maybeSingle()
-      .then(({ data }) => {
-        if (mounted) setPoster((data as Profile) ?? null);
-      });
+      .then(
+        ({ data }) => {
+          if (mounted) setPoster(data ?? null);
+        },
+        () => {
+          if (mounted) setPoster(null);
+        },
+      );
     return () => {
       mounted = false;
     };
   }, [job?.posted_by]);
 
-  const isBlockedPosting =
-    !!job && !canShowActorContent(job.posted_by, blockedIds);
+  useEffect(() => {
+    if (loading || loadError || !job) {
+      confirmRef.current = false;
+      setDeleteConfirmation(false);
+    }
+  }, [loading, loadError, job]);
+  const isBlockedPosting = !!job && !canShowActorContent(job.posted_by, blockedIds);
   const isOwner = !!job && !!myUserId && (job.posted_by === myUserId || isAdmin(me));
 
   // ── Moderation (report posting) ────────────────────────────────────────────
@@ -132,37 +165,33 @@ export default function JobDetailScreen() {
 
   // ── Owner controls (close / delete) ────────────────────────────────────────
 
-  async function closePosting() {
-    if (!job) return;
-    setClosing(true);
-    // `is_open` may not exist yet in the live DB — degrade gracefully.
-    const { error } = await supabase
-      .from('job_postings')
-      .update({ is_open: false })
-      .eq('id', job.id);
-    setClosing(false);
-    if (error) {
-      Alert.alert('Not available yet', 'Closing postings isn’t supported yet. Check back soon.');
+  async function managePosting(remove: boolean) {
+    if (!job || !isOwner || actionGuard.current || !live.current || (remove && !confirmRef.current))
       return;
+    const focus = focusVersion.current;
+    actionGuard.current = true;
+    confirmRef.current = false;
+    setClosing(true);
+    try {
+      const query = remove
+        ? supabase.from('job_postings').delete()
+        : supabase.from('job_postings').update({ is_open: false });
+      const result = await query.eq('id', job.id).select('id').maybeSingle();
+      if (!live.current || focus !== focusVersion.current) return;
+      if (result.error || result.data?.id !== job.id)
+        setActionError('Couldn’t confirm the change. Refresh the posting and try again.');
+      else if (remove) router.back();
+      else reload();
+    } catch {
+      if (live.current)
+        setActionError('Couldn’t confirm the change. Refresh the posting and try again.');
+    } finally {
+      if (live.current) {
+        actionGuard.current = false;
+        setClosing(false);
+        setDeleteConfirmation(false);
+      }
     }
-    Alert.alert('Posting closed', 'This job is no longer marked as open.');
-    router.back();
-  }
-
-  function confirmDelete() {
-    if (!job) return;
-    Alert.alert('Delete posting?', 'This permanently removes the job posting.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          const { error } = await supabase.from('job_postings').delete().eq('id', job.id);
-          if (error) Alert.alert('Couldn’t delete', 'Please try again.');
-          else router.back();
-        },
-      },
-    ]);
   }
 
   return (
@@ -177,13 +206,14 @@ export default function JobDetailScreen() {
         }
       />
 
-      {loading ? (
+      {loading && !job ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.gold} />
         </View>
       ) : !job || isBlockedPosting ? (
         <View style={styles.center}>
-          <Text style={styles.muted}>This posting couldn’t be found.</Text>
+          <Text style={styles.muted}>{loadError ?? 'This posting is removed or unavailable.'}</Text>
+          {!!loadError && <Button label="Retry" onPress={reload} />}
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -201,8 +231,27 @@ export default function JobDetailScreen() {
             {!!job.industry && <Badge label={job.industry} tone="gold" />}
           </View>
 
-          {!!job.apply_url && (
-            <Button label="Apply" onPress={() => void openExternalUrl(job.apply_url)} />
+          {loading && <Text style={styles.muted}>Refreshing…</Text>}
+          {!!loadError && (
+            <View>
+              <Text style={styles.muted}>{loadError} Showing saved details.</Text>
+              <Button label="Retry" onPress={reload} />
+            </View>
+          )}
+          {jobApplicationState(job).url ? (
+            <Button
+              label="Apply"
+              onPress={apply}
+              loading={applying}
+              disabled={loading || !!loadError}
+            />
+          ) : (
+            <Text style={styles.muted}>{jobApplicationState(job).message}</Text>
+          )}
+          {!!actionError && (
+            <Text accessibilityRole="alert" style={styles.muted}>
+              {actionError}
+            </Text>
           )}
 
           {reporting && (
@@ -224,6 +273,8 @@ export default function JobDetailScreen() {
               <Button label="Cancel" variant="ghost" onPress={() => setReporting(false)} />
             </View>
           )}
+
+          <ShareToChat resource={{ kind: 'jobs', id: job.id }} />
 
           {!!job.description && (
             <View style={styles.section}>
@@ -251,18 +302,45 @@ export default function JobDetailScreen() {
               <Text style={styles.sectionTitle}>Manage posting</Text>
               <Button
                 label="Edit posting"
+                disabled={closing || loading || !!loadError}
                 variant="secondary"
-                onPress={() =>
-                  router.push({ pathname: '/jobs/edit/[id]', params: { id: job.id } })
-                }
+                onPress={() => router.push({ pathname: '/jobs/edit/[id]', params: { id: job.id } })}
               />
               <Button
                 label="Close posting"
+                disabled={job.is_open === false || !!loadError}
                 variant="secondary"
-                onPress={closePosting}
+                onPress={() => managePosting(false)}
                 loading={closing}
               />
-              <Button label="Delete posting" variant="ghost" onPress={confirmDelete} />
+              {deleteConfirmation && (
+                <View style={styles.section}>
+                  <Text style={styles.muted}>Permanently delete this posting?</Text>
+                  <Button
+                    label="Cancel deletion"
+                    variant="secondary"
+                    disabled={closing}
+                    onPress={() => {
+                      confirmRef.current = false;
+                      setDeleteConfirmation(false);
+                    }}
+                  />
+                  <Button
+                    label="Permanently delete posting"
+                    loading={closing}
+                    onPress={() => managePosting(true)}
+                  />
+                </View>
+              )}
+              <Button
+                disabled={closing || loading || !!loadError}
+                label="Delete posting"
+                variant="ghost"
+                onPress={() => {
+                  confirmRef.current = true;
+                  setDeleteConfirmation(true);
+                }}
+              />
             </View>
           )}
         </ScrollView>

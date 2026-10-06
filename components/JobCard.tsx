@@ -16,6 +16,7 @@ export function JobCard({ job, onPress }: JobCardProps) {
     <Card style={styles.card} onPress={onPress}>
       <View style={styles.top}>
         <View style={styles.flex}>
+          {job.is_open === false && <Badge label="Closed" tone="gold" />}
           <Text style={styles.title} numberOfLines={1}>
             {job.title}
           </Text>

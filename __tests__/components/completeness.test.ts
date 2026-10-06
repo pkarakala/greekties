@@ -40,15 +40,15 @@ function makeProfile(overrides: Partial<Profile> = {}): Profile {
 }
 
 describe('profileCompleteness', () => {
-  it('returns 0 of 6 for a null profile', () => {
-    expect(profileCompleteness(null)).toEqual({ filled: 0, total: 6 });
+  it('returns 0 of 5 for a null profile', () => {
+    expect(profileCompleteness(null)).toEqual({ filled: 0, total: 5 });
   });
 
-  it('returns 0 of 6 for an empty profile', () => {
-    expect(profileCompleteness(makeProfile())).toEqual({ filled: 0, total: 6 });
+  it('returns 0 of 5 for an empty profile', () => {
+    expect(profileCompleteness(makeProfile())).toEqual({ filled: 0, total: 5 });
   });
 
-  it('counts each of the six findability fields once', () => {
+  it('counts each of the five findability fields once', () => {
     const full = makeProfile({
       avatar_url: 'https://cdn.example.com/a.png',
       city: 'Atlanta',
@@ -57,20 +57,20 @@ describe('profileCompleteness', () => {
       bio: 'Hi there',
       linkedin_url: 'https://linkedin.com/in/me',
     });
-    expect(profileCompleteness(full)).toEqual({ filled: 6, total: 6 });
+    expect(profileCompleteness(full)).toEqual({ filled: 5, total: 5 });
   });
 
   it('counts partially filled profiles field by field', () => {
     const partial = makeProfile({ avatar_url: 'https://cdn.example.com/a.png', city: 'Atlanta' });
-    expect(profileCompleteness(partial)).toEqual({ filled: 2, total: 6 });
+    expect(profileCompleteness(partial)).toEqual({ filled: 1, total: 5 });
   });
 
   it('counts role and job title as one field — either satisfies it', () => {
     expect(profileCompleteness(makeProfile({ role: 'Alumni' })).filled).toBe(1);
     expect(profileCompleteness(makeProfile({ job_title: 'Engineer' })).filled).toBe(1);
-    expect(
-      profileCompleteness(makeProfile({ role: 'Alumni', job_title: 'Engineer' })).filled,
-    ).toBe(1);
+    expect(profileCompleteness(makeProfile({ role: 'Alumni', job_title: 'Engineer' })).filled).toBe(
+      1,
+    );
   });
 
   it('ignores whitespace-only values', () => {
@@ -81,11 +81,19 @@ describe('profileCompleteness', () => {
       bio: '  ',
       linkedin_url: ' ',
     });
-    expect(profileCompleteness(blank)).toEqual({ filled: 0, total: 6 });
+    expect(profileCompleteness(blank)).toEqual({ filled: 0, total: 5 });
   });
 
-  it('does not count fields outside the six (name, company, class year)', () => {
+  it('does not count fields outside the five (name, company, class year)', () => {
     const other = makeProfile({ name: 'Pat', company: 'Acme', class_year: 2020 });
-    expect(profileCompleteness(other)).toEqual({ filled: 0, total: 6 });
+    expect(profileCompleteness(other)).toEqual({ filled: 0, total: 5 });
   });
+});
+
+it('never rewards city, coordinates, or map consent', () => {
+  expect(
+    profileCompleteness(
+      makeProfile({ city: 'Austin', lat: 30, lng: -97, map_sharing_enabled: true }),
+    ),
+  ).toEqual(profileCompleteness(makeProfile()));
 });

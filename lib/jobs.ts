@@ -1,7 +1,11 @@
+import { useMemberScope, useScopedRead } from './scoped-read';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import { canShowActorContent, filterBlockedActors } from './moderation';
 import type { JobPosting } from './types';
+
+export const JOB_COLUMNS =
+  'id, chapter_id, posted_by, title, company, location, industry, description, apply_url, is_open, created_at';
 
 /** Jobs fetched per page (initial load + each loadMore). */
 const PAGE_SIZE = 50;
@@ -54,10 +58,7 @@ export async function fetchJobsPage(
 }
 
 /** Open job postings for a chapter, newest first, paginated. RLS scopes to the user's chapter. */
-export function useJobs(
-  chapterId: string | null,
-  blockedIds: ReadonlySet<string>,
-): JobsData {
+export function useJobs(chapterId: string | null, blockedIds: ReadonlySet<string>): JobsData {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [jobs, setJobs] = useState<JobPosting[]>([]);
@@ -131,39 +132,25 @@ export function useJobs(
   };
 }
 
-export function useJob(
-  jobId: string | null,
-  blockedIds: ReadonlySet<string>,
-): { loading: boolean; job: JobPosting | null } {
-  const [loading, setLoading] = useState(true);
-  const [job, setJob] = useState<JobPosting | null>(null);
-
-  useEffect(() => {
-    if (!jobId) {
-      setLoading(false);
-      return;
-    }
-    let mounted = true;
-    supabase
+export function useJob(jobId: string | null, blockedIds: ReadonlySet<string>) {
+  const scope = useMemberScope();
+  const read = useCallback(async () => {
+    const result = await supabase
       .from('job_postings')
-      .select('*')
-      .eq('id', jobId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!mounted) return;
-        const row = (data as JobPosting) ?? null;
-        setJob(row && canShowActorContent(row.posted_by, blockedIds) ? row : null);
-        setLoading(false);
-      });
-    return () => {
-      mounted = false;
-    };
+      .select(JOB_COLUMNS)
+      .eq('id', jobId!)
+      .maybeSingle();
+    if (result.error) throw new Error('Job unavailable');
+    const row = result.data as JobPosting | null;
+    return { job: row && canShowActorContent(row.posted_by, blockedIds) ? row : null };
   }, [jobId, blockedIds]);
-
-  return {
-    loading,
-    job: job && canShowActorContent(job.posted_by, blockedIds) ? job : null,
-  };
+  const result = useScopedRead(
+    `${scope}:job:${jobId}`,
+    !!jobId,
+    read,
+    'Couldn’t load this posting. Please retry.',
+  );
+  return { ...result, job: result.data?.job ?? null };
 }
 
 export async function createJob(input: {

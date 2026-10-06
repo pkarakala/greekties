@@ -1,5 +1,5 @@
 // Shapes of the existing (live) Supabase tables the app reads.
-// Source of truth: greek-ties-app-docs/docs/DATABASE.md. Do NOT change their shape.
+// Optional V10 fields are absent before the explicit-consent migration.
 
 export type AdminRole = 'owner' | 'manager' | 'viewer' | null;
 export type ProfileStatus = 'pending' | 'approved' | 'rejected';
@@ -19,6 +19,9 @@ export interface Profile {
   membership_type: MembershipType;
   industry: string | null;
   city: string | null;
+  /** V10: only literal true is consent; legacy/missing values are off. */
+  map_sharing_enabled?: boolean;
+  map_revision?: string;
   lat: number | null;
   lng: number | null;
   company: string | null;
@@ -106,6 +109,7 @@ export interface JobPosting {
   industry: string | null;
   description: string | null;
   apply_url: string | null;
+  is_open?: boolean | null;
   created_at: string;
 }
 

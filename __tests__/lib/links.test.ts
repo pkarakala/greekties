@@ -1,5 +1,30 @@
 import { describe, expect, it } from '@jest/globals';
-import { joinLink, joinMessage, WEB_BASE_URL } from '../../lib/links';
+import { joinLink, joinMessage, WEB_BASE_URL, parseInviteCode } from '../../lib/links';
+
+describe('parseInviteCode', () => {
+  it.each([
+    ' AbC123 ',
+    'greekties://join/ABC123?source=mail#top',
+    'https://pkarakala.github.io/greekties/join/ABC123/?source=mail#top',
+  ])('parses %s', (input) => {
+    expect(parseInviteCode(input)).toBe('abc123');
+  });
+  it.each([
+    '',
+    'bad code',
+    'https://evil.test/join/abc',
+    'https://pkarakala.github.io/greekties/join/a/b',
+    'greekties://join/a/b',
+    'greekties://join/a%2Fb',
+    'greekties://join/%',
+    'greekties://other/a',
+    '../abc',
+    'abc?x',
+    'a'.repeat(129),
+  ])('rejects malformed input %s', (input) => {
+    expect(parseInviteCode(input)).toBeNull();
+  });
+});
 
 describe('joinLink', () => {
   it('builds the GitHub Pages join URL for a code', () => {

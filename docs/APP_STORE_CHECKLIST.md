@@ -1,13 +1,32 @@
 # App Store Submission Checklist
 
-*Everything that still has to happen — outside this repo — to get Greek Ties
-onto TestFlight and the App Store. This is Section D of
-`docs/LAUNCH_RUNBOOK.md`; do the runbook's backend/accounts/verification
-sections first. Work top to bottom.*
+*Reconciled 2026-09-17. Future submission checklist, not permission for builds,
+uploads, live data, environment changes, or distribution. Follow the current
+[launch runbook](LAUNCH_RUNBOOK.md) and [Slice 6 readiness](SLICE_6_READINESS.md).*
 
-## Status at a glance (updated 2026-08-30)
+## Current readiness
 
-**Satisfied by the codebase** (verify on-device, but no code work left):
+**NO-GO.** Slices 1–5 passed local source/component review; the latest review
+records 34 suites / 564 tests, typecheck/diff pass and lint 0 errors / 24 warnings.
+V9–V11 are unapplied drafts. Four SQL suites, concurrency, rendered UI, installed
+native picker and exact-build browser/device verification remain open. TestFlight
+build 11 and V6–V8 live are owner-reported history, not independently checked here.
+
+Apply missing V9 → V10 → V11 in order only after local acceptance and separate
+authorization, before dependent-client distribution. V10 clears legacy pins,
+defaults consent off, retains city, and rejects entire old-client saves that
+include coordinates. V11 backfills/reserves message IDs under write-blocking
+locks; default UUID clients remain supported. Do not replay earlier grants,
+restore legacy coordinates, or prune retry identities. Details and prerequisites
+are in the readiness report. No native binary is verified to include picker 9.1.0.
+
+The pricing, privacy/rating answers, screenshot sizes, and submission copy below
+are retained planning drafts. The owner must verify current platform requirements
+and actual deployed behavior before submission; they were not verified in Slice 6.
+
+## Historical code inventory (2026-08-30; runtime acceptance still required)
+
+**Implemented in source at that time** (not a completed compliance/device gate):
 
 - ✅ Account deletion in-app (Me tab → `delete_own_account()` RPC with
   `supabase/functions/delete-account` Edge Function fallback) — guideline 5.1.1(v)
@@ -26,12 +45,14 @@ sections first. Work top to bottom.*
 **Still open — human/account tasks** (nothing in-repo can close these):
 
 - ⬜ Apple Developer Program membership + pending agreements accepted (§1)
-- ⬜ `eas init` → `extra.eas.projectId` committed into `app.config.ts` (§2)
+- ⬜ Verify the existing `extra.eas.projectId` in `app.config.ts` against the
+  intended account; do not initialize again based on this checklist (§2)
 - ⬜ EAS env vars/secrets set; Mapbox `pk.*`/`sk.*` tokens created (§2, §4)
 - ⬜ Privacy nutrition labels questionnaire (§3)
 - ⬜ Age rating questionnaire (§3)
 - ⬜ Live support mailbox + privacy-policy URL confirmed reachable (§3)
-- ⬜ Supabase migrations through v4 applied, Realtime configured, and Edge
+- ⬜ Supabase migration inventory verified, V9 → V10 → V11 applied after
+  separate authorization/local QA, Realtime configured, and Edge
   Functions/webhooks deployed (§5 + runbook §A)
 - ⬜ Demo chapter + demo account seeded, reviewer notes written (§6)
 - ⬜ Screenshots from the seeded demo chapter (§3)
@@ -49,11 +70,15 @@ sections first. Work top to bottom.*
       this gates everything; the SQL in `supabase/migrations/` must be applied
       before a build is reviewable).
 
-## 2. EAS project init
+## 2. Existing EAS project and candidate compatibility
 
-- [ ] Run `eas login`, then `eas init` from the repo root. This creates the EAS
-      project and writes `extra.eas.projectId` into `app.config.ts` — commit
-      that change.
+- [ ] `app.config.ts` already has an EAS project ID. Separately authorized
+      operator verifies account/project access and existing configuration;
+      do not rerun `eas init` or replace the project as a setup shortcut.
+- [ ] Verify the candidate binary contains `@react-native-community/datetimepicker`
+      9.1.0. Installed packages/JavaScript updates and historical build 11 do
+      not establish native-module compatibility. Execute partial date/time,
+      optional-end clear, DST/timezone and actual accessibility/device checks.
 - [ ] Set EAS **environment variables** (Project → Environment variables, or
       `eas env:create`) for all build profiles:
       - `EXPO_PUBLIC_SUPABASE_URL` — plain text (public).
@@ -141,8 +166,8 @@ required and exercised:
 - [ ] Let EAS configure push credentials during the first production build
       (APNs key + aps-environment entitlement) — accept when prompted, or run
       `eas credentials` to set it up explicitly.
-- [ ] Backend side must be live before submission: migrations through
-      `app-v4-notifications.sql` applied, `send-push` deployed with
+- [ ] Backend side must be independently verified before submission: reviewed
+      migration sequence through V11, V8-compatible `send-push` deployed with
       `WEBHOOK_SECRET`, Database Webhooks created — see
       `docs/LAUNCH_RUNBOOK.md` §A.
 - [ ] Verify on a **physical device** (runbook §C3) — simulators cannot
@@ -152,10 +177,11 @@ required and exercised:
 
 App Review must be able to reach every feature without an invite:
 
-- [ ] Seed a **demo chapter** in the production Supabase project ("App Review
-      Demo Chapter") with a few member profiles, an alumni member with map
-      coordinates, active channels with messages, one open mentorship thread,
-      and at least one job posting.
+- [ ] After separate live-data authorization, prepare a **demo chapter**
+      ("App Review Demo Chapter") with synthetic profiles, a verified alumni
+      designation, active channels/messages, an accepted mentorship thread,
+      and a real demonstration job/event. Exercise explicit map opt-in and Save
+      using the updated client; do not seed coordinates or infer consent.
 - [ ] Create a **demo account** (e.g., `appreview@greekties.app`) that is an
       approved member of the demo chapter, and put its email + password in the
       App Review Information section.
@@ -170,10 +196,20 @@ App Review must be able to reach every feature without an invite:
       the notification inbox → delete account (test on a *throwaway* clone
       account, not the demo account itself).
 
-## 7. Universal links (TODO — invite virality, post-V1)
+## 7. Installation, invitation, and Universal Links
 
-Invite links currently only work via the `greekties://` custom scheme, which
-does nothing if the app isn't installed:
+Current source generates HTTPS chapter links under the `WEB_BASE_URL` in
+`lib/links.ts` and accepts the `greekties://join/<code>` scheme and raw codes.
+Deployed HTTPS routing and OS handoff are unverified here. `app.config.ts` has
+no iOS associated domains. Do not claim automatic Universal Link opening or
+transfer of browser invitation state through installation.
+
+- [ ] Test the separate TestFlight install link and chapter invitation on the
+      exact candidate, then reopen the original invite or paste its code after
+      installing. Cover email confirmation, pending approval, and alumni
+      designation using the [steward runbook](STEWARD_DISTRIBUTION_RUNBOOK.md).
+
+Any future Universal Links implementation is separately scoped:
 
 - [ ] Acquire/confirm the `greekties.app` domain.
 - [ ] Add `associatedDomains: ['applinks:greekties.app']` to `ios` in
@@ -182,15 +218,19 @@ does nothing if the app isn't installed:
 - [ ] Web landing page for `/join/<code>` that deep-links into the app or
       falls back to App Store + instructions (the growth loop for people
       without the app).
-- Not a submission blocker — invite links can be shared as codes for V1.
+- The manual paste-code path can support the pilot once verified on the candidate;
+  install/join recovery remains a release gate regardless of future Universal Links work.
 
 ## 8. Final pre-submission sweep
 
-- [ ] `supabase/migrations/` applied to prod through v4 (invites, moderation,
-      deletion RPC, avatars bucket, chapter creation, events, device tokens,
-      reactions, notifications, channel-message delete — run order in
-      `docs/LAUNCH_RUNBOOK.md` §A1) — the compliance features must actually
-      work in the build App Review sees.
+- [ ] All four SQL suites plus concurrent checks pass on a confirmed disposable
+      local database with authoritative schema. Save distinct results for each.
+- [ ] Separately authorized operator verifies remote migration inventory and
+      V9 → V10 → V11 before candidate-client distribution. Preserve V10 consent
+      and V11 retry identities; run order/compatibility: launch runbook §A1.
+- [ ] Rendered browser/device journeys, native picker, small screens, enlarged
+      text, keyboard/focus, VoiceOver and all state/recovery checks pass on the
+      exact candidate. Local Jest success is not evidence for this checkbox.
 - [ ] Run through the demo-account flow (Section 6) on the exact build being
       submitted, on TestFlight.
 - [ ] Legal placeholders resolved: governing-law sections in

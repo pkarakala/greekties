@@ -1,81 +1,150 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { supabaseConfigError } from '@/lib/supabase';
-import { consumePendingInviteCode } from '@/lib/invite';
+import { readPendingInvite } from '@/lib/invite';
+import {
+  membershipState,
+  canRenderRoute,
+  isEntryRoute,
+  isApprovedProfileForUser,
+} from '@/lib/entry';
+import MembershipScreen from './membership';
 import { usePushRegistration } from '@/lib/notifications';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { colors, spacing, typography } from '@/theme';
 
-// Top-level route segments that are reachable while logged OUT.
-const PUBLIC_SEGMENTS = ['login', 'signup', 'join', 'forgot-password', 'reset-password'];
-
-// Public segments a signed-in user may still visit: join must work signed-in
-// (it's how members join a chapter), and reset-password arrives via a recovery
-// deep link that signs the user in before they set the new password.
-const SESSION_ALLOWED_SEGMENTS = ['join', 'reset-password'];
-
-function useAuthGate() {
-  const { initializing, session } = useAuth();
-  const segments = useSegments();
-  const router = useRouter();
-  // Guards overlapping effect runs: without it a re-run while the async
-  // consume is in flight gets null and its replace('/') can stomp the
-  // replace('/join/…') from the first run.
-  const redirecting = useRef(false);
-
-  useEffect(() => {
-    if (initializing) return;
-
-    const segment = segments[0] ?? '';
-    const inPublicRoute = PUBLIC_SEGMENTS.includes(segment);
-
-    if (!session && !inPublicRoute) {
-      // Not authenticated and trying to view a protected screen → login.
-      redirecting.current = false;
-      router.replace('/login');
-    } else if (session && inPublicRoute && !SESSION_ALLOWED_SEGMENTS.includes(segment)) {
-      // Authenticated but sitting on an auth screen → resume a pending invite
-      // (stored before the email-confirmation round trip) or go home.
-      if (redirecting.current) return;
-      redirecting.current = true;
-      consumePendingInviteCode()
-        .then((code) => {
-          if (code) {
-            router.replace({ pathname: '/join/[code]', params: { code } });
-          } else {
-            router.replace('/');
-          }
-        })
-        .finally(() => {
-          redirecting.current = false;
-        });
-    }
-  }, [initializing, session, segments, router]);
+function Splash() {
+  return (
+    <View style={styles.splash}>
+      <ActivityIndicator color={colors.gold} />
+    </View>
+  );
 }
 
-function RootNavigator() {
-  const { initializing } = useAuth();
-  useAuthGate();
-  // Registers the device for push once a session exists and routes
-  // notification taps. Auth gate check: /onboarding/* is NOT a public segment,
-  // so signed-in users reach it freely (the gate only bounces signed-in users
-  // off PUBLIC_SEGMENTS); signed-out users are correctly sent to login.
-  usePushRegistration();
-
-  if (initializing) {
+// Initial resolution is fail-closed. For a previously approved account only,
+// hide its subtree during revalidation without unmounting stateful forms/tabs.
+export function ScreenAccess({ name, children }: { name: string; children: ReactNode }) {
+  const auth = useAuth();
+  const state = membershipState(
+    auth.initializing,
+    !!auth.session,
+    auth.profileState,
+    auth.profile,
+    auth.authError,
+  );
+  if (auth.initializing && !isEntryRoute(name)) return <Splash />;
+  if (
+    state === 'approved' &&
+    !isEntryRoute(name) &&
+    !isApprovedProfileForUser(auth.profile, auth.session?.user.id)
+  )
+    return <Splash />;
+  const retaining =
+    !auth.authError &&
+    isApprovedProfileForUser(auth.profile, auth.session?.user.id) &&
+    (state === 'loading' || state === 'error');
+  if (
+    !isEntryRoute(name) &&
+    canRenderRoute(name, 'approved') &&
+    (state === 'approved' || retaining)
+  ) {
     return (
-      <View style={styles.splash}>
-        <ActivityIndicator color={colors.gold} />
+      <View style={{ flex: 1 }}>
+        <View
+          key={`${auth.session?.user.id}:${auth.profile?.id}:${auth.profile?.chapter_id}`}
+          style={{ flex: 1, display: retaining ? 'none' : 'flex' }}
+          pointerEvents={retaining ? 'none' : 'auto'}
+          accessibilityElementsHidden={retaining}
+          importantForAccessibility={retaining ? 'no-hide-descendants' : 'auto'}
+        >
+          {children}
+        </View>
+        {retaining && <MembershipScreen />}
       </View>
     );
   }
+  if (canRenderRoute(name, state)) return <>{children}</>;
+  if (state === 'signed-out') return <Splash />;
+  return <MembershipScreen />;
+}
+
+function RootNavigator() {
+  const auth = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+  const resumedUser = useRef<string | null>(null);
+  const route = segments.join('/');
+  const state = membershipState(
+    auth.initializing,
+    !!auth.session,
+    auth.profileState,
+    auth.profile,
+    auth.authError,
+  );
+  usePushRegistration();
+
+  useEffect(() => {
+    // A failed revalidation stays in place behind the recovery screen so
+    // navigating away cannot destroy the hidden draft before a retry.
+    if (
+      auth.initializing ||
+      state === 'loading' ||
+      (state === 'error' &&
+        !auth.authError &&
+        isApprovedProfileForUser(auth.profile, auth.session?.user.id))
+    )
+      return;
+    let active = true;
+    const userId = auth.session?.user.id;
+    if (!userId) resumedUser.current = null;
+    if (isEntryRoute(route)) return;
+    if (state === 'signed-out') {
+      if (route !== 'login' && route !== 'signup') router.replace('/login');
+      return;
+    }
+    if (state === 'error') {
+      router.replace('/membership');
+      return;
+    }
+    void (async () => {
+      // Read, never consume. Cancellation makes delayed reads harmless after
+      // sign-out, a new deep link, or a password-recovery navigation.
+      if (userId && resumedUser.current !== userId) {
+        const { invite } = await readPendingInvite();
+        if (!active) return;
+        resumedUser.current = userId;
+        if (invite) {
+          router.replace({ pathname: '/join/[code]', params: { code: invite.code } });
+          return;
+        }
+      }
+      if (!active) return;
+      if (state !== 'approved' && route !== 'onboarding/create-chapter')
+        router.replace('/membership');
+      else if (route === 'login' || route === 'signup') router.replace('/');
+    })();
+    return () => {
+      active = false;
+    };
+  }, [
+    auth.initializing,
+    auth.session?.user.id,
+    auth.authError,
+    auth.profile,
+    state,
+    route,
+    router,
+  ]);
 
   return (
     <Stack
+      screenLayout={({ route: screen, children }) => (
+        <ScreenAccess name={screen.name}>{children}</ScreenAccess>
+      )}
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: colors.background },
@@ -95,8 +164,8 @@ export default function RootLayout() {
           <Text style={styles.configErrorTitle}>App not configured</Text>
           <Text style={styles.configErrorBody}>{supabaseConfigError}</Text>
           <Text style={styles.configErrorBody}>
-            Copy .env.example to .env and fill in the values, then restart the
-            dev server. See docs/SIMULATOR_SETUP.md.
+            Copy .env.example to .env and fill in the values, then restart the dev server. See
+            docs/SIMULATOR_SETUP.md.
           </Text>
         </View>
       </SafeAreaProvider>

@@ -1,12 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import type { Mock } from 'jest-mock';
-import {
-  createEvent,
-  deleteEvent,
-  eventDayKey,
-  eventDayLabel,
-  rsvp,
-} from '../../lib/events';
+import { createEvent, deleteEvent, eventDayKey, eventDayLabel, rsvp } from '../../lib/events';
 import { supabase } from '../../lib/supabase';
 
 jest.mock('../../lib/supabase', () => ({
@@ -27,14 +21,25 @@ function mockInsertResult(error: { message: string } | null) {
 }
 
 function mockUpsertResult(error: { message: string } | null) {
-  const upsert = jest.fn<() => Promise<WriteResult>>().mockResolvedValue({ error });
-  mockedFrom.mockReturnValue({ upsert });
+  const result = {
+    data: error ? null : { event_id: 'event-1', user_id: 'user-1', status: 'going' },
+    error,
+  };
+  const query: any = {};
+  query.select = jest.fn(() => query);
+  query.eq = jest.fn(() => query);
+  query.maybeSingle = jest.fn(async () => result);
+  const upsert = jest.fn(() => query);
+  mockedFrom.mockReturnValue({ upsert, select: query.select });
   return upsert;
 }
 
 function mockDeleteResult(error: { message: string } | null) {
-  const eq = jest.fn<() => Promise<WriteResult>>().mockResolvedValue({ error });
-  mockedFrom.mockReturnValue({ delete: jest.fn(() => ({ eq })) });
+  const query: any = {};
+  query.eq = jest.fn(() => query);
+  query.select = jest.fn(() => query);
+  query.maybeSingle = jest.fn(async () => ({ data: error ? null : { id: 'event-1' }, error }));
+  mockedFrom.mockReturnValue({ delete: jest.fn(() => query) });
 }
 
 describe('createEvent', () => {

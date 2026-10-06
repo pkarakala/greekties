@@ -1,15 +1,30 @@
 # Greek Ties Release Operator Checklist
 
-Use this as the step-by-step operator checklist for the remaining **non-code**
-App Store blockers. It is based on `docs/LAUNCH_RUNBOOK.md`,
-`docs/APP_STORE_CHECKLIST.md`, `docs/PUSH_NOTIFICATIONS.md`, and
-`supabase/migrations/README.md` as of 2026-08-30.
+Reconciled 2026-09-17 from the earlier 2026-08-30 operator procedure. **NO-GO
+for distribution or launch.** This is a future operator checklist, not permission
+to access production, change environments/services, build/upload/deploy, create
+live data, send invitations, commit, or push during Slice 6.
 
-Do not submit to App Review until every STOP/VERIFY point below passes.
+Read [Slice 6 readiness](docs/SLICE_6_READINESS.md) and the unsent
+[steward runbook](docs/STEWARD_DISTRIBUTION_RUNBOOK.md). Latest independent local
+review: 34 suites / 564 tests, typecheck/diff pass; lint 0 errors / 24 warnings.
+Those results do not establish SQL or device acceptance. TestFlight build 11
+and V6–V8 live are owner-reported historical state, not independently verified.
+V9–V11 are drafted/unapplied. All four SQL suites, concurrency, rendered UI,
+installed native picker, and exact-build browser/device checks remain open.
+
+No authoritative base schema or disposable local backend was confirmed. Provide
+them first, validate locally, then obtain separate remote/build/distribution
+authorization. Never repeat earlier migrations or EAS initialization based on
+old setup text. Retained metadata/pricing/platform instructions are planning
+drafts requiring owner verification before use. Do not submit until every
+STOP/VERIFY gate has actual evidence and submission is authorized.
 
 ## 0. Local Release Workstation Prep
 
-- [ ] Start from the synced repo.
+- [ ] Preserve uncommitted work; record the candidate source revision and diff.
+      The commands below are for a separately authorized release workspace, not
+      instructions to pull/install over the active Slice 6 worktree.
 
 ```bash
 cd /Users/pkarakala/Desktop/greekties
@@ -36,8 +51,9 @@ node --version
 
 Required: Node `20.19.4+`, `22.13+`, or `24.3+`.
 
-**STOP/VERIFY:** repo is clean, dependencies install, and typecheck/tests/lint
-complete. Lint may report existing warnings, but must have `0 errors`.
+**STOP/VERIFY:** candidate contents are recorded without discarding prior work,
+dependencies are reproducible, and typecheck/tests/lint complete. Lint may report
+existing warnings, but must have `0 errors`.
 
 ## 1. Accounts And Access
 
@@ -55,14 +71,19 @@ and the support inbox. Do not continue to builds if Apple agreements are pending
 
 ## 2. Supabase Migrations
 
-Project: `sdscrvoorrygesrhjeee`.
+Historical remote project: `sdscrvoorrygesrhjeee` (not accessed by Slice 6).
+First validate against a confirmed disposable local synthetic database and an
+authoritative base schema. Use [the QA sequence](docs/SLICE_6_READINESS.md),
+including auth/storage dependencies, policies, grants, triggers, and base message
+UUID keys. Never use existing app environment credentials for these tests.
 
-Dashboard path for every migration:
+Future separately authorized remote path, after inventory confirms missing migrations:
 Supabase Dashboard -> project `sdscrvoorrygesrhjeee` -> SQL Editor -> New Query
 -> paste the full file contents -> Run.
 
-Before V6/V7, run this read-only live-schema preflight in SQL Editor and save
-the result with the release evidence:
+For baseline reconstruction, before V6/V7 inspect the schema/policy inventory
+below. The historical live result is not permission to query production now;
+use the disposable database first and record its schema provenance.
 
 ```sql
 select ordinal_position, column_name, data_type, is_nullable, column_default
@@ -85,7 +106,12 @@ status values have drifted. V7 preserves unknown restrictive policies and
 deliberately aborts if one applies to authenticated profile SELECT/UPDATE;
 review that policy instead of deleting it automatically.
 
-Run these files in this exact order:
+Disposable reconstruction order after original pre-V1 base DDL follows. If the
+artifact is a later schema snapshot, inventory included migrations and apply
+only missing reviewed dependencies instead of replaying this entire list. On an
+existing remote database apply only missing reviewed migrations after separate
+approval. Do not replay V6–V8 over V9, or V6–V9 grants over V10. V10/V11 must not
+be treated as rerunnable scripts.
 
 - [ ] `supabase/migrations/app-v1-chat.sql`
 - [ ] `supabase/migrations/app-v1-jobs.sql`
@@ -103,8 +129,34 @@ Run these files in this exact order:
 - [ ] `supabase/migrations/app-v5-chat-rls-recursion.sql`
 - [ ] `supabase/migrations/app-v6-p0-authorization-invites.sql`
 - [ ] `supabase/migrations/app-v7-p0-followup.sql`
-- [ ] `supabase/tests/p0-authorization-invites.sql` (must finish successfully;
-      it rolls back all fixtures)
+- [ ] `supabase/migrations/app-v8-security-membership-blocks.sql`
+- [ ] `supabase/migrations/app-v9-pilot-reinstatement.sql`
+- [ ] Seed local synthetic legacy city/coordinates, then
+      `supabase/migrations/app-v10-explicit-map-consent.sql`; verify off/cleared
+      pins/retained city, and repeat-application refusal without losing new consent
+- [ ] Seed local legacy messages in both tables, then
+      `supabase/migrations/app-v11-message-retry-identities.sql`; verify UUID
+      primary keys, backfill, transaction rollback, protected ledger and locks
+- [ ] In that disposable database only, run with fail-on-error and save separate
+      results: `supabase/tests/p0-authorization-invites.sql`,
+      `supabase/tests/p0-membership-blocks.sql`,
+      `supabase/tests/pilot-map-consent.sql`,
+      `supabase/tests/pilot-message-retries.sql`. Rolled-back fixtures are still
+      writes; do not run these suites in production. The authorization suite
+      requires V10 despite its historical “through V9” comment.
+- [ ] Use two real local sessions: stale lookup after opt-out, same-ID competing
+      inserts, first-insert rollback, commit/lost response then delete/retry, and
+      access revocation. Verify uniqueness, no resurrection, reservation rollback,
+      actual PostgREST joins/search/counts and Realtime boundary/ordering behavior.
+
+Required rollout: V9 → V10 → V11 **before dependent-client distribution**, after
+local acceptance and separate authorization. V10 resets all legacy coordinates
+and defaults sharing off without erasing city. Older clients that include
+coordinates fail the entire profile save; coordinate client replacement/support.
+Never restore legacy coordinates as rollback. V11 backfills identities under
+write-blocking locks and records default UUIDs for older clients. Do not remove
+triggers or prune reservations while retries may exist. Local execution is not
+evidence that remote migrations were applied.
 
 If `app-v2-avatars-storage.sql` fails on storage policy ownership:
 Supabase Dashboard -> Storage -> `avatars` bucket -> Policies -> recreate the
@@ -139,6 +191,10 @@ where proname in (
   'approve_chapter_member',
   'reject_chapter_member',
   'set_chapter_member_admin_role',
+  'set_chapter_member_membership_type',
+  'reinstate_chapter_member',
+  'set_profile_map_sharing',
+  'complete_profile_map_location',
   'delete_own_account',
   'create_chapter'
 )
@@ -155,20 +211,25 @@ where relname = 'channel_messages';
 
 Expected: `f` for FULL.
 
-Post-V7 access checks (also enforced by the rolled-back SQL acceptance test):
+Post-V11 access checks in the disposable environment:
 
-- [ ] As an approved member, edit and save name, class year, role, industry,
-      city/coordinates, company, job title, LinkedIn URL, bio, mentor/hiring
-      toggles, and avatar; reload and confirm every value persisted.
-- [ ] As that member, direct updates to `status`, `chapter_id`, `user_id`, and
-      `admin_role` each fail with permission denied and leave the row unchanged.
+- [ ] As an approved member, save name, class year, professional role, industry,
+      company, job title, LinkedIn URL, bio, mentor/hiring toggles, and avatar.
+      Save optional city/map consent through the updated form/RPCs and verify
+      opt-in/off. Direct coordinate, consent and revision writes must fail.
+- [ ] As that member, direct updates to `status`, `chapter_id`, `user_id`,
+      `admin_role`, and `membership_type` each fail and leave the row unchanged.
+- [ ] Verify pending/removed/wrong-chapter boundaries, explicit authorized
+      reinstatement without restored admin rights, admin alumni designation,
+      symmetric blocks, self/peer map visibility, and old-client save behavior.
 - [ ] An ordinary-field update targeting another member changes zero rows.
 - [ ] Re-run the `pg_policies` inventory above; all unexpected RESTRICTIVE
       policies are still present and have an explicit owner/rationale.
 
-**STOP/VERIFY:** every migration ran without unresolved errors, all expected
-tables/RPCs exist, profile allowed/denied checks pass, and
-`channel_messages.relreplident = 'f'`.
+**STOP/VERIFY:** record all four local suite results and concurrent evidence,
+reset/backfill/compatibility checks, expected tables/RPCs and
+`channel_messages.relreplident = 'f'`. Then separately record authorized remote
+inventory/application. Object existence alone does not establish RLS acceptance.
 
 ## 3. Supabase Realtime
 
@@ -182,6 +243,7 @@ Add/confirm these tables:
 - [ ] `messages`
 - [ ] `mentorship_requests`
 - [ ] `message_reactions`
+- [ ] `user_blocks` (V8 publication and cross-device block refresh)
 
 Confirm the publication supports deletes for channel-message deletion:
 
@@ -280,23 +342,15 @@ token with `DOWNLOADS:READ` for native iOS build dependency download.
 
 ## 6. EAS Project And Environment
 
-From repo root:
+`app.config.ts` already contains `extra.eas.projectId`. Separately authorized
+operator verifies the intended account/project and existing environment; do not
+rerun `eas init` or replace the ID from historical setup instructions. No EAS
+commands or live credential reads occurred during Slice 6.
 
-```bash
-cd /Users/pkarakala/Desktop/greekties
-eas login
-eas init
-```
-
-`eas init` should write `extra.eas.projectId` into `app.config.ts`. Commit and
-push that generated config change:
-
-```bash
-git status --short
-git add app.config.ts
-git commit -m "chore: add EAS project id"
-git push origin main
-```
+The candidate native binary must contain picker 9.1.0 and the required native
+dependencies. A package/JavaScript update does not establish compatibility;
+owner-reported build 11 has not been verified for this implementation. Build
+or upload only after the separate authorization and prerequisites above.
 
 Set EAS environment variables for all build profiles. Required values:
 
@@ -319,7 +373,7 @@ eas env:set --name MAPBOX_DOWNLOAD_TOKEN --value "<MAPBOX_SK_DOWNLOAD_TOKEN>" --
 Repeat for any EAS environments/profiles you will build from, especially
 development/preview if used for internal validation.
 
-Create first iOS builds:
+Future authorized candidate builds (verify profile/platform configuration first):
 
 ```bash
 eas build --profile development --platform ios
@@ -337,29 +391,22 @@ pushed to GitHub, EAS env vars exist, and production build completes.
 
 ## 7. Local Simulator Smoke Test
 
-On the Xcode machine:
+Provide a compatible candidate attached to an explicitly isolated synthetic
+backend. Keep test configuration separate from existing app environment files.
+Record exact source/build, backend versions, device/OS, tester/date and evidence.
+Simulator availability alone does not prove this prerequisite. Do not start a
+configured app against an unknown or production backend to complete local QA.
 
-```bash
-cd /Users/pkarakala/Desktop/greekties
-git pull origin main
-npm ci
-cp .env.example .env
-```
-
-Fill `.env`:
-
-```bash
-EXPO_PUBLIC_SUPABASE_URL=https://sdscrvoorrygesrhjeee.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=<SUPABASE_ANON_KEY>
-EXPO_PUBLIC_MAPBOX_TOKEN=<MAPBOX_PK_TOKEN>
-MAPBOX_DOWNLOAD_TOKEN=<MAPBOX_SK_DOWNLOAD_TOKEN>
-```
-
-Run the app:
-
-```bash
-npx expo start --ios
-```
+- [ ] Complete all [Slice 6 runtime scenarios](docs/SLICE_6_READINESS.md): both
+      chapters, active/alumni installation and invite recovery, email/pending
+      approval, membership boundaries, map opt-out, chapter/mentorship retry and
+      discard, Home/Me/five tabs/admin return, RSVP/search/jobs and share blur/refocus.
+- [ ] Verify native date-first/time-first entry and partial reopening, Done/dismiss,
+      optional-end clearing to null in create/edit, required Start, DST/timezone
+      checks, and preservation of an unchanged saved instant.
+- [ ] Inspect small/large screens, enlarged text, keyboard/focus, VoiceOver,
+      Reduce Motion, actual icons, and loading/empty/error states. Mocked picker
+      tests and static fixture generation do not close rendered or installed QA.
 
 Smoke test:
 
@@ -387,7 +434,8 @@ Log every failure before continuing to TestFlight.
 
 ## 8. TestFlight Internal Build
 
-Submit production build:
+Only after separate upload/tester authorization, local QA acceptance and verified
+remote V9–V11, submit the identified candidate:
 
 ```bash
 eas submit --platform ios
@@ -430,7 +478,8 @@ push works, and `/notifications` records events.
 
 ## 9. Demo Chapter And App Review Account
 
-In production Supabase, seed an App Review demo environment.
+After separate live-data authorization, prepare a synthetic App Review demo
+environment. No live demo data was created during Slice 6.
 
 Required data:
 
@@ -438,7 +487,8 @@ Required data:
 - [ ] Demo account, suggested email `appreview@greekties.app`.
 - [ ] Demo account is an approved member of the demo chapter.
 - [ ] A few member profiles.
-- [ ] At least one alumni member with map coordinates.
+- [ ] At least one verified alumni demo member explicitly opts in and saves a
+      map location through the updated client. Never seed coordinates as consent.
 - [ ] Active channels with messages.
 - [ ] One open mentorship thread.
 - [ ] At least one job posting.
@@ -544,8 +594,10 @@ URLs are reachable in a logged-out browser.
 
 ## 11. Final Pre-Submission Gate
 
-- [ ] Supabase migrations through V7 are applied to production in order.
-- [ ] RLS acceptance tests from `supabase/migrations/README.md` passed.
+- [ ] Local authoritative-schema V9 → V10 → V11 sequence, all four SQL suites
+      and concurrent checks passed with recorded evidence.
+- [ ] Separately authorized operator verified remote inventory and applied
+      missing V9 → V10 → V11 before candidate-client distribution.
 - [ ] Per-file acceptance tests passed for:
   `app-v2-invites.sql`, `app-v2-account-deletion.sql`,
   `app-v3-chapters.sql`, and all v4 migrations.
@@ -555,6 +607,11 @@ URLs are reachable in a logged-out browser.
 - [ ] EAS production env vars/secrets are set.
 - [ ] Production iOS build is on TestFlight.
 - [ ] Full smoke test passed on the exact TestFlight build.
+- [ ] Installed native picker, small/enlarged-text/accessibility/keyboard checks,
+      and matching browser journeys passed; exact build/deployment recorded.
+- [ ] Both chapters have verified install/invite links, named stewards, a real
+      event/welcome thread, responsive mentors, support coverage, and a manual
+      funnel log. Separate pilot-distribution authorization recorded.
 - [ ] Physical-device push passed.
 - [ ] Notification inbox passed.
 - [ ] Demo account works and credentials are in App Review Information.

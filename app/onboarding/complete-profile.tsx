@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -14,9 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/lib/auth';
-import { geocodeCity } from '@/lib/geocode';
-import { updateProfile, uploadAvatar } from '@/lib/profile';
-import type { Profile } from '@/lib/types';
+import { saveProfileWithMap, uploadAvatar } from '@/lib/profile';
+import { MapConsentField } from '@/components/MapConsentField';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextField } from '@/components/TextField';
 import { Button } from '@/components/Button';
@@ -34,6 +33,18 @@ export default function CompleteProfileScreen() {
   const { session, profile, refreshProfile } = useAuth();
 
   const [city, setCity] = useState(profile?.city ?? '');
+  const [mapSharing, setMapSharing] = useState(profile?.map_sharing_enabled === true);
+  // A background refresh must not attach a stale form's consent to a newer
+  // server revision (for example, an opt-out from another session).
+  const mapRevision = useRef(profile?.map_revision);
+  const mounted = useRef(true);
+  const savingRef = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const [industry, setIndustry] = useState(profile?.industry ?? '');
   const [jobTitle, setJobTitle] = useState(profile?.job_title ?? '');
   const [openToMentor, setOpenToMentor] = useState(!!profile?.open_to_mentor);
@@ -79,41 +90,33 @@ export default function CompleteProfileScreen() {
   }
 
   async function save() {
-    if (!profile) return;
+    if (!profile || savingRef.current) return;
     setError(null);
+    savingRef.current = true;
     setSaving(true);
-
-    // Geocode the city so the alumni map can place a pin. Best-effort — a
-    // failed lookup never blocks the save (the map just won't show a pin).
-    const trimmedCity = city.trim();
-    const coordFields: Partial<Profile> = {};
-    if (!trimmedCity) {
-      coordFields.lat = null;
-      coordFields.lng = null;
-    } else if (trimmedCity !== profile.city || profile.lat == null) {
-      const coords = await geocodeCity(trimmedCity);
-      if (coords) {
-        coordFields.lat = coords.lat;
-        coordFields.lng = coords.lng;
-      }
-    }
-
-    const { error: saveError } = await updateProfile(profile.id, {
-      city: trimmedCity || null,
-      industry: industry.trim() || null,
-      job_title: jobTitle.trim() || null,
-      open_to_mentor: openToMentor,
-      is_hiring: isHiring,
-      avatar_url: avatarUrl,
-      ...coordFields,
-    });
+    const { error: saveError, revision } = await saveProfileWithMap(
+      { ...profile, map_revision: mapRevision.current },
+      {
+        industry: industry.trim() || null,
+        job_title: jobTitle.trim() || null,
+        open_to_mentor: openToMentor,
+        is_hiring: isHiring,
+        avatar_url: avatarUrl,
+      },
+      city,
+      mapSharing,
+      () => mounted.current,
+    );
+    if (revision) mapRevision.current = revision;
+    await refreshProfile();
+    savingRef.current = false;
+    if (!mounted.current) return;
     setSaving(false);
-
     if (saveError) {
-      setError('Couldn’t save your profile. Please try again.');
+      setError(saveError);
       return;
     }
-    await refreshProfile();
+    if (!city.trim()) setMapSharing(false);
     router.replace('/');
   }
 
@@ -143,7 +146,7 @@ export default function CompleteProfileScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.subtitle}>Help your brothers find you.</Text>
+          <Text style={styles.subtitle}>Help your chapter members find you.</Text>
 
           <View style={styles.avatarSection}>
             <Avatar uri={avatarUrl} name={profile.name} size="lg" />
@@ -151,17 +154,25 @@ export default function CompleteProfileScreen() {
               {uploading ? (
                 <ActivityIndicator color={colors.gold} />
               ) : (
-                <Text style={styles.changePhoto}>
-                  {avatarUrl ? 'Change photo' : 'Add a photo'}
-                </Text>
+                <Text style={styles.changePhoto}>{avatarUrl ? 'Change photo' : 'Add a photo'}</Text>
               )}
             </Pressable>
           </View>
 
-          <TextField label="City" value={city} onChangeText={setCity} placeholder="Austin, TX" />
-          <Text style={styles.fieldHint}>
-            Alumni designated by a chapter admin can appear on the map.
-          </Text>
+          <TextField
+            label="City (optional)"
+            accessibilityLabel="City (optional)"
+            value={city}
+            onChangeText={setCity}
+            editable={!saving}
+            placeholder="Austin, TX"
+          />
+          <MapConsentField
+            enabled={mapSharing}
+            onChange={setMapSharing}
+            disabled={saving}
+            available={!!profile.map_revision && typeof profile.map_sharing_enabled === 'boolean'}
+          />
           <TextField
             label="Industry"
             value={industry}
@@ -257,13 +268,6 @@ const styles = StyleSheet.create({
   },
   toggleLabel: { ...typography.h3, color: colors.textPrimary },
   toggleHint: { ...typography.bodySmall, color: colors.textSecondary },
-  // Tucks under the City field (TextField carries its own bottom margin).
-  fieldHint: {
-    ...typography.bodySmall,
-    color: colors.textTertiary,
-    marginTop: -spacing.md,
-    marginBottom: spacing.lg,
-  },
   error: { ...typography.bodySmall, color: colors.red, marginBottom: spacing.lg },
   skipWrap: { alignSelf: 'center', marginTop: spacing.lg, padding: spacing.sm },
   skip: { ...typography.bodySmall, color: colors.textSecondary, fontWeight: '600' },

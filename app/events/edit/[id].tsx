@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { EventDateInput } from '@/components/EventDateInput';
+import { localTimeZone, parseLocalDateTime, toLocalDateTimeFields } from '@/lib/time';
+import { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -20,58 +22,41 @@ import { Chip } from '@/components/Chip';
 import { colors, spacing, typography } from '@/theme';
 import type { EventCategory } from '@/lib/types';
 
-const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
-const TIME_RE = /^(\d{2}):(\d{2})$/;
-
-/**
- * Parse "YYYY-MM-DD" + "HH:MM" as LOCAL time. Number-args Date construction is
- * deliberate — string parsing ("2026-08-03T19:00") is treated as UTC or local
- * depending on the JS engine, which silently shifts event times.
- */
-function parseLocalDateTime(date: string, time: string): Date | null {
-  const dm = DATE_RE.exec(date);
-  const tm = TIME_RE.exec(time);
-  if (!dm || !tm) return null;
-
-  const [, y, mo, d] = dm;
-  const [, hh, mm] = tm;
-  const year = Number(y);
-  const month = Number(mo);
-  const day = Number(d);
-  const hours = Number(hh);
-  const minutes = Number(mm);
-  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-  if (hours > 23 || minutes > 59) return null;
-
-  const parsed = new Date(year, month - 1, day, hours, minutes);
-  // Reject rollover dates like 2026-02-31 (which Date silently turns into Mar 3).
-  if (parsed.getMonth() !== month - 1 || parsed.getDate() !== day) return null;
-  return parsed;
+export default function EventFormScreen() {
+  const { session, profile } = useAuth();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  return (
+    <EditEventForm
+      key={JSON.stringify([session?.user.id, profile?.chapter_id, profile?.status, id])}
+    />
+  );
 }
 
-/** The stored starts_at, split back into the form's local "YYYY-MM-DD" / "HH:MM". */
-function toLocalDateTimeFields(iso: string): { date: string; time: string } {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return { date: '', time: '' };
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return {
-    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
-    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
-  };
-}
-
-export default function EditEventScreen() {
+function EditEventForm() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { session, profile: me, blockedIds } = useAuth();
   const myUserId = session?.user?.id ?? null;
 
-  const { loading, event } = useEvent(id ?? null, myUserId, blockedIds);
+  const { loading, event, error: loadError, reload } = useEvent(id ?? null, myUserId, blockedIds);
 
+  const [entryZone] = useState(localTimeZone);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<EventCategory>('chapter');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [occurrence, setOccurrence] = useState<string>();
+  const [endOccurrence, setEndOccurrence] = useState<string>();
+  const busy = useRef(false);
+  const live = useRef(true);
+  useEffect(() => {
+    live.current = true;
+    return () => {
+      live.current = false;
+    };
+  }, []);
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +71,11 @@ export default function EditEventScreen() {
     setCategory(event.category);
     setDate(d);
     setTime(t);
+    if (event.ends_at) {
+      const end = toLocalDateTimeFields(event.ends_at);
+      setEndDate(end.date);
+      setEndTime(end.time);
+    }
     setLocation(event.location ?? '');
     setDescription(event.description ?? '');
     setHydrated(true);
@@ -94,26 +84,47 @@ export default function EditEventScreen() {
   const allowed = !!event && !!myUserId && (event.created_by === myUserId || isAdmin(me));
 
   async function submit() {
-    if (!event) return;
+    if (busy.current || !live.current) return;
+    if (!event || !allowed) return;
     setError(null);
+    if (localTimeZone() !== entryZone) {
+      setError(
+        'Your device timezone changed. Reopen this form before saving so the displayed times are accurate.',
+      );
+      return;
+    }
     if (!title.trim()) {
       setError('Give the event a title.');
       return;
     }
-    const startsAt = parseLocalDateTime(date.trim(), time.trim());
+    const startsAt = parseLocalDateTime(date, time, event.starts_at, occurrence);
     if (!startsAt) {
-      setError('Enter the date as YYYY-MM-DD and the time as HH:MM (24-hour).');
+      setError(
+        'Choose a valid local date and time. Times skipped by daylight saving are invalid; repeated times need an occurrence.',
+      );
       return;
     }
 
+    const endsAt =
+      endDate || endTime
+        ? parseLocalDateTime(endDate, endTime, event.ends_at, endOccurrence)
+        : null;
+    if ((endDate || endTime) && (!endsAt || +endsAt <= +startsAt)) {
+      setError('Choose a valid end time after the start, or clear both end fields.');
+      return;
+    }
+    busy.current = true;
     setSubmitting(true);
     const { error: err } = await updateEvent(event.id, {
       title: title.trim(),
       category,
       starts_at: startsAt.toISOString(),
+      ends_at: endsAt?.toISOString() ?? null,
       location: location.trim() || null,
       description: description.trim() || null,
     });
+    busy.current = false;
+    if (!live.current) return;
     setSubmitting(false);
 
     if (err) {
@@ -133,13 +144,12 @@ export default function EditEventScreen() {
         </View>
       ) : !event ? (
         <View style={styles.center}>
-          <Text style={styles.muted}>This event couldn’t be found.</Text>
+          <Text style={styles.muted}>{loadError ?? 'This event is removed or unavailable.'}</Text>
+          {!!loadError && <Button label="Retry" onPress={reload} />}
         </View>
       ) : !allowed ? (
         <View style={styles.center}>
-          <Text style={styles.muted}>
-            Only the event’s creator or a chapter admin can edit it.
-          </Text>
+          <Text style={styles.muted}>Only the event’s creator or a chapter admin can edit it.</Text>
         </View>
       ) : (
         <KeyboardAvoidingView
@@ -170,22 +180,33 @@ export default function EditEventScreen() {
               ))}
             </View>
 
-            <TextField
-              label="Date"
-              value={date}
-              onChangeText={setDate}
-              placeholder="YYYY-MM-DD"
-              autoCapitalize="none"
-              keyboardType="numbers-and-punctuation"
+            <EventDateInput
+              timeZone={entryZone}
+              label="Start"
+              date={date}
+              time={time}
+              onDate={setDate}
+              onTime={setTime}
+              occurrence={occurrence}
+              onOccurrence={setOccurrence}
+              original={event.starts_at}
             />
-            <TextField
-              label="Time"
-              value={time}
-              onChangeText={setTime}
-              placeholder="HH:MM"
-              autoCapitalize="none"
-              keyboardType="numbers-and-punctuation"
+            <EventDateInput
+              timeZone={entryZone}
+              label="End (optional)"
+              optional
+              date={endDate}
+              time={endTime}
+              onDate={setEndDate}
+              onTime={setEndTime}
+              occurrence={endOccurrence}
+              onOccurrence={setEndOccurrence}
+              original={event.ends_at}
             />
+            <Text style={styles.mutedNote}>
+              No end time? The event leaves Upcoming at its start. Share any updates in an existing
+              chat.
+            </Text>
             <TextField
               label="Location"
               value={location}
@@ -213,6 +234,7 @@ export default function EditEventScreen() {
 }
 
 const styles = StyleSheet.create({
+  mutedNote: { ...typography.bodySmall, color: colors.textSecondary, marginBottom: spacing.lg },
   safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   center: {

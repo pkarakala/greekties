@@ -5,24 +5,24 @@ export const colors = {
   surfaceElevated: '#FFFFFF', // elevated cards, modals
   surfaceHover: '#EDE5D4', // pressed/active card state
 
-  // Brand gold (deepened antique gold — legible on cream)
-  gold: '#A0761E', // primary brand — buttons, highlights, hero accents
-  goldHover: '#8A6519', // pressed gold
+  // Antique gold accent. Contrast measurements are in docs/SLICE_4_IMPLEMENTATION.md.
+  gold: '#795815', // accent text and icons; primary actions use navy
+  goldHover: '#684A10', // pressed gold
   goldSoft: 'rgba(160,118,30,0.12)', // gold tint backgrounds
 
   // Text (navy family)
   textPrimary: '#16294A', // headlines, main text — brand navy
   textSecondary: '#4E5E77', // subtitles, metadata
-  textTertiary: '#8291A6', // hints, timestamps
+  textTertiary: '#566579', // hints, timestamps
 
   // Accents (darkened for contrast on light surfaces)
-  green: '#1F8A4C', // positive stats ("+12 this month"), online status
-  red: '#C03D3D', // errors, destructive actions
-  blue: '#2E6ED9', // links, info
+  green: '#236B43', // positive stats ("+12 this month"), online status
+  red: '#AC3035', // errors, destructive actions
+  blue: '#245EB9', // links, info
 
   // Borders
   border: 'rgba(22,41,74,0.12)', // subtle card borders
-  borderStrong: 'rgba(22,41,74,0.22)', // emphasized borders
+  borderStrong: '#7B827F', // essential control boundaries
 
   // Brand primitives
   navy: '#16294A',

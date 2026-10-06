@@ -17,6 +17,8 @@ import { useChapterMembers } from '@/lib/queries';
 import { useJobs } from '@/lib/jobs';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { SegmentedControl } from '@/components/SegmentedControl';
+import { Button } from '@/components/Button';
+import { TextField } from '@/components/TextField';
 import { SearchBar } from '@/components/SearchBar';
 import { Chip } from '@/components/Chip';
 import { MemberCard } from '@/components/MemberCard';
@@ -33,6 +35,8 @@ const TABS = [
 
 export default function PeopleScreen() {
   const { profile, blockedIds } = useAuth();
+  const router = useRouter();
+  const [mentorShortcut, setMentorShortcut] = useState(0);
   // Home quick actions deep-link here: ?view=jobs opens the Jobs segment,
   // ?filter=mentors preselects the Mentors chip in the directory.
   const { view, filter } = useLocalSearchParams<{ view?: string; filter?: string }>();
@@ -41,8 +45,10 @@ export default function PeopleScreen() {
 
   useEffect(() => {
     if (view === 'jobs') setTab('jobs');
-    else if (view === 'directory') setTab('directory');
-  }, [view]);
+    else if (view === 'directory' || filter === 'mentors') setTab('directory');
+    if (filter === 'mentors' && view !== 'jobs') setMentorShortcut((value) => value + 1);
+    if (view || filter) router.setParams({ view: undefined, filter: undefined });
+  }, [view, filter, router]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -54,7 +60,7 @@ export default function PeopleScreen() {
         <DirectoryView
           chapterId={chapterId}
           blockedIds={blockedIds}
-          initialMentorsOnly={filter === 'mentors'}
+          mentorShortcut={mentorShortcut}
         />
       ) : (
         <JobsView chapterId={chapterId} blockedIds={blockedIds} />
@@ -66,43 +72,47 @@ export default function PeopleScreen() {
 function DirectoryView({
   chapterId,
   blockedIds,
-  initialMentorsOnly = false,
+  mentorShortcut = 0,
 }: {
   chapterId: string | null;
   blockedIds: ReadonlySet<string>;
-  initialMentorsOnly?: boolean;
+  mentorShortcut?: number;
 }) {
   const router = useRouter();
-  const { loading, error, members, reload, loadMore, hasMore, loadingMore } =
-    useChapterMembers(chapterId, blockedIds);
-
   const [query, setQuery] = useState('');
-  const [mentorsOnly, setMentorsOnly] = useState(initialMentorsOnly);
+  const [mentorsOnly, setMentorsOnly] = useState(mentorShortcut > 0);
   const [hiringOnly, setHiringOnly] = useState(false);
   const [industry, setIndustry] = useState<string | null>(null);
 
-  const industries = useMemo(() => {
-    const set = new Set<string>();
-    for (const m of members) if (m.industry) set.add(m.industry);
-    return [...set].sort();
-  }, [members]);
+  useEffect(() => {
+    if (mentorShortcut > 0) {
+      setMentorsOnly(true);
+      setQuery('');
+      setHiringOnly(false);
+      setIndustry(null);
+    }
+  }, [mentorShortcut]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return members.filter((m) => {
-      if (mentorsOnly && !m.open_to_mentor) return false;
-      if (hiringOnly && !m.is_hiring) return false;
-      if (industry && m.industry !== industry) return false;
-      if (q) {
-        const haystack = [m.name, m.company, m.job_title, m.city, m.role]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        if (!haystack.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [members, query, mentorsOnly, hiringOnly, industry]);
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 250);
+    return () => clearTimeout(timer);
+  }, [query]);
+  const searching = query !== debouncedQuery;
+  const { loading, error, members, reload, loadMore, hasMore, loadingMore } = useChapterMembers(
+    chapterId,
+    blockedIds,
+    { query: debouncedQuery, mentorsOnly, hiringOnly, industry },
+  );
+  const filtered = searching
+    ? []
+    : members.filter(
+        (m) =>
+          (!mentorsOnly || m.open_to_mentor) &&
+          (!hiringOnly || m.is_hiring) &&
+          (!industry || m.industry === industry.trim()),
+      );
+  const filteredQuery = !!query.trim() || mentorsOnly || hiringOnly || !!industry;
 
   return (
     <FlatList
@@ -118,7 +128,7 @@ function DirectoryView({
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
       onEndReached={() => {
-        if (hasMore && !loadingMore) void loadMore();
+        if (!searching && hasMore && !loadingMore) void loadMore();
       }}
       onEndReachedThreshold={0.4}
       ListFooterComponent={
@@ -126,6 +136,8 @@ function DirectoryView({
           <View style={styles.footerLoading}>
             <ActivityIndicator color={colors.gold} />
           </View>
+        ) : hasMore && !searching ? (
+          <Button label="Load more members" variant="secondary" onPress={loadMore} />
         ) : null
       }
       refreshControl={
@@ -143,30 +155,45 @@ function DirectoryView({
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.chips}
           >
-            <Chip label="Mentors" selected={mentorsOnly} onPress={() => setMentorsOnly((v) => !v)} />
+            <Chip
+              label="Mentors"
+              selected={mentorsOnly}
+              onPress={() => setMentorsOnly((v) => !v)}
+            />
             <Chip label="Hiring" selected={hiringOnly} onPress={() => setHiringOnly((v) => !v)} />
-            {industries.map((ind) => (
-              <Chip
-                key={ind}
-                label={ind}
-                selected={industry === ind}
-                onPress={() => setIndustry((cur) => (cur === ind ? null : ind))}
-              />
-            ))}
           </ScrollView>
-          {!loading && (
+          <TextField
+            label="Industry (exact name, optional)"
+            value={industry ?? ''}
+            onChangeText={(value) => setIndustry(value || null)}
+            placeholder="e.g. Technology"
+          />
+          {!!error && (
+            <View>
+              <Text accessibilityRole="alert" style={styles.emptyText}>
+                {error}
+              </Text>
+              <Button label="Retry search" onPress={reload} />
+            </View>
+          )}
+          {!loading && !searching && !error && (
             <Text style={styles.count}>
-              {filtered.length} {filtered.length === 1 ? 'member' : 'members'}
+              {filtered.length} {filtered.length === 1 ? 'member' : 'members'} loaded
+              {hasMore ? ' · More available' : ''}
             </Text>
           )}
         </View>
       }
       ListEmptyComponent={
-        loading ? null : (
+        loading || searching ? (
+          <ActivityIndicator color={colors.gold} />
+        ) : error ? null : (
           <View style={styles.empty}>
             <Ionicons name="search-outline" size={40} color={colors.textTertiary} />
             <Text style={styles.emptyText}>
-              {error ? `Couldn’t load members: ${error}` : 'No members match your filters.'}
+              {filteredQuery
+                ? 'No members match your filters.'
+                : 'No approved members are visible yet.'}
             </Text>
           </View>
         )

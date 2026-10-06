@@ -173,7 +173,8 @@ gates.
   checkout, `npm ci`, typecheck, 34 Jest suites / 564 tests, lint (0 errors / 24
   warnings), and iOS/web Expo bundle exports passed. Exports used placeholder
   public environment values; they are not signed native builds or deployment
-  evidence.
+  evidence. The post-merge Pages workflow built and uploaded the web artifact,
+  but its deploy job failed with GitHub 404 because Pages is not enabled.
 - **Local SQL:** A local Docker container named `greekties-qa-standard` exposed
   only `127.0.0.1:55433`, used the `greekties_qa` database on PostgreSQL 17.6,
   and had V9/V10/V11 schema markers. All four SQL suites passed with
@@ -192,9 +193,13 @@ gates.
   `channel_messages`, 34 `messages`, and 206 `profiles`; the message tables
   occupy about 80 KB combined. This indicates a small V11 backfill, but does
   not measure lock waits or guarantee migration duration. No production schema
-  or rows were changed. The live V8 membership-designation RPC also lacks
-  actor/target row locks; a manager-versus-owner race was reproduced locally.
-  The correction is in draft PR #7 and is not live until revised V9 is applied.
+  or rows were changed. The live V8 membership-designation and V6 approval,
+  rejection, and admin-role RPCs lacked actor/target row locks. Two
+  manager-versus-owner races were reproduced locally. Revised V9 serializes
+  authorization checks across all four RPCs; local acceptance suites passed,
+  and the membership and rejection race repros now reject the stale manager
+  action. The fix remains pending in draft PR #7 and is not live until V9 is
+  reviewed and applied.
 - **Web distribution:** GitHub reports Pages disabled and no repository Actions
   variables; `https://pkarakala.github.io/greekties/` returned HTTP 404.
 - **EAS:** Build 12 completed from source commit `4e30050` but is not submitted;
@@ -213,8 +218,8 @@ gates.
 
 ### Still Open / Owner Actions
 
-- Review PR #5 and PR #7. Their passing checks do not clear the remaining
-  audit findings or deploy the V9 authorization-race fix.
+- Review PRs #5–#7. Passing checks do not clear the remaining audit findings or
+  deploy the V9 authorization-race fix.
 - Enable/configure GitHub Pages and set the three public build variables used by
   the workflow (`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`,
   `EXPO_PUBLIC_MAPBOX_TOKEN`) before relying on invite web links.

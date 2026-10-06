@@ -3,6 +3,63 @@
 -- Shared invites cannot undo removal, including for older clients.
 begin;
 
+-- Recheck membership authority under row locks. Without these locks, a
+-- manager's stale target read could race an owner's promotion/demotion and
+-- still update the target after its admin role changed.
+create or replace function public.set_chapter_member_membership_type(
+  target_profile_id uuid,
+  target_membership_type text
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  actor public.profiles%rowtype;
+  target public.profiles%rowtype;
+begin
+  if target_membership_type is null
+     or target_membership_type not in ('active', 'alumni') then
+    raise exception 'The requested membership type is not allowed.';
+  end if;
+
+  select p.* into actor
+  from public.profiles p
+  where p.user_id = auth.uid()
+    and p.status = 'approved'
+    and p.admin_role in ('owner', 'manager')
+  limit 1
+  for share;
+
+  select p.* into target
+  from public.profiles p
+  where p.id = target_profile_id
+  for update;
+
+  if actor.id is null
+     or target.id is null
+     or actor.chapter_id is distinct from target.chapter_id then
+    raise exception 'Only approved chapter admins can change membership type.';
+  end if;
+  if target.status is distinct from 'approved' then
+    raise exception 'Only approved members can receive a membership designation.';
+  end if;
+  if actor.admin_role = 'manager' and target.admin_role is not null then
+    raise exception 'Managers cannot change another chapter admin''s membership type.';
+  end if;
+
+  update public.profiles
+  set membership_type = target_membership_type
+  where id = target_profile_id;
+end;
+$$;
+
+revoke all on function public.set_chapter_member_membership_type(uuid, text)
+  from public, anon, authenticated;
+grant execute on function public.set_chapter_member_membership_type(uuid, text)
+  to authenticated, service_role;
+
 create or replace function public.join_chapter(invite_code text)
 returns uuid
 language plpgsql

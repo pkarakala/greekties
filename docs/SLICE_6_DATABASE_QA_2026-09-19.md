@@ -80,3 +80,22 @@ defect.
   applying only missing V9, V10, and V11 in order.
 
 Release remains **NO-GO** until these gates are closed.
+
+## Membership designation race follow-up — 2026-10-06
+
+An independent review found a concurrent role-change race in the V8
+`set_chapter_member_membership_type` RPC. On the disposable PostgreSQL 17.6
+database, an owner transaction promoted a regular member to manager while a
+manager call was in flight. The pre-fix RPC had already read the target as a
+regular member; after waiting for the owner transaction, it still changed the
+new manager's designation (`manager:alumni`).
+
+The un-applied V9 migration now replaces that RPC with a row lock on the actor
+and `FOR UPDATE` on the target before checking authorization. Repeating the
+same overlap made the manager call wait, re-read the promoted role, and reject;
+the target remained `manager:active`.
+
+After applying the revised V9 to the disposable database, all four SQL
+acceptance suites passed again with `ON_ERROR_STOP=1` and rolled back their
+fixtures. The synthetic race fixtures were explicitly deleted and verified at
+zero; the QA container was stopped. Production was not changed.

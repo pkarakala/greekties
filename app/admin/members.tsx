@@ -1,5 +1,8 @@
+import { AdminAccess } from '@/components/AdminAccess';
+import { AccountReadStatus } from '@/components/AccountReadStatus';
 import { useMemo, useState } from 'react';
 import {
+  useWindowDimensions,
   View,
   Text,
   StyleSheet,
@@ -26,7 +29,8 @@ import { Avatar } from '@/components/Avatar';
 import { Badge } from '@/components/Badge';
 import { SearchBar } from '@/components/SearchBar';
 import { Button } from '@/components/Button';
-import { colors, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/account';
 import type { AdminRole, MembershipType, Profile } from '@/lib/types';
 
 function roleLine(p: Profile): string {
@@ -52,7 +56,16 @@ function canChangeMembership(me: Profile | null, target: Pick<Profile, 'admin_ro
 }
 
 export default function MembersScreen() {
+  return (
+    <AdminAccess>
+      <MembersScreenContent />
+    </AdminAccess>
+  );
+}
+
+function MembersScreenContent() {
   const router = useRouter();
+  const { width, fontScale } = useWindowDimensions();
   const { profile } = useAuth();
   const [status, setStatus] = useState<'approved' | 'rejected'>('approved');
   const isAdmin = profile?.status === 'approved' && !!profile.admin_role;
@@ -201,10 +214,11 @@ export default function MembersScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="Members" onBack={() => router.back()} />
+      <ScreenHeader tone="home" title="Members" onBack={() => router.back()} />
 
       <View style={styles.searchWrap}>
         <Button
+          tone="home"
           label={
             status === 'approved' ? 'View removed / declined members' : 'View approved members'
           }
@@ -218,7 +232,12 @@ export default function MembersScreen() {
             setMembershipOverrides({});
           }}
         />
-        <SearchBar value={query} onChangeText={setQuery} placeholder="Search name or company" />
+        <SearchBar
+          tone="home"
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search name or company"
+        />
         {reinstating && (
           <View>
             <Text style={styles.emptyText}>
@@ -227,6 +246,7 @@ export default function MembersScreen() {
             </Text>
             {!!reinstateError && <Text accessibilityRole="alert">{reinstateError}</Text>}
             <Button
+              tone="home"
               label="Confirm reinstatement"
               loading={busyId === reinstating.id}
               onPress={async () => {
@@ -241,6 +261,7 @@ export default function MembersScreen() {
               }}
             />
             <Button
+              tone="home"
               label="Cancel"
               variant="ghost"
               disabled={!!busyId}
@@ -251,6 +272,14 @@ export default function MembersScreen() {
       </View>
 
       <FlatList
+        ListHeaderComponent={
+          <AccountReadStatus
+            loading={loading}
+            error={error}
+            reload={reload}
+            label="chapter members"
+          />
+        }
         data={filtered}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
@@ -265,23 +294,23 @@ export default function MembersScreen() {
             canModify(profile, { admin_role: role }) ||
             canChangeMembership(profile, { admin_role: role });
           return (
-            <Card style={styles.row}>
-              <Avatar uri={item.avatar_url} name={item.name} size="sm" />
+            <Card
+              tone="home"
+              style={[styles.row, (width < 350 || fontScale >= 1.4) && styles.stacked]}
+            >
+              <Avatar tone="home" uri={item.avatar_url} name={item.name} size="sm" />
               <View style={styles.rowBody}>
                 <View style={styles.rowTop}>
-                  <Text style={styles.name} numberOfLines={1}>
-                    {item.name ?? 'Member'}
-                  </Text>
-                  {role === 'owner' && <Badge label="Owner" tone="gold" />}
-                  {role === 'manager' && <Badge label="Manager" tone="neutral" />}
-                  {membershipType === 'alumni' && <Badge label="Alumni" />}
+                  <Text style={styles.name}>{item.name ?? 'Member'}</Text>
+                  {role === 'owner' && <Badge appearance="home" label="Owner" tone="gold" />}
+                  {role === 'manager' && <Badge appearance="home" label="Manager" tone="neutral" />}
+                  {membershipType === 'alumni' && <Badge appearance="home" label="Alumni" />}
                 </View>
-                <Text style={styles.sub} numberOfLines={1}>
-                  {roleLine(item)}
-                </Text>
+                <Text style={styles.sub}>{roleLine(item)}</Text>
               </View>
               {status === 'rejected' ? (
                 <Button
+                  tone="home"
                   label="Reinstate"
                   fullWidth={false}
                   disabled={!!busyId}
@@ -293,6 +322,8 @@ export default function MembersScreen() {
               ) : (
                 showActions && (
                   <Pressable
+                    accessibilityRole="button"
+                    style={styles.iconControl}
                     onPress={() => openActions(item)}
                     hitSlop={12}
                     disabled={busyId === item.id}
@@ -315,7 +346,7 @@ export default function MembersScreen() {
               <Ionicons name="people-outline" size={40} color={colors.textTertiary} />
               <Text style={styles.emptyText}>
                 {error
-                  ? `Couldn’t load members: ${error}`
+                  ? 'Chapter members are unavailable.'
                   : query
                     ? 'No members match your search.'
                     : status === 'rejected'
@@ -332,11 +363,13 @@ export default function MembersScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  searchWrap: { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
-  list: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.md },
+  searchWrap: { paddingHorizontal: 20, paddingBottom: spacing.sm },
+  list: { padding: 20, paddingTop: spacing.sm, gap: spacing.md },
+  stacked: { flexDirection: 'column', alignItems: 'flex-start' },
+  iconControl: { minHeight: 48, minWidth: 48, justifyContent: 'center', alignItems: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  rowBody: { flex: 1, gap: 2 },
-  rowTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  rowBody: { minWidth: 0, flexShrink: 1, gap: 2 },
+  rowTop: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
   name: { ...typography.h3, color: colors.textPrimary, flexShrink: 1 },
   sub: { ...typography.bodySmall, color: colors.textSecondary },
   empty: { alignItems: 'center', gap: spacing.md, paddingTop: spacing.xxxl },
@@ -344,6 +377,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textSecondary,
     textAlign: 'center',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: 20,
   },
 });

@@ -16,15 +16,20 @@ import { isAdmin } from '@/lib/types';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextField } from '@/components/TextField';
 import { Button } from '@/components/Button';
-import { colors, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/network';
 
 export default function EditJobScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  function returnFromForm() {
+    if (router.canGoBack()) router.back();
+    else router.replace({ pathname: '/jobs/[id]', params: { id } });
+  }
   const { session, profile: me, blockedIds } = useAuth();
   const myUserId = session?.user?.id ?? null;
 
-  const { loading, job } = useJob(id ?? null, blockedIds);
+  const { loading, error: loadError, job, reload } = useJob(id ?? null, blockedIds);
 
   const [title, setTitle] = useState('');
   const [company, setCompany] = useState('');
@@ -73,12 +78,12 @@ export default function EditJobScreen() {
       setError(err);
       return;
     }
-    router.back();
+    returnFromForm();
   }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="Edit posting" onBack={() => router.back()} />
+      <ScreenHeader tone="home" title="Edit posting" onBack={returnFromForm} />
 
       {loading ? (
         <View style={styles.center}>
@@ -86,7 +91,12 @@ export default function EditJobScreen() {
         </View>
       ) : !job ? (
         <View style={styles.center}>
-          <Text style={styles.muted}>This posting couldn’t be found.</Text>
+          <Text style={styles.muted}>
+            {loadError
+              ? 'Couldn’t load this posting. Please retry.'
+              : 'This posting couldn’t be found.'}
+          </Text>
+          {!!loadError && <Button tone="home" label="Retry posting" onPress={reload} />}
         </View>
       ) : !allowed ? (
         <View style={styles.center}>
@@ -104,31 +114,45 @@ export default function EditJobScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
+            <Text style={styles.context}>An opportunity for your chapter.</Text>
+            {!!loadError && (
+              <>
+                <Text accessibilityRole="alert" style={styles.error}>
+                  Couldn’t refresh this posting. Your draft is retained.
+                </Text>
+                <Button tone="home" label="Retry posting" variant="secondary" onPress={reload} />
+              </>
+            )}
             <TextField
+              tone="home"
               label="Title"
               value={title}
               onChangeText={setTitle}
               placeholder="Software Engineer"
             />
             <TextField
+              tone="home"
               label="Company"
               value={company}
               onChangeText={setCompany}
               placeholder="Acme Inc."
             />
             <TextField
+              tone="home"
               label="Location"
               value={location}
               onChangeText={setLocation}
               placeholder="San Francisco, CA"
             />
             <TextField
+              tone="home"
               label="Industry"
               value={industry}
               onChangeText={setIndustry}
               placeholder="Technology"
             />
             <TextField
+              tone="home"
               label="Description"
               value={description}
               onChangeText={setDescription}
@@ -138,6 +162,7 @@ export default function EditJobScreen() {
               style={styles.multiline}
             />
             <TextField
+              tone="home"
               label="Apply link"
               value={applyUrl}
               onChangeText={setApplyUrl}
@@ -146,9 +171,13 @@ export default function EditJobScreen() {
               keyboardType="url"
             />
 
-            {!!error && <Text style={styles.error}>{error}</Text>}
+            {!!error && (
+              <Text accessibilityRole="alert" style={styles.error}>
+                {error}
+              </Text>
+            )}
 
-            <Button label="Save changes" onPress={submit} loading={submitting} />
+            <Button tone="home" label="Save changes" onPress={submit} loading={submitting} />
           </ScrollView>
         </KeyboardAvoidingView>
       )}
@@ -157,16 +186,25 @@ export default function EditJobScreen() {
 }
 
 const styles = StyleSheet.create({
+  context: {
+    ...typography.body,
+    color: colors.navy,
+    backgroundColor: colors.goldLight,
+    borderTopWidth: 6,
+    borderTopColor: colors.gold,
+    padding: 16,
+    marginBottom: 20,
+  },
   safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: 20,
   },
   muted: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  scroll: { padding: spacing.xl, paddingBottom: spacing.xxxl },
-  multiline: { height: 110, textAlignVertical: 'top' },
+  scroll: { padding: 20, paddingBottom: spacing.xxxl },
+  multiline: { minHeight: 120, textAlignVertical: 'top' },
   error: { ...typography.bodySmall, color: colors.red, marginBottom: spacing.lg },
 });

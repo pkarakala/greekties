@@ -1,9 +1,23 @@
 import { ExpoConfig } from 'expo/config';
+import { ownerQaTargetError } from './config/owner-qa-policy.cjs';
+import ownerQaRelease from './config/owner-qa-release.json';
+
+const ownerQa = process.env.EXPO_PUBLIC_BUILD_VARIANT === 'owner-qa';
+if (process.env.EAS_BUILD_PROFILE === 'owner-qa' && !ownerQa)
+  throw new Error('Owner QA requires EXPO_PUBLIC_BUILD_VARIANT=owner-qa.');
+if (ownerQa) {
+  const error = ownerQaTargetError(
+    process.env.EXPO_PUBLIC_SUPABASE_URL,
+    ownerQaRelease.supabaseProjectRef,
+  );
+  if (error) throw new Error(error);
+}
 
 // App config as TypeScript so native-build secrets (the Mapbox download token)
 // come from the environment instead of being committed. Set
-// MAPBOX_DOWNLOAD_TOKEN locally (and as an EAS secret) before native builds —
-// an empty token means `pod install` cannot fetch the Mapbox SDK.
+// MAPBOX_DOWNLOAD_TOKEN is retained for existing non-QA build profiles. The
+// pinned rnmapbox 10.3.1 supports tokenless downloads; QA keeps credentials
+// out of its public manifest and uses CocoaPods environment values if needed.
 //
 // `newArchEnabled` and top-level `splash` were dropped from the SDK 56
 // ExpoConfig *type* (New Architecture is always on; splash migrated toward the
@@ -19,7 +33,7 @@ type ConfigWithLegacyKeys = ExpoConfig & {
 };
 
 const config: ConfigWithLegacyKeys = {
-  name: 'Greek Ties',
+  name: ownerQa ? 'Greek Ties QA' : 'Greek Ties',
   slug: 'greek-ties',
   version: '1.0.0',
   orientation: 'portrait',
@@ -35,6 +49,9 @@ const config: ConfigWithLegacyKeys = {
   ios: {
     // Never tested on iPad — scope the App Store submission to iPhone.
     supportsTablet: false,
+    ...(ownerQa
+      ? { buildNumber: process.env.OWNER_QA_BUILD_NUMBER, appleTeamId: ownerQaRelease.appleTeamId }
+      : {}),
     bundleIdentifier: 'com.greekties.app',
     infoPlist: {
       NSLocationWhenInUseUsageDescription:
@@ -53,11 +70,11 @@ const config: ConfigWithLegacyKeys = {
     },
   },
   extra: {
-    eas: {
-      projectId: '8b2653aa-f1c4-4f07-8a50-00f26112b58a',
-    },
+    eas: ownerQa ? {} : { projectId: '8b2653aa-f1c4-4f07-8a50-00f26112b58a' },
   },
   plugins: [
+    // SDK 57's supported scene lifecycle is required for Xcode 27 / iOS 27 launch.
+    ['expo-build-properties', { ios: { enableSceneSupport: true } }],
     'expo-router',
     'expo-font',
     'expo-image',
@@ -66,7 +83,9 @@ const config: ConfigWithLegacyKeys = {
     [
       '@rnmapbox/maps',
       {
-        RNMapboxMapsDownloadToken: process.env.MAPBOX_DOWNLOAD_TOKEN ?? '',
+        // Keep build credentials out of the QA public Expo manifest. CocoaPods
+        // reads RNMAPBOX_MAPS_DOWNLOAD_TOKEN directly from the build environment.
+        ...(ownerQa ? {} : { RNMapboxMapsDownloadToken: process.env.MAPBOX_DOWNLOAD_TOKEN ?? '' }),
       },
     ],
   ],

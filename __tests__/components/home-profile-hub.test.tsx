@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Linking, Platform } from 'react-native';
 import { useAuth } from '@/lib/auth';
+import * as qaBuild from '@/lib/qa-build';
 import { supabase } from '@/lib/supabase';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useChannels } from '@/lib/chat';
@@ -14,8 +15,20 @@ import People from '@/app/(tabs)/people';
 import TabsLayout from '@/app/(tabs)/_layout';
 import { deferred, homeDb, type Result } from '../helpers/home-db';
 
+jest.mock('@/lib/qa-build', () => ({
+  __esModule: true,
+  isOwnerQaBuild: false,
+  ownerQaDeletionNotice: 'Account deletion is unavailable in this owner-only QA build.',
+}));
 jest.mock('@/lib/auth', () => ({ useAuth: jest.fn() }));
-jest.mock('@/lib/supabase', () => ({ supabase: { from: jest.fn(), rpc: jest.fn() } }));
+jest.mock('@/lib/supabase', () => ({
+  supabase: {
+    from: jest.fn(),
+    rpc: jest.fn(),
+    storage: { from: jest.fn() },
+    functions: { invoke: jest.fn() },
+  },
+}));
 jest.mock('@/lib/chat', () => ({ useChannels: jest.fn() }));
 jest.mock('@/lib/queries', () => ({ useChapterMembers: jest.fn() }));
 jest.mock('@/lib/jobs', () => ({ useJobs: jest.fn() }));
@@ -71,7 +84,13 @@ beforeEach(() => {
   jest.clearAllMocks();
   db = homeDb();
   jest.mocked(supabase.from).mockImplementation(db.from);
-  (jest.mocked(supabase.rpc) as any).mockResolvedValue({ error: null });
+  (jest.mocked(supabase.functions.invoke) as any).mockResolvedValue({
+    data: { success: true },
+    error: null,
+  });
+  jest
+    .mocked(supabase.storage.from)
+    .mockReturnValue({ remove: jest.fn(async () => ({ data: [], error: null })) } as any);
   auth = {
     session: { user: { id: 'user-a' } },
     profile: {
@@ -117,13 +136,52 @@ beforeEach(() => {
 });
 
 describe('Home with actual read hooks and synthetic query service', () => {
+  it('shows full membership counts and opens the matching directory filter', async () => {
+    db.rows.profiles = [
+      {
+        user_id: 'current',
+        chapter_id: 'chapter-a',
+        status: 'approved',
+        membership_type: 'active',
+        role: 'Alumni',
+      },
+      {
+        user_id: 'alum',
+        chapter_id: 'chapter-a',
+        status: 'approved',
+        membership_type: 'alumni',
+        role: 'Student',
+      },
+    ];
+    const ui = render(<Home />);
+    expect(ui.getByText('Loading membership counts…')).toBeTruthy();
+    for (const [label, membership] of [
+      ['Current members', 'active'],
+      ['Alumni', 'alumni'],
+    ]) {
+      fireEvent.press(await ui.findByRole('button', { name: `${label}, 1. Open directory` }));
+      expect(push).toHaveBeenLastCalledWith({
+        pathname: '/people',
+        params: { view: 'directory', membership },
+      });
+    }
+  });
+  it('does not present a failed count as zero and recovers to a genuine empty count', async () => {
+    db.queued.profiles = [Promise.resolve({ data: null, error: { message: 'offline' } })];
+    const ui = render(<Home />);
+    await ui.findByText('Retry membership counts');
+    expect(ui.queryByRole('button', { name: 'Current members, 0. Open directory' })).toBeNull();
+    expect(ui.queryByText('0')).toBeNull();
+    fireEvent.press(ui.getByText('Retry membership counts'));
+    await ui.findByRole('button', { name: 'Current members, 0. Open directory' });
+  });
   it.each([
     ['chapter-a', 'Sigma Phi Epsilon · California Gamma · UCSB'],
     ['chapter-b', 'Pi Beta Phi · California Zeta · UCSB'],
   ])('keeps full chapter identity for %s', async (id, label) => {
     auth.profile.chapter_id = id;
     const ui = render(<Home />);
-    expect(await ui.findByText(label)).toBeTruthy();
+    expect(await ui.findByLabelText(label)).toBeTruthy();
   });
   it('shows distinct loading, true empty states, notifications, profile, network and optional map destinations', async () => {
     const ui = render(<Home />);
@@ -197,7 +255,7 @@ describe('Home with actual read hooks and synthetic query service', () => {
     expect(push).toHaveBeenLastCalledWith({ pathname: '/people', params: { view: 'jobs' } });
     for (const call of db.calls) {
       expect(call.steps.find(([method]) => method === 'select')?.[1]).not.toContain('*');
-      if (call.table !== 'chapters')
+      if (call.table !== 'chapters' && call.table !== 'profiles')
         expect(call.steps.some(([method, count]) => method === 'limit' && count <= 2)).toBe(true);
     }
   });
@@ -293,8 +351,7 @@ describe('Me profile and account actions', () => {
     expect(ui.queryByText('Engineer')).toBeNull();
     expect(ui.getByText('Alumni · Class of 2018')).toBeTruthy();
     for (const text of [
-      'Austin',
-      'Technology',
+      'Technology · Austin',
       'Building useful things.',
       'Open to mentorship',
       'Hiring',
@@ -328,7 +385,7 @@ describe('Me profile and account actions', () => {
     async (role) => {
       auth.profile.admin_role = role;
       const tabs = render(<TabsLayout />);
-      for (const title of ['Home', 'Chats', 'Events', 'People', 'Me'])
+      for (const title of ['Home', 'Chats', 'Events', 'Network', 'Me'])
         expect(tabs.getByText(title)).toBeTruthy();
       expect(tabs.queryByText('Admin')).toBeNull();
       tabs.unmount();
@@ -342,7 +399,7 @@ describe('Me profile and account actions', () => {
       }
       ui.unmount();
       const home = render(<Home />);
-      await home.findByText('Sigma Phi Epsilon · California Gamma · UCSB');
+      await home.findByLabelText('Sigma Phi Epsilon · California Gamma · UCSB');
       expect(!!home.queryByText('Chapter invitations')).toBe(allowed);
       if (allowed) {
         fireEvent.press(home.getByText('Chapter invitations'));
@@ -351,7 +408,7 @@ describe('Me profile and account actions', () => {
     },
   );
   it.each(['web', 'ios', 'android'] as const)(
-    'renders cancel and confirm deletion controls on %s; submits once through mock RPC',
+    'renders cancel and confirm deletion controls on %s; submits once through the server endpoint',
     async (platform) => {
       const previous = Platform.OS;
       Platform.OS = platform;
@@ -359,25 +416,57 @@ describe('Me profile and account actions', () => {
         const ui = render(<Me />);
         await ui.findByText('Alex Morgan');
         fireEvent.press(ui.getByText('Delete account'));
-        expect(supabase.rpc).not.toHaveBeenCalled();
+        expect(supabase.functions.invoke).not.toHaveBeenCalled();
         fireEvent.press(ui.getByText('Cancel deletion'));
-        expect(supabase.rpc).not.toHaveBeenCalled();
+        expect(supabase.functions.invoke).not.toHaveBeenCalled();
         fireEvent.press(ui.getByText('Delete account'));
         const pending = deferred<any>();
-        (jest.mocked(supabase.rpc) as any).mockReturnValue(pending.promise);
+        (jest.mocked(supabase.functions.invoke) as any).mockReturnValue(pending.promise);
         fireEvent.press(ui.getByText('Permanently delete account'));
         fireEvent.press(ui.getByText('Permanently delete account'));
-        expect(supabase.rpc).toHaveBeenCalledTimes(1);
-        expect(supabase.rpc).toHaveBeenCalledWith('delete_own_account');
-        await act(async () => pending.resolve({ error: null }));
+        await waitFor(() => expect(supabase.functions.invoke).toHaveBeenCalledTimes(1));
+        expect(supabase.functions.invoke).toHaveBeenCalledWith('delete-account', { body: {} });
+        await act(async () => pending.resolve({ data: { success: true }, error: null }));
         expect(auth.signOut).toHaveBeenCalledTimes(1);
       } finally {
         Platform.OS = previous;
       }
     },
   );
+  it.each([null, 'https://example.invalid/own-avatar.jpg'])(
+    'delegates all cleanup to the server with avatar %s',
+    async (avatar) => {
+      auth.profile.avatar_url = avatar;
+      const ui = render(<Me />);
+      fireEvent.press(ui.getByText('Delete account'));
+      fireEvent.press(ui.getByText('Permanently delete account'));
+      await waitFor(() =>
+        expect(supabase.functions.invoke).toHaveBeenCalledWith('delete-account', { body: {} }),
+      );
+      expect(supabase.storage.from).not.toHaveBeenCalled();
+      expect(supabase.rpc).not.toHaveBeenCalled();
+      expect(auth.signOut).toHaveBeenCalledTimes(1);
+    },
+  );
+  it.each([
+    { data: null, error: { message: 'cleanup failed' } },
+    { data: { success: false }, error: null },
+  ])(
+    'preserves the account session on incomplete server cleanup and permits confirmed retry',
+    async (failure) => {
+      (jest.mocked(supabase.functions.invoke) as any).mockResolvedValueOnce(failure);
+      const ui = render(<Me />);
+      fireEvent.press(ui.getByText('Delete account'));
+      fireEvent.press(ui.getByText('Permanently delete account'));
+      await ui.findByText(/Couldn’t delete your account/);
+      expect(auth.signOut).not.toHaveBeenCalled();
+      fireEvent.press(ui.getByText('Delete account'));
+      fireEvent.press(ui.getByText('Permanently delete account'));
+      await waitFor(() => expect(auth.signOut).toHaveBeenCalledTimes(1));
+    },
+  );
   it('shows deletion failure and preserves sign-out recovery on web', async () => {
-    (jest.mocked(supabase.rpc) as any).mockRejectedValue(new Error('offline'));
+    (jest.mocked(supabase.functions.invoke) as any).mockRejectedValue(new Error('offline'));
     auth.signOut.mockRejectedValue(new Error('offline'));
     const ui = render(<Me />);
     fireEvent.press(ui.getByText('Delete account'));
@@ -414,10 +503,11 @@ describe('Me profile and account actions', () => {
   });
   it('cancels confirmation on account change and never signs out a replacement account after delayed deletion', async () => {
     const pending = deferred<any>();
-    (jest.mocked(supabase.rpc) as any).mockReturnValue(pending.promise);
+    (jest.mocked(supabase.functions.invoke) as any).mockReturnValue(pending.promise);
     const ui = render(<Me />);
     fireEvent.press(ui.getByText('Delete account'));
     fireEvent.press(ui.getByText('Permanently delete account'));
+    await waitFor(() => expect(supabase.functions.invoke).toHaveBeenCalledTimes(1));
     auth = {
       ...auth,
       session: { user: { id: 'user-b' } },
@@ -426,19 +516,55 @@ describe('Me profile and account actions', () => {
     ui.rerender(<Me />);
     expect(ui.queryByText('Delete account?')).toBeNull();
     expect(ui.queryByText('Alex Morgan')).toBeNull();
-    await act(async () => pending.resolve({ error: null }));
+    await act(async () => pending.resolve({ data: { success: true }, error: null }));
     expect(auth.signOut).not.toHaveBeenCalled();
     expect(await ui.findByText('Pi Beta Phi · California Zeta · UCSB')).toBeTruthy();
   });
 });
 
 describe('conversation discovery and mounted People shortcuts', () => {
-  it('keeps mentorship reachable while channels load, with no invented unread badge', async () => {
+  it('keeps directory loading, failure, retry and filtered empty states distinct', async () => {
+    const read = {
+      members: [],
+      loading: false,
+      error: null,
+      reload: jest.fn(),
+      loadMore: jest.fn(async () => {}),
+      hasMore: false,
+      loadingMore: false,
+    };
+    const reload = jest.fn();
+    params = { membership: 'alumni' };
+    jest.mocked(useChapterMembers).mockReturnValue({ ...read, loading: true, reload });
+    const ui = render(<People />);
+    expect(ui.queryByText('No members match your filters.')).toBeNull();
+    expect(ui.queryByText(/members loaded/)).toBeNull();
+    jest.mocked(useChapterMembers).mockReturnValue({
+      ...read,
+      loading: false,
+      error: 'Couldn’t search members. Please retry.',
+      reload,
+    });
+    ui.rerender(<People />);
+    expect(ui.getByText('Couldn’t search members. Please retry.')).toBeTruthy();
+    expect(ui.queryByText('No members match your filters.')).toBeNull();
+    fireEvent.press(ui.getByText('Retry search'));
+    expect(reload).toHaveBeenCalledTimes(1);
     jest
-      .mocked(useChannels)
-      .mockReturnValue({ loading: true, sections: [], error: null, reload: jest.fn() });
+      .mocked(useChapterMembers)
+      .mockReturnValue({ ...read, loading: false, error: null, reload });
+    ui.rerender(<People />);
+    expect(ui.getByText('No members match your filters.')).toBeTruthy();
+    expect(ui.getByText('0 members loaded')).toBeTruthy();
+    fireEvent.press(ui.getByRole('button', { name: 'All' }));
+    expect(ui.getByText('No approved members are visible yet.')).toBeTruthy();
+  });
+  it('keeps mentorship reachable while channels load, with no invented unread badge', async () => {
+    db.rows.channels = [];
+    db.rows.mentorship_requests = [];
+    db.queued.channels = [new Promise(() => {})];
     const ui = render(<Chats />);
-    fireEvent.press(ui.getByText('Mentorship conversations'));
+    fireEvent.press(ui.getByRole('button', { name: 'Requests, review mentorship requests' }));
     expect(push).toHaveBeenLastCalledWith('/inbox');
     await ui.findByText('Sigma Phi Epsilon · California Gamma · UCSB');
   });
@@ -447,7 +573,11 @@ describe('conversation discovery and mounted People shortcuts', () => {
     params = { view: 'jobs' };
     ui.rerender(<People />);
     await ui.findByText('Post a job');
-    expect(setParams).toHaveBeenCalledWith({ view: undefined, filter: undefined });
+    expect(setParams).toHaveBeenCalledWith({
+      view: undefined,
+      filter: undefined,
+      membership: undefined,
+    });
     params = {};
     ui.rerender(<People />);
     fireEvent.press(ui.getByText('Directory'));
@@ -483,5 +613,75 @@ describe('conversation discovery and mounted People shortcuts', () => {
     params = { filter: 'mentors' };
     ui.rerender(<People />);
     await waitFor(() => expect(ui.queryByText('Other Person')).toBeNull());
+  });
+  it('applies count shortcuts repeatedly from Jobs and keeps combined directory filters', async () => {
+    params = { view: 'jobs' };
+    const ui = render(<People />);
+    await ui.findByText('Post a job');
+    params = { view: 'directory', membership: 'active' };
+    ui.rerender(<People />);
+    expect(ui.getByRole('button', { name: 'Current members', selected: true })).toBeTruthy();
+    params = {};
+    ui.rerender(<People />);
+    fireEvent.press(ui.getByRole('button', { name: 'Mentors' }));
+    fireEvent.press(ui.getByRole('button', { name: 'Hiring' }));
+    fireEvent.changeText(ui.getByPlaceholderText('Search by name, company, city'), 'QA Lab');
+    fireEvent.changeText(ui.getByPlaceholderText('e.g. Technology'), 'Technology');
+    await waitFor(() =>
+      expect(useChapterMembers).toHaveBeenLastCalledWith(
+        'chapter-a',
+        auth.blockedIds,
+        expect.objectContaining({
+          query: 'QA Lab',
+          mentorsOnly: true,
+          hiringOnly: true,
+          industry: 'Technology',
+          membershipType: 'active',
+        }),
+      ),
+    );
+    params = { view: 'directory', membership: 'alumni' };
+    ui.rerender(<People />);
+    expect(ui.getByRole('button', { name: 'Alumni', selected: true })).toBeTruthy();
+    expect(useChapterMembers).toHaveBeenLastCalledWith(
+      'chapter-a',
+      auth.blockedIds,
+      expect.objectContaining({
+        query: 'QA Lab',
+        mentorsOnly: true,
+        hiringOnly: true,
+        industry: 'Technology',
+        membershipType: 'alumni',
+      }),
+    );
+    params = {};
+    ui.rerender(<People />);
+    fireEvent.press(ui.getByRole('button', { name: 'All', selected: false }));
+    expect(useChapterMembers).toHaveBeenLastCalledWith(
+      'chapter-a',
+      auth.blockedIds,
+      expect.objectContaining({ membershipType: null, mentorsOnly: true, hiringOnly: true }),
+    );
+  });
+});
+
+describe('owner-only QA deletion availability', () => {
+  it('clearly disables deletion before confirmation or any destructive request', async () => {
+    Object.defineProperty(qaBuild, 'isOwnerQaBuild', { configurable: true, value: true });
+    try {
+      const ui = render(<Me />);
+      await act(async () => {});
+      expect(ui.getByText(qaBuild.ownerQaDeletionNotice)).toBeTruthy();
+      const unavailable = ui.getByRole('button', { name: 'Account deletion unavailable' });
+      expect(unavailable.props.accessibilityState.disabled).toBe(true);
+      fireEvent.press(unavailable);
+      expect(ui.queryByText('Delete account?')).toBeNull();
+      expect(ui.queryByText('Permanently delete account')).toBeNull();
+      expect(supabase.functions.invoke).not.toHaveBeenCalled();
+      expect(supabase.rpc).not.toHaveBeenCalled();
+      expect(supabase.storage.from).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(qaBuild, 'isOwnerQaBuild', { configurable: true, value: false });
+    }
   });
 });

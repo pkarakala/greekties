@@ -3,6 +3,8 @@ import type { Mock } from 'jest-mock';
 import { createEvent, deleteEvent, eventDayKey, eventDayLabel, rsvp } from '../../lib/events';
 import { supabase } from '../../lib/supabase';
 
+jest.mock('../../lib/auth', () => ({ useAuth: jest.fn() }));
+
 jest.mock('../../lib/supabase', () => ({
   supabase: { from: jest.fn() },
   supabaseConfigError: null,
@@ -20,7 +22,7 @@ function mockInsertResult(error: { message: string } | null) {
   mockedFrom.mockReturnValue({ insert });
 }
 
-function mockUpsertResult(error: { message: string } | null) {
+function mockUpdateResult(error: { message: string } | null) {
   const result = {
     data: error ? null : { event_id: 'event-1', user_id: 'user-1', status: 'going' },
     error,
@@ -29,9 +31,9 @@ function mockUpsertResult(error: { message: string } | null) {
   query.select = jest.fn(() => query);
   query.eq = jest.fn(() => query);
   query.maybeSingle = jest.fn(async () => result);
-  const upsert = jest.fn(() => query);
-  mockedFrom.mockReturnValue({ upsert, select: query.select });
-  return upsert;
+  const update = jest.fn(() => query);
+  mockedFrom.mockReturnValue({ update, select: query.select });
+  return update;
 }
 
 function mockDeleteResult(error: { message: string } | null) {
@@ -97,25 +99,67 @@ describe('rsvp', () => {
     jest.clearAllMocks();
   });
 
-  it('upserts on the (event_id, user_id) pk and returns no error on success', async () => {
-    const upsert = mockUpsertResult(null);
+  it('updates only status and filters by both RSVP keys', async () => {
+    const update = mockUpdateResult(null);
     await expect(rsvp('event-1', 'user-1', 'going')).resolves.toEqual({ error: null });
     expect(mockedFrom).toHaveBeenCalledWith('event_rsvps');
-    expect(upsert).toHaveBeenCalledWith(
-      { event_id: 'event-1', user_id: 'user-1', status: 'going' },
-      { onConflict: 'event_id,user_id' },
-    );
+    expect(update).toHaveBeenCalledWith({ status: 'going' });
+    const query = (update.mock.results[0] as any).value;
+    expect(query.eq).toHaveBeenCalledWith('event_id', 'event-1');
+    expect(query.eq).toHaveBeenCalledWith('user_id', 'user-1');
+  });
+
+  it.each([false, true])(
+    'inserts a first response and recovers a concurrent insert: %s',
+    async (conflict) => {
+      const row = { event_id: 'event-1', user_id: 'user-1', status: 'maybe' };
+      const query: any = {};
+      for (const method of ['select', 'eq']) query[method] = jest.fn(() => query);
+      query.maybeSingle = jest
+        .fn<any>()
+        .mockResolvedValueOnce({ data: null, error: null })
+        .mockResolvedValueOnce(
+          conflict
+            ? { data: null, error: { code: '23505', message: 'duplicate key' } }
+            : { data: row, error: null },
+        )
+        .mockResolvedValueOnce({ data: row, error: null });
+      const update = jest.fn(() => query);
+      const insert = jest.fn(() => query);
+      mockedFrom.mockReturnValue({ update, insert });
+      await expect(rsvp('event-1', 'user-1', 'maybe')).resolves.toEqual({ error: null });
+      expect(insert).toHaveBeenCalledWith(row);
+      expect(update).toHaveBeenCalledTimes(conflict ? 2 : 1);
+      for (const args of update.mock.calls) expect(args).toEqual([{ status: 'maybe' }]);
+    },
+  );
+
+  it('does not insert or reconcile after the session ends during the initial update', async () => {
+    let active = true;
+    const query: any = {};
+    for (const method of ['select', 'eq']) query[method] = jest.fn(() => query);
+    query.maybeSingle = jest.fn(async () => {
+      active = false;
+      return { data: null, error: null };
+    });
+    const insert = jest.fn(() => query);
+    mockedFrom.mockReturnValue({ update: jest.fn(() => query), insert });
+    await expect(rsvp('event-1', 'user-1', 'going', () => active)).resolves.toMatchObject({
+      error: expect.stringMatching(/session has ended/),
+    });
+    expect(insert).not.toHaveBeenCalled();
+    expect(mockedFrom).toHaveBeenCalledTimes(1);
   });
 
   it('maps missing-table errors to the friendly copy', async () => {
-    mockUpsertResult({ message: 'relation "event_rsvps" does not exist' });
+    mockUpdateResult({ message: 'relation "event_rsvps" does not exist' });
     const { error } = await rsvp('event-1', 'user-1', 'maybe');
     expect(error).toMatch(NOT_SET_UP_COPY);
     expect(error).not.toMatch(/relation|does not exist/);
   });
 
   it('returns a generic friendly message for other errors', async () => {
-    mockUpsertResult({ message: 'new row violates row-level security policy' });
+    mockUpdateResult({ message: 'new row violates row-level security policy' });
     const { error } = await rsvp('event-1', 'user-1', 'declined');
     expect(error).toMatch(/Couldn’t save your RSVP/);
     expect(error).not.toMatch(/row-level security/);

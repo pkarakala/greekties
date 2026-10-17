@@ -41,12 +41,23 @@ export function isMissingIsOpen(message: string): boolean {
 export async function fetchJobsPage(
   chapterId: string,
   before: string | null,
+  beforeId: string | null = null,
 ): Promise<{ page: JobPosting[]; error: string | null }> {
   const buildQuery = (withOpenFilter: boolean) => {
     let q = supabase.from('job_postings').select('*').eq('chapter_id', chapterId);
-    if (withOpenFilter) q = q.or('is_open.is.null,is_open.eq.true');
-    if (before) q = q.lt('created_at', before);
-    return q.order('created_at', { ascending: false }).limit(PAGE_SIZE);
+    if (before && beforeId) {
+      // Equal creation times are common for imports/batches. Match the full
+      // stable ordering so the next page cannot skip the rest of a timestamp.
+      const cursor = `created_at.lt.${before},and(created_at.eq.${before},id.lt.${beforeId})`;
+      q = q.or(withOpenFilter ? `and(or(is_open.is.null,is_open.eq.true),or(${cursor}))` : cursor);
+    } else {
+      if (withOpenFilter) q = q.or('is_open.is.null,is_open.eq.true');
+      if (before) q = q.lt('created_at', before);
+    }
+    return q
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(PAGE_SIZE);
   };
 
   let { data, error } = await buildQuery(true);
@@ -68,7 +79,7 @@ export function useJobs(chapterId: string | null, blockedIds: ReadonlySet<string
   const reload = useCallback(() => setNonce((n) => n + 1), []);
 
   // Pagination cursor: created_at of the oldest fetched job.
-  const oldestFetchedRef = useRef<string | null>(null);
+  const oldestFetchedRef = useRef<Pick<JobPosting, 'created_at' | 'id'> | null>(null);
   const loadingMoreRef = useRef(false);
 
   useEffect(() => {
@@ -86,7 +97,7 @@ export function useJobs(chapterId: string | null, blockedIds: ReadonlySet<string
       if (err) setError(err);
       else {
         setJobs(filterBlockedActors(page, blockedIds, (row) => row.posted_by));
-        oldestFetchedRef.current = page[page.length - 1]?.created_at ?? null;
+        oldestFetchedRef.current = page[page.length - 1] ?? null;
         setHasMore(page.length === PAGE_SIZE);
       }
       setLoading(false);
@@ -103,11 +114,11 @@ export function useJobs(chapterId: string | null, blockedIds: ReadonlySet<string
     loadingMoreRef.current = true;
     setLoadingMore(true);
 
-    const { page, error: err } = await fetchJobsPage(chapterId, cursor);
+    const { page, error: err } = await fetchJobsPage(chapterId, cursor.created_at, cursor.id);
     if (err) {
       setError(err);
     } else {
-      if (page.length > 0) oldestFetchedRef.current = page[page.length - 1].created_at;
+      if (page.length > 0) oldestFetchedRef.current = page[page.length - 1];
       setHasMore(page.length === PAGE_SIZE);
       const visiblePage = filterBlockedActors(page, blockedIds, (row) => row.posted_by);
       if (visiblePage.length > 0) {
@@ -198,8 +209,16 @@ export async function updateJob(
   }>,
 ): Promise<{ error: string | null }> {
   try {
-    const { error } = await supabase.from('job_postings').update(fields).eq('id', jobId);
-    if (!error) return { error: null };
+    const { data, error } = await supabase
+      .from('job_postings')
+      .update(fields)
+      .eq('id', jobId)
+      .select('id')
+      .maybeSingle();
+    if (!error)
+      return {
+        error: data ? null : 'This posting could not be updated. Refresh it and try again.',
+      };
     return {
       error: /does not exist|schema cache/i.test(error.message)
         ? 'Editing postings isn’t available yet. Check back soon.'

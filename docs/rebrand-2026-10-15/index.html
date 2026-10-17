@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Greek Ties | Blue & Gold Design Studio</title>
+  <link rel="stylesheet" href="studio.css">
+</head>
+<body>
+  <aside class="studio-nav">
+    <div class="studio-brand">Greek Ties <span>Design proposal / 15 Oct 2026</span></div>
+    <p class="studio-intro">Blue & gold. Your chapter, beyond college.</p>
+    <nav id="screen-nav" aria-label="Design screens"></nav>
+    <a class="doc-link" href="START_HERE.txt">Implementation handoff</a>
+    <a class="doc-link" href="SCREEN_CONTRACTS.txt">Screen and interaction contracts</a>
+    <a class="doc-link" href="VERIFICATION.txt">Prototype verification</a>
+  </aside>
+  <main class="studio-main">
+    <header class="studio-toolbar">
+      <div><h1 id="screen-name">Home</h1><p id="screen-note"></p></div>
+      <div class="studio-controls">
+        <label>Viewport<select id="viewport"><option value="390">390 pt</option><option value="375">375 pt</option><option value="440">440 pt</option></select></label>
+        <label>State<select id="state"><option value="ready">Ready</option><option value="loading">Loading</option><option value="empty">Empty</option><option value="error">Error</option><option value="offline">Offline</option><option value="denied">Access removed</option></select></label>
+        <label>Event media<select id="media"><option value="photo">Proposed cover</option><option value="none">No cover</option></select></label>
+        <label class="enlarge"><input id="large" type="checkbox"> Large text</label>
+      </div>
+    </header>
+    <div class="preview-stage">
+      <section class="phone" id="phone" aria-label="Greek Ties interactive concept">
+        <div class="statusbar" aria-hidden="true"><strong>9:41</strong><span id="status-icons"></span></div>
+        <div id="app-header"></div>
+        <div id="app-content" tabindex="-1"></div>
+        <div id="app-dock"></div>
+        <nav id="app-tabs" aria-label="Main navigation"></nav>
+        <div id="overlay"></div>
+        <div id="toast" role="status" aria-live="polite"></div>
+      </section>
+      <aside class="design-caption"><span class="eyebrow">Design intent</span><h2 id="intent-title"></h2><p id="intent"></p><div class="swatches"><span style="background:#123FA0"></span><span style="background:#E9BD52"></span><span style="background:#142743"></span><span style="background:#FFFFFF"></span></div><p class="caption-small">Interactive concept. All names, counts, conversations and imagery are fictional. Changes are memory-only. No login, message, invitation or backend request is sent.</p><p class="caption-small" id="capability-note"></p></aside>
+    </div>
+  </main>
+  <script src="assets/lucide.min.js"></script>
+  <script src="studio.js"></script>
+</body>
+</html>

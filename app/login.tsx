@@ -17,7 +17,8 @@ import { InvitationContext } from '@/components/InvitationContext';
 import { parseInviteCode } from '@/lib/links';
 import { Button } from '@/components/Button';
 import { TextField } from '@/components/TextField';
-import { colors, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/account';
 
 export default function LoginScreen() {
   // Carry an invite code through if the user bounced here from a join link.
@@ -67,13 +68,14 @@ export default function LoginScreen() {
       >
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <Wordmark size={36} />
+            <Wordmark tone="home" size={36} />
             <Text style={styles.tagline}>Your chapter, for life.</Text>
           </View>
 
           <View style={styles.form}>
             <InvitationContext code={code} />
             <TextField
+              tone="home"
               label="Email"
               value={email}
               onChangeText={setEmail}
@@ -85,6 +87,7 @@ export default function LoginScreen() {
               returnKeyType="next"
             />
             <TextField
+              tone="home"
               label="Password"
               value={password}
               onChangeText={setPassword}
@@ -96,12 +99,16 @@ export default function LoginScreen() {
               onSubmitEditing={handleLogin}
             />
 
-            {!!error && <Text style={styles.error}>{error}</Text>}
+            {!!error && (
+              <Text accessibilityRole="alert" style={styles.error}>
+                {error}
+              </Text>
+            )}
 
-            <Button label="Log in" onPress={handleLogin} loading={loading} />
+            <Button tone="home" label="Log in" onPress={handleLogin} loading={loading} />
 
             <Link href="/forgot-password" asChild>
-              <Pressable style={styles.forgotWrap}>
+              <Pressable style={StyleSheet.flatten([styles.forgotWrap, styles.linkControl])}>
                 <Text style={styles.link}>Forgot password?</Text>
               </Pressable>
             </Link>
@@ -110,7 +117,7 @@ export default function LoginScreen() {
           <View style={styles.footer}>
             <Text style={styles.footerText}>New here? </Text>
             <Link href={signupHref} asChild>
-              <Pressable>
+              <Pressable style={styles.linkControl}>
                 <Text style={styles.link}>Create an account</Text>
               </Pressable>
             </Link>
@@ -127,7 +134,7 @@ const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: 20,
     paddingVertical: spacing.xxxl,
   },
   header: { alignItems: 'center', marginBottom: spacing.xxxl },
@@ -143,11 +150,19 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   footer: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
   footerText: { ...typography.body, color: colors.textSecondary },
-  link: { ...typography.body, color: colors.gold, fontWeight: '600' },
+  linkControl: {
+    minHeight: 48,
+    minWidth: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  link: { ...typography.body, color: colors.blue, fontWeight: '600' },
   forgotWrap: { alignSelf: 'center', marginTop: spacing.lg },
 });

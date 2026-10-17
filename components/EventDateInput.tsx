@@ -8,10 +8,12 @@ import {
   toLocalDateTimeFields,
   eventDateTime,
 } from '@/lib/time';
+import { homeColors } from '@/theme/home';
 import { colors, spacing, typography } from '@/theme';
 
 export interface EventDateInputProps {
   timeZone?: string;
+  tone?: 'home';
   optional?: boolean;
   label: string;
   date: string;
@@ -34,7 +36,18 @@ export function EventDateInput(props: EventDateInputProps) {
     original,
     timeZone,
     optional,
+    tone,
   } = props;
+  const palette =
+    tone === 'home'
+      ? {
+          ...colors,
+          textPrimary: homeColors.navy,
+          textSecondary: homeColors.muted,
+          borderStrong: '#7F8CA1',
+          surface: homeColors.surface,
+        }
+      : colors;
   const [picker, setPicker] = useState<{ mode: 'date' | 'time'; revision: number } | null>(null);
   const revision = useRef(0);
   const [seed] = useState(() => new Date());
@@ -71,16 +84,18 @@ export function EventDateInput(props: EventDateInputProps) {
     partial;
   return (
     <View style={{ gap: spacing.sm, marginBottom: spacing.lg }}>
-      <Text style={{ ...typography.h3, color: colors.textPrimary }}>{label}</Text>
-      <Text style={{ ...typography.bodySmall, color: colors.textSecondary }}>
+      <Text style={{ ...typography.h3, color: palette.textPrimary }}>{label}</Text>
+      <Text style={{ ...typography.bodySmall, color: palette.textSecondary }}>
         Local time · {timeZone ?? localTimeZone()}
       </Text>
       <Button
+        tone={tone}
         label={`${label} date: ${date || 'Choose date'}`}
         variant="secondary"
         onPress={() => open('date')}
       />
       <Button
+        tone={tone}
         label={`${label} time: ${time || 'Choose time'}`}
         variant="secondary"
         onPress={() => open('time')}
@@ -101,9 +116,12 @@ export function EventDateInput(props: EventDateInputProps) {
           }}
         />
       )}
-      {mode && Platform.OS === 'ios' && <Button label="Done" variant="ghost" onPress={close} />}
+      {mode && Platform.OS === 'ios' && (
+        <Button tone={tone} label="Done" variant="ghost" onPress={close} />
+      )}
       {optional && !!(date || time || occurrence) && (
         <Button
+          tone={tone}
           label="Clear end time"
           variant="ghost"
           onPress={() => {
@@ -116,12 +134,13 @@ export function EventDateInput(props: EventDateInputProps) {
       )}
       {candidates.length > 1 && (
         <>
-          <Text style={{ color: colors.textSecondary }}>
+          <Text style={{ color: palette.textSecondary }}>
             This time occurs twice when clocks change. Choose an occurrence.
             {unchanged && !occurrence ? ' The saved occurrence is retained.' : ''}
           </Text>
           {candidates.map((d, index) => (
             <Button
+              tone={tone}
               key={d.toISOString()}
               label={`${index === 0 ? 'First' : 'Second'} · ${eventDateTime(d.toISOString())}`}
               variant={occurrence === d.toISOString() ? 'primary' : 'secondary'}

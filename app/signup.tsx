@@ -19,7 +19,8 @@ import { InvitationContext } from '@/components/InvitationContext';
 import { parseInviteCode } from '@/lib/links';
 import { Button } from '@/components/Button';
 import { TextField } from '@/components/TextField';
-import { colors, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/account';
 
 export default function SignupScreen() {
   const { code } = useLocalSearchParams<{ code?: string }>();
@@ -81,13 +82,14 @@ export default function SignupScreen() {
       >
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <Wordmark size={36} />
+            <Wordmark tone="home" size={36} />
             <Text style={styles.tagline}>Create your account</Text>
           </View>
 
           <View style={styles.form}>
             <InvitationContext code={code} />
             <TextField
+              tone="home"
               label="Full name"
               value={name}
               onChangeText={setName}
@@ -97,6 +99,7 @@ export default function SignupScreen() {
               textContentType="name"
             />
             <TextField
+              tone="home"
               label="Email"
               value={email}
               onChangeText={setEmail}
@@ -107,6 +110,7 @@ export default function SignupScreen() {
               textContentType="emailAddress"
             />
             <TextField
+              tone="home"
               label="Password"
               value={password}
               onChangeText={setPassword}
@@ -118,28 +122,44 @@ export default function SignupScreen() {
               onSubmitEditing={handleSignup}
             />
 
-            {!!error && <Text style={styles.error}>{error}</Text>}
-            {!!notice && <Text style={styles.notice}>{notice}</Text>}
+            {!!error && (
+              <Text accessibilityRole="alert" style={styles.error}>
+                {error}
+              </Text>
+            )}
+            {!!notice && (
+              <Text accessibilityLiveRegion="polite" style={styles.notice}>
+                {notice}
+              </Text>
+            )}
 
-            <Button label="Sign up" onPress={handleSignup} loading={loading} />
+            <Button tone="home" label="Sign up" onPress={handleSignup} loading={loading} />
 
             <Text style={styles.terms}>
-              By signing up you agree to our{' '}
-              <Text style={styles.termsLink} onPress={() => openExternalUrl(TERMS_URL)}>
-                Terms
-              </Text>{' '}
-              and{' '}
-              <Text style={styles.termsLink} onPress={() => openExternalUrl(PRIVACY_URL)}>
-                Privacy Policy
-              </Text>
-              .
+              By signing up you agree to our Terms and Privacy Policy.
             </Text>
+            <View style={styles.legalLinks}>
+              <Pressable
+                accessibilityRole="link"
+                style={styles.linkControl}
+                onPress={() => openExternalUrl(TERMS_URL)}
+              >
+                <Text style={styles.termsLink}>Terms</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="link"
+                style={styles.linkControl}
+                onPress={() => openExternalUrl(PRIVACY_URL)}
+              >
+                <Text style={styles.termsLink}>Privacy Policy</Text>
+              </Pressable>
+            </View>
           </View>
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Already have an account? </Text>
             <Link href={loginHref} asChild>
-              <Pressable>
+              <Pressable style={styles.linkControl}>
                 <Text style={styles.link}>Log in</Text>
               </Pressable>
             </Link>
@@ -156,7 +176,7 @@ const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: 20,
     paddingVertical: spacing.xxxl,
   },
   header: { alignItems: 'center', marginBottom: spacing.xxl },
@@ -177,17 +197,26 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   footer: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
   footerText: { ...typography.body, color: colors.textSecondary },
-  link: { ...typography.body, color: colors.gold, fontWeight: '600' },
+  linkControl: {
+    minHeight: 48,
+    minWidth: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  link: { ...typography.body, color: colors.blue, fontWeight: '600' },
+  legalLinks: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
   terms: {
     ...typography.caption,
     color: colors.textTertiary,
     textAlign: 'center',
     marginTop: spacing.lg,
   },
-  termsLink: { color: colors.gold, fontWeight: '600' },
+  termsLink: { color: colors.blue, fontWeight: '600' },
 });

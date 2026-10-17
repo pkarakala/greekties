@@ -1,11 +1,5 @@
 import { useState } from 'react';
-import {
-  Text,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
+import { Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/lib/auth';
@@ -13,7 +7,8 @@ import { createChapter } from '@/lib/chapters';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextField } from '@/components/TextField';
 import { Button } from '@/components/Button';
-import { colors, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/account';
 
 export default function CreateChapterScreen() {
   const router = useRouter();
@@ -56,7 +51,7 @@ export default function CreateChapterScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="Create your chapter" onBack={() => router.back()} />
+      <ScreenHeader tone="home" title="Create your chapter" onBack={() => router.back()} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -71,6 +66,7 @@ export default function CreateChapterScreen() {
           </Text>
 
           <TextField
+            tone="home"
             label="Chapter name"
             value={name}
             onChangeText={setName}
@@ -79,6 +75,7 @@ export default function CreateChapterScreen() {
             errorText={nameError ?? undefined}
           />
           <TextField
+            tone="home"
             label="Designation (optional)"
             value={designation}
             onChangeText={setDesignation}
@@ -86,6 +83,7 @@ export default function CreateChapterScreen() {
             autoCapitalize="words"
           />
           <TextField
+            tone="home"
             label="University (optional)"
             value={university}
             onChangeText={setUniversity}
@@ -93,9 +91,13 @@ export default function CreateChapterScreen() {
             autoCapitalize="words"
           />
 
-          {!!error && <Text style={styles.error}>{error}</Text>}
+          {!!error && (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {error}
+            </Text>
+          )}
 
-          <Button label="Create chapter" onPress={handleCreate} loading={saving} />
+          <Button tone="home" label="Create chapter" onPress={handleCreate} loading={saving} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -105,7 +107,15 @@ export default function CreateChapterScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  scroll: { padding: spacing.xl, gap: spacing.md, paddingBottom: spacing.xxxl },
-  hint: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.md },
+  scroll: { padding: 20, gap: spacing.md, paddingBottom: spacing.xxxl },
+  hint: {
+    ...typography.body,
+    color: colors.navy,
+    backgroundColor: colors.goldLight,
+    borderTopWidth: 6,
+    borderTopColor: colors.gold,
+    padding: 16,
+    marginBottom: spacing.md,
+  },
   error: { ...typography.bodySmall, color: colors.red },
 });

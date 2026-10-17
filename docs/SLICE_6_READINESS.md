@@ -1,8 +1,12 @@
 # Slice 6 — distribution preparation and release verification
 
-2026-09-17. **NO-GO for candidate distribution or pilot launch.** Local
-documentation is prepared; SQL, concurrency, rendered UI, native picker, and
-browser/device release verification remain open. No release approval is implied.
+Updated 2026-09-22. **NO-GO for candidate distribution or pilot launch.** The
+schema restore, V9–V11, four SQL suites and five concurrency cases have now been
+independently rerun locally on isolated PostgreSQL 17.6. The matching Supabase
+Postgres .104 permission-denial crash was reproduced with a minimal unrelated
+function; .095 returned a normal permission error and remained healthy. Rendered
+UI, current Supabase-stack integration, native picker, and browser/device release
+verification remain open. No release approval is implied.
 
 The saved [Session 6 prompt](SESSION_6_PROMPT.md) was carried out in the current
 repository chat: the app rejected automated access to its own chat UI, so a
@@ -14,9 +18,10 @@ fresh chat could not be opened. No alternate route around that block was used.
 | --- | --- | --- |
 | Slices 1–5 source/component acceptance | Prior local PASS | [Slice 5 independent correction acceptance](SLICE_5_REVIEW.md): 34 suites / 564 tests, typecheck and diff checks passed; lint 0 errors / 24 warnings. Not rerun for these documentation edits. |
 | Distribution preparation | Prepared, not activated | [Steward runbook](STEWARD_DISTRIBUTION_RUNBOOK.md) covers both UCSB chapters, install/join recovery, roles, support, unsent copy, and a manual funnel. Owner must fill placeholders and confirm real event/thread/mentor coverage. |
-| Disposable SQL environment and base schema | BLOCKED | No authoritative base DDL or confirmed disposable database. Owner supplies a schema-only artifact with provenance and a synthetic local environment. |
-| V9 → V10 → V11 locally; four SQL suites | UNEXECUTED | No SQL connection or migration execution. Execute the sequence below once prerequisites exist. |
-| Concurrent SQL / actual RLS and Realtime | UNEXECUTED | Requires concurrent connections to the verified local backend, including its Supabase services. |
+| Disposable SQL environment and base schema | Independently PASS | Owner-provided schema dump sanitized locally; restored in a no-network PostgreSQL 17.6 container with no host port or mounted volume. Current derivative SHA-256: `5b7bb75e7f51430f2018eb417f49bf26bfd9552bf464986934b189e324495bd7`. Four outbound-push triggers were removed from this derivative. |
+| V9 → V10 → V11 locally; four SQL suites | Independently PASS on vanilla PostgreSQL and Supabase Postgres .136 | Migrations applied in order on both; all four suites passed separately with fail-on-error enabled. The message-retry suite emitted one temporary-schema privilege warning while its assertions passed. Managed-project PostgREST/Realtime acceptance remains open. |
+| Concurrent SQL checks | Independently PASS on vanilla PostgreSQL | Five fresh concurrent-session cases passed: map opt-out race, duplicate UUID insert, rollback/retry, delete/no-resurrection, and membership revoke between preflight and insert. Supabase integration, PostgREST and Realtime remain unverified. |
+| Supabase Postgres permission-denial control | .104 FAIL reproduced; .095 and .136 PASS controls | On `public.ecr.aws/supabase/postgres:17.6.1.104`, a trivial revoked function called as `anon` crashed the backend with signal 11. The same test on `.095` and `.136` returned the expected permission error; both servers stayed healthy. Official self-hosted config currently uses `.136` ([Supabase Docker changelog](https://github.com/supabase/supabase/blob/master/docker/CHANGELOG.md)); the managed pilot project's exact image/runtime remains unknown. Do not weaken grants/revokes. |
 | Rendered static/interactive browser QA | UNEXECUTED | Synthetic HTML exists, but the previously documented local-URL security denial remains unresolved. Owner provides a permitted inspection path; do not route around the denial. |
 | Installed native picker and browser/device journeys | UNEXECUTED | Tool inventory finds Simulator and simctl, not a verified compatible candidate attached to an isolated backend. Owner provides that runtime and exact build identity. |
 | Remote migrations / TestFlight candidate | Unverified historical state | V6–V8 live and TestFlight build 11 are owner-reported history. V9–V11 remain drafted/unapplied in project records; this session neither queried nor changed remote state. Build 11 does not establish picker compatibility or current client coverage. |
@@ -29,8 +34,10 @@ fresh chat could not be opened. No alternate route around that block was used.
   invite/membership/admin/link/tab/map/picker/migration source. No applicable
   `AGENTS.md` was found in the repository or its ancestor paths.
 - `command -v` found Node, npm, Supabase CLI, and xcrun. It did not find `psql`,
-  `postgres`, `initdb`, `pg_ctl`, Docker, or Podman on PATH. No global installation,
-  database startup, service change, CLI login, or remote status query was attempted.
+  `postgres`, `initdb`, `pg_ctl`, Docker, or Podman on PATH. Docker Desktop was
+  started for the isolated database run; no global installation, CLI login, or
+  remote status query was performed. All three containers created for this run
+  were removed afterward.
 - Both `/Users/pkarakala/Desktop/greek-ties-app-docs` and
   `/Users/pkarakala/greek-ties-app-docs` are absent. The repository SQL inventory
   has no base `chapters`, `profiles`, `mentorship_requests`, or mentorship
@@ -48,22 +55,27 @@ fresh chat could not be opened. No alternate route around that block was used.
   not navigate. No regeneration, screenshot, browser rendering, installed QA,
   or new visual approval is claimed. The prior URL denial in the Slice 5 review
   was not retried or bypassed.
-- Documentation validation: `git diff --check`, whitespace/fence checks for all
+- The independent database re-run is recorded below and in
+  [the dated database QA report](SLICE_6_DATABASE_QA_2026-09-19.md). It does not
+  cover PostgREST, Realtime, lock duration at production scale, or client/device
+  acceptance.
+- Documentation validation: whitespace/fence checks for all
   eight changed/new Markdown files, local links introduced by this session,
   and comparison against 217 protected pre-edit file hashes passed. Full Jest,
   typecheck, and lint were not repeated for documentation-only changes.
 
-**Failed acceptance tests:** none executed, so none reported. Missing
-prerequisites and denied UI access are blockers, not passing tests or newly
-reproduced application failures. All SQL/runtime checks below are unexecuted.
+**Failed acceptance tests:** the .104 Supabase Postgres permission-denial
+control crashed as described above; it reproduced with an unrelated test
+function and is an image-level finding. The four SQL suites and five races
+passed on vanilla PostgreSQL. Runtime/browser/device checks remain unexecuted.
 
 ## Required database and client sequence
 
-1. Owner supplies an authoritative schema-only artifact with source/date and
-   confirmation of a disposable local synthetic environment. Include base
-   tables, auth/storage dependencies, UUID defaults/keys, policies, grants, and
-   triggers. Do not read app environment credentials or fetch production schema
-   in this session. A localhost proxy is not proof of isolation.
+1. The schema was restored and migration/suite/concurrency checks rerun locally.
+   Preserve the source/date, sanitizer scope and current derivative hash recorded
+   in the dated database report. Keep the raw production-derived dump private.
+   Do not query remote production or read app environment credentials to recreate
+   it. A localhost proxy is not proof of isolation.
 2. First inventory the artifact's included migration versions. An original
    pre-V1 base requires the explicit dependency order in the
    [migration README](../supabase/migrations/README.md) through V8. An authoritative
@@ -133,10 +145,11 @@ log. Historical evidence is retained and labeled. No application, migration,
 dependency, or regression-test changes; no live data/credentials, EAS/env changes,
 builds/uploads/deployment, commits/pushes/merges, or messages to others.
 
-**Next bounded action:** the owner supplies the authoritative schema-only base
-artifact with provenance and a confirmed disposable local synthetic database;
-then execute the Session 3 QA sequence extended through V11 and all four suites
-plus concurrency, saving actual results for independent review. Launch stays blocked.
+**Next bounded action:** resolve the .104 image crash against the current
+supported Supabase image/runtime, then test PostgREST and Realtime. Separately
+complete rendered browser, installed native picker and exact-build device QA.
+Remote migration inventory/application remains a separately authorized operator
+step. Do not fetch another production schema dump. Launch stays blocked.
 
 ## Independent preparation review — 2026-09-17
 
@@ -158,3 +171,36 @@ the snapshot's version from its filename. Missing prerequisites stay open.
 
 The installed native picker and rendered/browser/device gates remain separate
 from SQL acceptance. No production access or rollout is authorized by this review.
+
+## Database run report review — 2026-09-22
+
+The September 19 QA note changed the earlier “SQL unexecuted” status: it records
+V9–V11, all four SQL suites and five concurrency scenarios passing on a
+disposable PostgreSQL 17.6 database restored from a sanitized V8 schema
+derivative. Its results have since been independently reproduced as recorded in
+the next dated entry. The documented Supabase Postgres image crash
+means the vanilla PostgreSQL pass does not close Supabase integration behavior.
+
+Reviewed V9–V11 source and map/message SQL tests; no new blocking source finding
+from that bounded read. At the time of this initial review, the schema and SQL
+outputs were unavailable, so no SQL had been run. That state was superseded by
+the following independent rerun. No remote database was accessed. Keep the raw
+production-derived schema private.
+
+## Independent rerun — 2026-09-22
+
+The owner-provided schema was sanitized and restored in an isolated, no-network
+PostgreSQL 17.6 container. V9–V11 and four SQL suites passed, as did five
+concurrency checks; details and the derivative hash are in the
+[database QA report](SLICE_6_DATABASE_QA_2026-09-19.md). The exact tested Supabase
+Postgres .104 permission-denial crash was reproduced with a minimal unrelated
+control function; .095 and .136 behaved normally. The .136 image restored the
+schema, applied V9–V11 and passed all four SQL suites. The containers were
+removed after the run. `git diff --check` passed for the three updated
+documents. No app code,
+migrations, tests, production/remote state, credentials, builds, or deployments
+were changed.
+
+Next: determine the currently supported Supabase Postgres image/runtime and
+exercise its PostgREST and Realtime behavior; complete rendered browser, native
+picker and exact-build device QA. Keep release NO-GO until all gates pass.

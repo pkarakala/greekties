@@ -1,13 +1,18 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import { supabase } from './supabase';
 import { ReadScope, useMemberScope } from './scoped-read';
-import type { Profile } from './types';
+import type { MembershipType, Profile } from './types';
+
+export function directoryMembership(value: unknown): MembershipType | null {
+  return value === 'active' || value === 'alumni' ? value : null;
+}
 
 export interface DirectoryFilters {
   query?: string;
   mentorsOnly?: boolean;
   hiringOnly?: boolean;
   industry?: string | null;
+  membershipType?: MembershipType | null;
 }
 export const DIRECTORY_PAGE_SIZE = 50;
 const COLUMNS =
@@ -39,6 +44,7 @@ export async function fetchDirectoryPage(
   if (filters.mentorsOnly) query = query.eq('open_to_mentor', true);
   if (filters.hiringOnly) query = query.eq('is_hiring', true);
   if (filters.industry?.trim()) query = query.eq('industry', filters.industry.trim());
+  if (filters.membershipType) query = query.eq('membership_type', filters.membershipType);
   // IDs come from trusted membership/block data, not search text. Individual
   // neq filters avoid interpolating IDs into the query-language grammar.
   for (const id of blockedIds) query = query.neq('user_id', id);
@@ -74,8 +80,22 @@ export function useChapterMembers(
   filters: DirectoryFilters = {},
 ) {
   const scope = useMemberScope();
-  const { query = '', mentorsOnly = false, hiringOnly = false, industry = null } = filters;
-  const key = JSON.stringify([scope, chapterId, query.trim(), mentorsOnly, hiringOnly, industry]);
+  const {
+    query = '',
+    mentorsOnly = false,
+    hiringOnly = false,
+    industry = null,
+    membershipType = null,
+  } = filters;
+  const key = JSON.stringify([
+    scope,
+    chapterId,
+    query.trim(),
+    mentorsOnly,
+    hiringOnly,
+    industry,
+    membershipType,
+  ]);
   const token = useMemo(() => new DirectoryScope(key), [key]);
   const [nonce, bump] = useReducer((n: number) => n + 1, 0);
   const [state, setState] = useState<{
@@ -105,7 +125,7 @@ export function useChapterMembers(
     if (chapterId)
       void fetchDirectoryPage(
         chapterId,
-        { query, mentorsOnly, hiringOnly, industry },
+        { query, mentorsOnly, hiringOnly, industry, membershipType },
         0,
         blockedIds,
       )
@@ -135,7 +155,17 @@ export function useChapterMembers(
           if (current()) token.finish();
         });
     return () => token.end();
-  }, [token, nonce, chapterId, blockedIds, query, mentorsOnly, hiringOnly, industry]);
+  }, [
+    token,
+    nonce,
+    chapterId,
+    blockedIds,
+    query,
+    mentorsOnly,
+    hiringOnly,
+    industry,
+    membershipType,
+  ]);
   const visible = state?.token === token ? state : null;
   const loadMore = async () => {
     if (!chapterId || !token.active || token.busy || !visible?.hasMore || visible.loading) return;
@@ -145,7 +175,7 @@ export function useChapterMembers(
     try {
       const page = await fetchDirectoryPage(
         chapterId,
-        { query, mentorsOnly, hiringOnly, industry },
+        { query, mentorsOnly, hiringOnly, industry, membershipType },
         token.offset,
         blockedIds,
       );

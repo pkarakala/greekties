@@ -1,0 +1,58 @@
+Greek Ties preservation checkpoint - 2026-10-17
+
+PURPOSE
+Preserve the app source, tests, configuration templates, migration source,
+and approved blue/gold design proposal before any separately approved laptop
+cleanup. This branch is a backup checkpoint, not a production release or a
+request to merge/deploy. The original working directory is not modified.
+
+BASELINE
+Original branch: codex/demo-ready-2026-09-19
+Original HEAD, also verified on GitHub:
+4e30050fe06e1ee9bce4cdc6c7d75ec8a7865901
+
+The original iCloud-backed checkout has intermittent file-read failures.
+Where necessary, source is recovered from the preserved Build 16 QA workspace
+only when it matches the recorded final source-parity SHA-256 manifest and
+the original file's modification time does not postdate that manifest.
+The preservation manifest records the origin and hash of each included file.
+Do not delete the original checkout until unreadable files and local history
+have been independently reconciled. A current read of offloaded content is
+not established by matching a previously recorded hash.
+
+BUILD 16
+Version 1.0.0 (16), internal-only synthetic QA backend.
+IPA SHA-256:
+98993319639ea2712777b877be2ed6e826ef972bffd35a3e4af62f2d13cde0f1
+The saved CLI handoff reports successful upload and VALID / BETA_INTERNAL_TESTING
+status on 2026-10-17. Group assignment and installation were not independently
+observed during this preservation task. Preserve the IPA, archive and dSYMs
+in a private artifact backup; these are intentionally not Git source files.
+
+VALIDATION STATUS
+The Build 16 handoff records 790 passing tests, TypeScript, scoped lint/format,
+and nine integrated hosted-QA browser journeys. These tests were not rerun
+during the preservation audit. Native runtime checks timed out. The initial
+Realtime timeout remains documented despite later passing app messaging.
+Account deletion remains unavailable in the QA app. Public release remains
+on hold. Migration files are preserved as source, not applied or approved
+for deployment by this checkpoint.
+
+DESIGN
+docs/rebrand-2026-10-15 preserves the design proposal, contracts, tokens,
+prototype, reference boards and synthetic screenshots. Its original dates,
+paths and verification results are historical evidence, not fresh validation.
+
+EXCLUDED FROM PUBLIC GIT
+Actual environment files, passwords, service keys, signing private keys,
+provisioning profiles, QA login records, private logs and database contents.
+Generated dependencies, native build caches, simulator data, IPA/archive
+artifacts and full local QA evidence also remain outside this source backup.
+Retain these locally until an explicit cleanup/private-backup decision.
+
+RESTORATION
+Clone this repository and select this preservation branch. Install dependencies
+from the lockfile. Restore configuration and signing material through private
+credential storage, not GitHub. Consult the QA and deletion coordination docs
+before any backend change or release. Do not infer production readiness from
+the presence of this backup branch.

@@ -9,7 +9,8 @@ import {
 } from '@/lib/invite';
 import { parseInviteCode } from '@/lib/links';
 import { Button } from './Button';
-import { colors, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/account';
 
 /** Display identity throughout auth, including a restored confirmation visit. */
 export function InvitationContext({ code }: { code?: string }) {
@@ -39,12 +40,22 @@ export function InvitationContext({ code }: { code?: string }) {
   return (
     <View style={{ gap: spacing.sm, marginBottom: spacing.lg }}>
       {chapter && (
-        <Text style={{ ...typography.body, color: colors.textPrimary, textAlign: 'center' }}>
+        <Text
+          style={{
+            ...typography.body,
+            backgroundColor: colors.goldLight,
+            padding: 12,
+            borderRadius: 6,
+            color: colors.textPrimary,
+            textAlign: 'center',
+          }}
+        >
           {[chapter.name, chapter.designation, chapter.university].filter(Boolean).join(' · ')}
         </Text>
       )}
       {!!warning && <Text accessibilityRole="alert">{warning}</Text>}
       <Button
+        tone="home"
         label={pendingCode ? 'Review saved invitation' : 'Have an invitation? Paste link or code'}
         variant="ghost"
         onPress={() => {

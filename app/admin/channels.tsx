@@ -1,5 +1,8 @@
+import { AdminAccess } from '@/components/AdminAccess';
+import { AccountReadStatus } from '@/components/AccountReadStatus';
 import { useState } from 'react';
 import {
+  useWindowDimensions,
   View,
   Text,
   StyleSheet,
@@ -25,7 +28,8 @@ import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { TextField } from '@/components/TextField';
 import { Chip } from '@/components/Chip';
-import { colors, radius, spacing, typography } from '@/theme';
+import { radius, spacing } from '@/theme';
+import { colors, typography } from '@/theme/account';
 import type { Channel, ChannelVisibility } from '@/lib/types';
 
 const VISIBILITIES: { value: ChannelVisibility; label: string }[] = [
@@ -46,7 +50,16 @@ const VIS_LABEL: Record<ChannelVisibility, string> = {
 const VIS_CYCLE: ChannelVisibility[] = ['all', 'exec_only', 'alumni_only', 'custom'];
 
 export default function ChannelsAdminScreen() {
+  return (
+    <AdminAccess>
+      <ChannelsAdminScreenContent />
+    </AdminAccess>
+  );
+}
+
+function ChannelsAdminScreenContent() {
   const router = useRouter();
+  const { width, fontScale } = useWindowDimensions();
   const { session, profile } = useAuth();
   const { loading, error, channels, reload } = useAdminChannels(profile?.chapter_id ?? null);
 
@@ -121,7 +134,7 @@ export default function ChannelsAdminScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="Channels" onBack={() => router.back()} />
+      <ScreenHeader tone="home" title="Channels" onBack={() => router.back()} />
 
       <FlatList
         data={channels}
@@ -131,36 +144,49 @@ export default function ChannelsAdminScreen() {
           <RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.gold} />
         }
         ListHeaderComponent={
-          <Card style={styles.createCard}>
-            <Text style={styles.createTitle}>New channel</Text>
-            <TextField
-              label="Name"
-              value={name}
-              onChangeText={setName}
-              placeholder="recruitment"
-              autoCapitalize="none"
-            />
-            <Text style={styles.fieldLabel}>Visibility</Text>
-            <View style={styles.visRow}>
-              {VISIBILITIES.map((v) => (
-                <Chip
-                  key={v.value}
-                  label={v.label}
-                  selected={visibility === v.value}
-                  onPress={() => setVisibility(v.value)}
-                />
-              ))}
-            </View>
-            {!!formError && <Text style={styles.error}>{formError}</Text>}
-            <Button label="Create channel" onPress={create} loading={creating} />
-          </Card>
+          <View style={{ gap: 16 }}>
+            <AccountReadStatus loading={loading} error={error} reload={reload} label="channels" />
+            <Card tone="home" style={styles.createCard}>
+              <Text style={styles.createTitle}>New channel</Text>
+              <TextField
+                tone="home"
+                label="Name"
+                value={name}
+                onChangeText={setName}
+                placeholder="recruitment"
+                autoCapitalize="none"
+              />
+              <Text style={styles.fieldLabel}>Visibility</Text>
+              <View style={styles.visRow}>
+                {VISIBILITIES.map((v) => (
+                  <Chip
+                    tone="home"
+                    key={v.value}
+                    label={v.label}
+                    selected={visibility === v.value}
+                    onPress={() => setVisibility(v.value)}
+                  />
+                ))}
+              </View>
+              {!!formError && (
+                <Text accessibilityRole="alert" style={styles.error}>
+                  {formError}
+                </Text>
+              )}
+              <Button tone="home" label="Create channel" onPress={create} loading={creating} />
+            </Card>
+          </View>
         }
         renderItem={({ item }) => (
-          <Card style={styles.row}>
+          <Card
+            tone="home"
+            style={[styles.row, (width < 350 || fontScale >= 1.4) && styles.stacked]}
+          >
             <Text style={styles.hash}>#</Text>
             <View style={styles.rowBody}>
               {editingId === item.id ? (
                 <TextInput
+                  accessibilityLabel="Channel name"
                   value={editName}
                   onChangeText={setEditName}
                   autoFocus
@@ -172,6 +198,9 @@ export default function ChannelsAdminScreen() {
                 />
               ) : (
                 <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Rename ${item.name}`}
+                  style={styles.renameControl}
                   onPress={() => {
                     setEditingId(item.id);
                     setEditName(item.name);
@@ -180,12 +209,23 @@ export default function ChannelsAdminScreen() {
                   <Text style={styles.channelName}>{item.name}</Text>
                 </Pressable>
               )}
-              <Pressable onPress={() => cycleVisibility(item)} style={styles.visBadge}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Change visibility for ${item.name}: ${VIS_LABEL[item.visibility]}`}
+                onPress={() => cycleVisibility(item)}
+                style={styles.visBadge}
+              >
                 <Text style={styles.visBadgeText}>{VIS_LABEL[item.visibility]}</Text>
                 <Ionicons name="swap-horizontal" size={12} color={colors.textTertiary} />
               </Pressable>
             </View>
-            <Pressable onPress={() => confirmDelete(item)} hitSlop={8}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Delete ${item.name}`}
+              style={styles.iconControl}
+              onPress={() => confirmDelete(item)}
+              hitSlop={8}
+            >
               <Ionicons name="trash-outline" size={20} color={colors.red} />
             </Pressable>
           </Card>
@@ -193,7 +233,7 @@ export default function ChannelsAdminScreen() {
         ListEmptyComponent={
           loading ? null : (
             <Text style={styles.emptyText}>
-              {error ? `Couldn’t load channels: ${error}` : 'No channels yet. Create one above.'}
+              {error ? 'Channels are unavailable.' : 'No channels yet. Create one above.'}
             </Text>
           )
         }
@@ -204,27 +244,36 @@ export default function ChannelsAdminScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  list: { padding: spacing.lg, gap: spacing.md },
-  createCard: { gap: spacing.sm, marginBottom: spacing.sm },
+  list: { padding: 20, gap: spacing.md },
+  createCard: {
+    borderTopWidth: 6,
+    borderTopColor: colors.gold,
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
   createTitle: { ...typography.h3, color: colors.textPrimary, marginBottom: spacing.xs },
   fieldLabel: {
     ...typography.caption,
     color: colors.textSecondary,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0,
   },
   visRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.sm },
   error: { ...typography.bodySmall, color: colors.red },
+  stacked: { flexDirection: 'column', alignItems: 'flex-start' },
+  iconControl: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
+  renameControl: { minHeight: 48, minWidth: 48, justifyContent: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   hash: { ...typography.h2, color: colors.textTertiary },
-  rowBody: { flex: 1, gap: spacing.xs },
+  rowBody: { minWidth: 0, flexShrink: 1, gap: spacing.xs },
   channelName: { ...typography.h3, color: colors.textPrimary },
   editInput: {
     ...typography.h3,
     color: colors.textPrimary,
     borderBottomWidth: 1,
     borderBottomColor: colors.gold,
-    paddingVertical: 2,
+    paddingVertical: 8,
+    minHeight: 48,
   },
   visBadge: {
     flexDirection: 'row',
@@ -233,7 +282,8 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     backgroundColor: colors.surfaceHover,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
+    paddingVertical: 8,
+    minHeight: 48,
     borderRadius: radius.sm,
   },
   visBadgeText: { ...typography.caption, color: colors.textSecondary },

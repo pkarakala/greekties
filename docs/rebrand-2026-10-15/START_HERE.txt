@@ -1,0 +1,68 @@
+GREEK TIES / BLUE & GOLD REBRAND
+Design-to-implementation package / 2026-10-15
+
+STATUS
+Ready for a fresh, scoped CLI implementation session. This is a design package,
+not a modified application, backend release, native build or TestFlight upload.
+The user approved prominent blue and gold, the unified inbox and compact
+conversation direction. The expanded screens are proposals developed from that
+direction; do not label every new screen or feature separately user-approved.
+
+OPEN FIRST
+1. index.html: interactive screen explorer, local-only fictional data.
+2. GALLERY.html: screenshot gallery from deterministic HTML renderings.
+3. DESIGN_SPEC.txt: brand, tokens, components, accessibility, layout rules.
+4. SCREEN_CONTRACTS.txt: screen-by-screen behavior and failure requirements.
+5. CAPABILITY_MATRIX.csv: existing contracts versus new capability gates.
+6. IMPLEMENTATION_PLAN.txt: bounded slices, order and separate release gates.
+7. ACCEPTANCE.txt: non-negotiable regression and validation checks.
+8. CLI_START_PROMPT.txt: exact first-run prompt.
+9. verification.json and VERIFICATION.txt: prototype-only evidence.
+
+START ONE NEW CLI SESSION
+Run in Terminal:
+
+codex -C /Users/pkarakala/Desktop/greekties "$(cat /Users/pkarakala/Documents/Playground/greek-ties-rebrand/2026-10-15/CLI_START_PROMPT.txt)"
+
+This uses your configured model and effort. No unsafe approval-bypass flag is
+needed. Do not run a second source-editing session in the same checkout.
+The command syntax was checked against the installed `codex --help`.
+If the CLI presents a shared-daemon settings conflict, the installed help exposes
+--no-daemon. Starting without the daemon avoids changing another client's shared
+settings; do not restart ongoing work simply to begin this task.
+
+FIRST IMPLEMENTATION SCOPE
+Foundation plus Home, with existing data and services. Preserve all app routes,
+guardrails, Events/Chats fixes, production configuration, and Build 15 baseline.
+Do not attempt the entire rebrand, new event media, invitations, or map features
+in the first implementation turn. Follow IMPLEMENTATION_PLAN.txt sequentially.
+
+SOURCE OF TRUTH
+Written contracts + tokens.json > interactive prototype > screenshot gallery >
+earlier AI-generated reference boards. Screenshots establish visual intent, not
+authority to hardcode data, bypass roles, replace business logic or add features.
+The original boards were selected for visual direction. Their fictional counts
+and generated typography errors are not implementation requirements.
+
+BASELINE TO PRESERVE
+The user reports Build 15 launches on their phone. This package did not re-test it.
+Existing app: /Users/pkarakala/Desktop/greekties
+Expo 57.0.29 is present in the inspected package.json. Preserve scene support,
+signing/configuration, QA guards and isolated-backend routing.
+The working tree contains valuable unrelated work. A broad git status read was
+stopped after hanging; no assumption is made about a clean checkout. Establish a
+bounded, current source checkpoint before editing. Never reset or stash away work.
+No production migrations, commits, pushes, uploads or distribution are authorized
+by this package. Account deletion remains unavailable in the private QA build.
+
+RELEASE IS SEPARATE
+Rebranding is not clearance for public release. Preserve documented deletion,
+native, external-service and historical QA gaps. Build/upload/distribution require
+their own authorization and a fresh recipient audit.
+
+SYNTHETIC ASSETS
+assets/reunion.png is AI-generated fictional concept photography, not an actual
+chapter or endorsement. Use it only in isolated previews unless explicitly
+approved for shipping. Prefer chapter-owned photos with rights and consent.
+references/ preserves the two earlier blue/gold concept boards as inspiration.
+No credentials, real member records or operational invite codes are included.

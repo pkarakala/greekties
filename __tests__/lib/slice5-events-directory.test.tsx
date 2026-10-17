@@ -75,6 +75,34 @@ describe('attendance reads and writes', () => {
     expect(select.steps).toContainEqual(['select', 'id, user_id, name, avatar_url']);
     expect(select.steps).toContainEqual(['limit', 4]);
   });
+  it.each(['going', 'declined'] as const)(
+    'keeps Going count and preview on one snapshot while another RSVP changes from %s',
+    async (status) => {
+      db.rows.event_rsvps = [{ event_id: 'event-a', user_id: 'member-0', status }];
+      db.rows.profiles = [member(0)];
+      db.setIntercept((call, snapshot) => {
+        if (
+          call.table === 'event_rsvps' &&
+          call.steps.some((s) => s[0] === 'eq' && s[1] === 'status' && s[2] === 'going')
+        ) {
+          // The next request sees a different committed response.
+          db.rows.event_rsvps[0].status = status === 'going' ? 'declined' : 'going';
+          return snapshot;
+        }
+      });
+      const meta = await fetchRsvpMeta('event-a', 'user-a', 'chapter-a');
+      expect(meta.goingCount).toBe(status === 'going' ? 1 : 0);
+      expect(meta.attendees.map((p) => p.user_id)).toEqual(status === 'going' ? ['member-0'] : []);
+      const goingReads = db.calls.filter(
+        (call) =>
+          call.table === 'event_rsvps' &&
+          call.steps.some((s) => s[0] === 'eq' && s[1] === 'status' && s[2] === 'going'),
+      );
+      expect(goingReads).toHaveLength(1);
+      expect(goingReads[0].steps).toContainEqual(['select', 'user_id', { count: 'exact' }]);
+      expect(goingReads[0].steps).toContainEqual(['limit', 4]);
+    },
+  );
   it('retains details and attendance through failed same-scope retry, then clears removed content', async () => {
     db.rows.event_rsvps = [{ event_id: 'event-a', user_id: 'user-a', status: 'going' }];
     const { result } = renderHook(() => useEvent('event-a', 'user-a', auth.blockedIds));
@@ -117,7 +145,7 @@ describe('attendance reads and writes', () => {
     const late = deferred<Result>();
     let writes = 0;
     db.setIntercept((c) => {
-      if (c.steps.some((s) => s[0] === 'upsert')) {
+      if (c.steps.some((s) => ['update', 'insert'].includes(s[0]))) {
         writes++;
         return late.promise;
       }
@@ -138,7 +166,7 @@ describe('attendance reads and writes', () => {
     async (mode) => {
       db.rows.event_rsvps = [{ event_id: 'event-a', user_id: 'user-a', status: 'maybe' }];
       db.setIntercept((c) => {
-        if (c.steps.some((s) => s[0] === 'upsert')) {
+        if (c.steps.some((s) => ['update', 'insert'].includes(s[0]))) {
           if (mode === 'thrown') throw new Error('lost reply');
           return { data: null, error: mode === 'denied' ? { message: 'denied' } : null };
         }
@@ -158,10 +186,11 @@ describe('attendance reads and writes', () => {
     let holdRead = true;
     db.setIntercept((c) => {
       if (c.table === 'events' && holdRead) return oldRead.promise;
-      const upsert = c.steps.find((s) => s[0] === 'upsert');
-      if (upsert) {
-        db.rows.event_rsvps = [upsert[1]];
-        return { data: upsert[1], error: null };
+      const write = c.steps.find((s) => ['update', 'insert'].includes(s[0]));
+      if (write) {
+        const row = { event_id: 'event-a', user_id: 'user-a', ...write[1] };
+        db.rows.event_rsvps = [row];
+        return { data: row, error: null };
       }
     });
     act(() => result.current.reload());
@@ -319,7 +348,9 @@ it('job loading distinguishes errors, preserved retry data, removal, and account
 });
 it('a pending RSVP cannot adopt or reconcile under a replacement account', async () => {
   const late = deferred<Result>();
-  db.setIntercept((c) => (c.steps.some((s) => s[0] === 'upsert') ? late.promise : undefined));
+  db.setIntercept((c) =>
+    c.steps.some((s) => ['update', 'insert'].includes(s[0])) ? late.promise : undefined,
+  );
   const { result, rerender } = renderHook(() =>
     useEvent('event-a', auth.session.user.id, auth.blockedIds),
   );
@@ -345,8 +376,9 @@ it('retains confirmed response and read-only counts if attendance refresh fails 
   const { result } = renderHook(() => useEvent('event-a', 'user-a', auth.blockedIds));
   await waitFor(() => expect(result.current.goingCount).toBe(0));
   db.setIntercept((call) => {
-    const write = call.steps.find((step) => step[0] === 'upsert');
-    if (write) return { data: write[1], error: null };
+    const write = call.steps.find((step) => ['update', 'insert'].includes(step[0]));
+    if (write)
+      return { data: { event_id: 'event-a', user_id: 'user-a', ...write[1] }, error: null };
     if (call.table === 'event_rsvps') return fail;
   });
   await act(async () => result.current.saveRsvp('going'));
@@ -354,4 +386,83 @@ it('retains confirmed response and read-only counts if attendance refresh fails 
   expect(result.current.myStatus).toBe('going');
   expect(result.current.goingCount).toBe(0);
   expect(result.current.metaError).toBeTruthy();
+});
+
+describe('Events recovery regressions', () => {
+  it('Retry reads only, preserves errors on failure and reconciles the actual saved response', async () => {
+    db.rows.event_rsvps = [{ event_id: 'event-a', user_id: 'user-a', status: 'going' }];
+    const { result } = renderHook(() => useEvent('event-a', 'user-a', auth.blockedIds));
+    await waitFor(() => expect(result.current.myStatus).toBe('going'));
+    db.setIntercept((c) => (c.table === 'event_rsvps' ? fail : undefined));
+    await act(async () => result.current.saveRsvp('maybe'));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.saveError).toBeTruthy();
+    act(() => result.current.reload());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.saveError).toBeTruthy();
+    const before = db.calls.length;
+    db.setIntercept(null);
+    act(() => result.current.reload());
+    await waitFor(() => expect(result.current.saveError).toBeNull());
+    expect(result.current.myStatus).toBe('going');
+    expect(result.current.recoveryMessage).toMatch(/saved response is shown/);
+    expect(
+      db.calls.slice(before).some((c) => c.steps.some((s) => ['insert', 'update'].includes(s[0]))),
+    ).toBe(false);
+  });
+  it('confirms an uncertain response only when the refreshed backend row matches it', async () => {
+    const { result } = renderHook(() => useEvent('event-a', 'user-a', auth.blockedIds));
+    await waitFor(() => expect(result.current.myStatus).toBeNull());
+    db.setIntercept((c) => (c.table === 'event_rsvps' ? fail : undefined));
+    await act(async () => result.current.saveRsvp('maybe'));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    db.rows.event_rsvps = [{ event_id: 'event-a', user_id: 'user-a', status: 'maybe' }];
+    db.setIntercept(null);
+    act(() => result.current.reload());
+    await waitFor(() => expect(result.current.saveError).toBeNull());
+    expect(result.current.myStatus).toBe('maybe');
+    expect(result.current.recoveryMessage).toMatch(/confirmed by the backend/);
+  });
+  it.each(['returned', 'thrown'])(
+    'isolates %s profile failures from confirmed RSVP counts and retries the preview',
+    async (mode) => {
+      db.rows.event_rsvps = [{ event_id: 'event-a', user_id: 'member-0', status: 'going' }];
+      db.rows.profiles = [member(0)];
+      db.setIntercept((c) => {
+        if (c.table === 'profiles' && c.steps.some((s) => s[0] === 'in')) {
+          if (mode === 'thrown') throw Error('network');
+          return fail;
+        }
+      });
+      const { result } = renderHook(() => useEvent('event-a', 'user-a', auth.blockedIds));
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(result.current.attendeeState).toBe('error');
+      expect(result.current.goingCount).toBe(1);
+      expect(result.current.myStatus).toBeNull();
+      db.setIntercept(null);
+      act(() => result.current.reload());
+      expect(result.current.attendeeState).toBe('loading');
+      await waitFor(() => expect(result.current.attendeeState).toBe('ready'));
+      expect(result.current.attendees.map((p) => p.user_id)).toEqual(['member-0']);
+    },
+  );
+  it('preserves same-scope guests while loading/failing and allows genuine empty success', async () => {
+    db.rows.event_rsvps = [{ event_id: 'event-a', user_id: 'member-0', status: 'going' }];
+    db.rows.profiles = [member(0)];
+    const { result } = renderHook(() => useEvent('event-a', 'user-a', auth.blockedIds));
+    await waitFor(() => expect(result.current.attendees).toHaveLength(1));
+    const late = deferred<Result>();
+    db.setIntercept((c) => (c.table === 'events' ? late.promise : undefined));
+    act(() => result.current.reload());
+    await waitFor(() => expect(result.current.attendeeState).toBe('loading'));
+    expect(result.current.attendees).toHaveLength(1);
+    await act(async () => late.resolve(fail));
+    await waitFor(() => expect(result.current.attendeeState).toBe('error'));
+    expect(result.current.attendees).toHaveLength(1);
+    db.setIntercept(null);
+    db.rows.event_rsvps = [];
+    act(() => result.current.reload());
+    await waitFor(() => expect(result.current.attendeeState).toBe('ready'));
+    expect(result.current.attendees).toHaveLength(0);
+  });
 });

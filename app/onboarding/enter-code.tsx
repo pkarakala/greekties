@@ -5,7 +5,8 @@ import { useRouter } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextField } from '@/components/TextField';
 import { Button } from '@/components/Button';
-import { colors, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/account';
 import { parseInviteCode } from '@/lib/links';
 
 /**
@@ -29,7 +30,7 @@ export default function EnterCodeScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="Join a chapter" onBack={() => router.back()} />
+      <ScreenHeader tone="home" title="Join a chapter" onBack={() => router.back()} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -46,6 +47,7 @@ export default function EnterCodeScreen() {
           </Text>
 
           <TextField
+            tone="home"
             label="Invite code"
             value={input}
             onChangeText={setInput}
@@ -57,7 +59,7 @@ export default function EnterCodeScreen() {
             errorText={error ?? undefined}
           />
 
-          <Button label="Join" onPress={handleJoin} />
+          <Button tone="home" label="Join" onPress={handleJoin} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -67,6 +69,14 @@ export default function EnterCodeScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  scroll: { padding: spacing.xl, gap: spacing.md, paddingBottom: spacing.xxxl },
-  hint: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.md },
+  scroll: { padding: 20, gap: spacing.md, paddingBottom: spacing.xxxl },
+  hint: {
+    ...typography.body,
+    color: colors.navy,
+    backgroundColor: colors.goldLight,
+    borderTopWidth: 6,
+    borderTopColor: colors.gold,
+    padding: 16,
+    marginBottom: spacing.md,
+  },
 });

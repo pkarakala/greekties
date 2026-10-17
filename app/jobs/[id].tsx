@@ -25,7 +25,8 @@ import { Button } from '@/components/Button';
 import { Avatar } from '@/components/Avatar';
 import { TextField } from '@/components/TextField';
 import { timeAgoShort } from '@/lib/time';
-import { colors, radius, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/network';
 import type { Profile } from '@/lib/types';
 
 export default function JobDetailScreen() {
@@ -197,11 +198,16 @@ function JobDetailContent() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenHeader
+        tone="home"
         title=""
         onBack={() => router.back()}
         right={
           job && myUserId && !isOwner && !isBlockedPosting
-            ? { icon: 'ellipsis-horizontal', onPress: startReport }
+            ? {
+                accessibilityLabel: 'Report posting',
+                icon: 'ellipsis-horizontal',
+                onPress: startReport,
+              }
             : undefined
         }
       />
@@ -213,11 +219,13 @@ function JobDetailContent() {
       ) : !job || isBlockedPosting ? (
         <View style={styles.center}>
           <Text style={styles.muted}>{loadError ?? 'This posting is removed or unavailable.'}</Text>
-          {!!loadError && <Button label="Retry" onPress={reload} />}
+          {!!loadError && <Button tone="home" label="Retry" onPress={reload} />}
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          <Text style={styles.title}>{job.title}</Text>
+          <Text accessibilityRole="header" style={styles.title}>
+            {job.title}
+          </Text>
           <Text style={styles.company}>{job.company}</Text>
 
           <View style={styles.meta}>
@@ -228,18 +236,24 @@ function JobDetailContent() {
               </View>
             )}
             <Text style={styles.metaText}>· {timeAgoShort(job.created_at)} ago</Text>
-            {!!job.industry && <Badge label={job.industry} tone="gold" />}
+            {!!job.industry && <Badge appearance="home" label={job.industry} tone="gold" />}
           </View>
 
           {loading && <Text style={styles.muted}>Refreshing…</Text>}
           {!!loadError && (
             <View>
               <Text style={styles.muted}>{loadError} Showing saved details.</Text>
-              <Button label="Retry" onPress={reload} />
+              <Button tone="home" label="Retry" onPress={reload} />
             </View>
+          )}
+          {!!jobApplicationState(job).url && (
+            <Text selectable style={styles.destination}>
+              Application destination: {jobApplicationState(job).url}
+            </Text>
           )}
           {jobApplicationState(job).url ? (
             <Button
+              tone="home"
               label="Apply"
               onPress={apply}
               loading={applying}
@@ -257,6 +271,7 @@ function JobDetailContent() {
           {reporting && (
             <View style={styles.composer}>
               <TextField
+                tone="home"
                 label="Report reason"
                 value={reportReason}
                 onChangeText={setReportReason}
@@ -266,15 +281,21 @@ function JobDetailContent() {
                 style={styles.multiline}
               />
               <Button
+                tone="home"
                 label="Submit report"
                 onPress={() => void submitReport(reportReason)}
                 loading={reportSubmitting}
               />
-              <Button label="Cancel" variant="ghost" onPress={() => setReporting(false)} />
+              <Button
+                tone="home"
+                label="Cancel"
+                variant="ghost"
+                onPress={() => setReporting(false)}
+              />
             </View>
           )}
 
-          <ShareToChat resource={{ kind: 'jobs', id: job.id }} />
+          <ShareToChat tone="home" resource={{ kind: 'jobs', id: job.id }} />
 
           {!!job.description && (
             <View style={styles.section}>
@@ -285,10 +306,11 @@ function JobDetailContent() {
 
           {!!poster && (
             <Pressable
+              accessibilityRole="button"
               style={styles.poster}
               onPress={() => router.push({ pathname: '/profile/[id]', params: { id: poster.id } })}
             >
-              <Avatar uri={poster.avatar_url} name={poster.name} size="sm" />
+              <Avatar tone="home" uri={poster.avatar_url} name={poster.name} size="sm" />
               <View style={styles.flex}>
                 <Text style={styles.posterLabel}>Posted by</Text>
                 <Text style={styles.posterName}>{poster.name ?? 'Member'}</Text>
@@ -301,12 +323,14 @@ function JobDetailContent() {
             <View style={styles.ownerControls}>
               <Text style={styles.sectionTitle}>Manage posting</Text>
               <Button
+                tone="home"
                 label="Edit posting"
                 disabled={closing || loading || !!loadError}
                 variant="secondary"
                 onPress={() => router.push({ pathname: '/jobs/edit/[id]', params: { id: job.id } })}
               />
               <Button
+                tone="home"
                 label="Close posting"
                 disabled={job.is_open === false || !!loadError}
                 variant="secondary"
@@ -317,6 +341,7 @@ function JobDetailContent() {
                 <View style={styles.section}>
                   <Text style={styles.muted}>Permanently delete this posting?</Text>
                   <Button
+                    tone="home"
                     label="Cancel deletion"
                     variant="secondary"
                     disabled={closing}
@@ -326,6 +351,7 @@ function JobDetailContent() {
                     }}
                   />
                   <Button
+                    tone="home"
                     label="Permanently delete posting"
                     loading={closing}
                     onPress={() => managePosting(true)}
@@ -333,6 +359,7 @@ function JobDetailContent() {
                 </View>
               )}
               <Button
+                tone="home"
                 disabled={closing || loading || !!loadError}
                 label="Delete posting"
                 variant="ghost"
@@ -354,14 +381,27 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   muted: { ...typography.body, color: colors.textSecondary },
-  scroll: { padding: spacing.xl, gap: spacing.lg, paddingBottom: spacing.xxxl },
-  title: { ...typography.h1, color: colors.textPrimary },
+  scroll: { padding: 20, gap: spacing.lg, paddingBottom: spacing.xxxl },
+  title: {
+    ...typography.h1,
+    color: colors.blue,
+    borderTopWidth: 6,
+    borderTopColor: colors.gold,
+    paddingTop: 16,
+  },
+  destination: {
+    ...typography.bodySmall,
+    color: colors.navy,
+    backgroundColor: colors.goldLight,
+    padding: 16,
+    borderRadius: 6,
+  },
   company: { ...typography.h3, color: colors.textSecondary },
   meta: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { ...typography.bodySmall, color: colors.textTertiary },
+  metaItem: { flexShrink: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaText: { flexShrink: 1, ...typography.bodySmall, color: colors.textTertiary },
   composer: { gap: spacing.sm },
-  multiline: { height: 96, textAlignVertical: 'top' },
+  multiline: { minHeight: 120, textAlignVertical: 'top' },
   section: { gap: spacing.sm },
   sectionTitle: { ...typography.h3, color: colors.textPrimary },
   body: { ...typography.body, color: colors.textSecondary },
@@ -372,7 +412,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.lg,
+    borderRadius: 8,
     padding: spacing.lg,
   },
   posterLabel: { ...typography.caption, color: colors.textTertiary },

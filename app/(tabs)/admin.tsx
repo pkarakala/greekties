@@ -1,4 +1,6 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { AdminAccess } from '@/components/AdminAccess';
+import { AccountReadStatus } from '@/components/AccountReadStatus';
+import { useWindowDimensions, View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,15 +10,34 @@ import { isAdmin } from '@/lib/types';
 import { usePendingMembers } from '@/lib/admin';
 import { useChapterReports } from '@/lib/moderation';
 import { Card } from '@/components/Card';
-import { colors, radius, spacing, typography } from '@/theme';
+import { radius, spacing } from '@/theme';
+import { colors, typography } from '@/theme/account';
 
 export default function AdminScreen() {
+  return (
+    <AdminAccess>
+      <AdminScreenContent />
+    </AdminAccess>
+  );
+}
+
+function AdminScreenContent() {
   const router = useRouter();
   const { profile } = useAuth();
   const chapterId = profile?.chapter_id ?? null;
 
-  const { members: pending, reload } = usePendingMembers(chapterId);
-  const { reports, reload: reloadReports } = useChapterReports(chapterId);
+  const {
+    members: pending,
+    loading: pendingLoading,
+    error: pendingError,
+    reload,
+  } = usePendingMembers(chapterId);
+  const {
+    reports,
+    loading: reportsLoading,
+    error: reportsError,
+    reload: reloadReports,
+  } = useChapterReports(chapterId);
   const openReports = reports.filter((r) => r.status === 'open').length;
 
   useFocusEffect(
@@ -40,18 +61,36 @@ export default function AdminScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Admin</Text>
+        <Text accessibilityRole="header" style={styles.title}>
+          Admin
+        </Text>
         <Text style={styles.subtitle}>Manage your chapter</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <AccountReadStatus
+          loading={pendingLoading}
+          error={pendingError}
+          reload={reload}
+          label="member approvals"
+        />
+        <AccountReadStatus
+          loading={reportsLoading}
+          error={reportsError}
+          reload={reloadReports}
+          label="reports"
+        />
         <NavRow
           icon="person-add"
           title="Member approvals"
           subtitle={
-            pending.length > 0
-              ? `${pending.length} waiting for approval`
-              : 'No pending members'
+            pendingLoading
+              ? 'Loading member approvals…'
+              : pendingError
+                ? 'Member approvals unavailable'
+                : pending.length > 0
+                  ? `${pending.length} pending requests loaded`
+                  : 'No pending members'
           }
           badge={pending.length}
           onPress={() => router.push('/admin/approvals')}
@@ -60,9 +99,13 @@ export default function AdminScreen() {
           icon="flag-outline"
           title="Reports"
           subtitle={
-            openReports > 0
-              ? `${openReports} open ${openReports === 1 ? 'report' : 'reports'}`
-              : 'No open reports'
+            reportsLoading
+              ? 'Loading reports…'
+              : reportsError
+                ? 'Reports unavailable'
+                : openReports > 0
+                  ? `${openReports} open reports loaded`
+                  : 'No open reports'
           }
           badge={openReports}
           onPress={() => router.push('/admin/reports')}
@@ -103,10 +146,15 @@ function NavRow({
   badge?: number;
   onPress: () => void;
 }) {
+  const { width, fontScale } = useWindowDimensions();
   return (
-    <Card style={styles.row} onPress={onPress}>
+    <Card
+      tone="home"
+      style={[styles.row, (width < 350 || fontScale >= 1.4) && styles.stacked]}
+      onPress={onPress}
+    >
       <View style={styles.iconWrap}>
-        <Ionicons name={icon} size={20} color={colors.gold} />
+        <Ionicons name={icon} size={20} color={colors.blue} />
       </View>
       <View style={styles.rowBody}>
         <Text style={styles.rowTitle}>{title}</Text>
@@ -124,12 +172,19 @@ function NavRow({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  header: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-  title: { ...typography.h1, color: colors.textPrimary },
+  header: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: colors.goldLight,
+    borderBottomWidth: 6,
+    borderBottomColor: colors.gold,
+  },
+  title: { ...typography.h1, color: colors.blue },
   subtitle: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
-  scroll: { padding: spacing.lg, gap: spacing.md },
+  scroll: { padding: 20, gap: spacing.md },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   muted: { ...typography.body, color: colors.textSecondary },
+  stacked: { flexDirection: 'column', alignItems: 'flex-start' },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   iconWrap: {
     width: 44,
@@ -139,17 +194,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rowBody: { flex: 1 },
+  rowBody: { minWidth: 0, flexShrink: 1 },
   rowTitle: { ...typography.h3, color: colors.textPrimary },
   rowSub: { ...typography.bodySmall, color: colors.textSecondary },
   badge: {
     minWidth: 22,
-    height: 22,
+    minHeight: 22,
     borderRadius: 11,
     paddingHorizontal: 6,
     backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  badgeText: { ...typography.caption, color: colors.background, fontWeight: '700' },
+  badgeText: { ...typography.caption, color: colors.navy, fontWeight: '700' },
 });

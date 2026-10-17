@@ -3,24 +3,29 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   Pressable,
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
-  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@/lib/auth';
 import { useThread, respondToRequest } from '@/lib/mentorship';
 import { reportContent, blockUser } from '@/lib/moderation';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { Ionicons } from '@expo/vector-icons';
+import {
+  CompactMessage,
+  ConversationHeader,
+  ConversationList,
+  conversationStyles,
+} from '@/components/CompactConversation';
 import { MessageComposer } from '@/components/MessageComposer';
 import { Button } from '@/components/Button';
 import { showMessageActions } from '@/components/MessageActions';
-import { colors, radius, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/chats';
 
 export default function ThreadScreen() {
   const { requestId } = useLocalSearchParams<{ requestId: string }>();
@@ -104,18 +109,71 @@ export default function ThreadScreen() {
     );
   }
 
-  return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title={other?.name ?? 'Conversation'} onBack={() => router.back()} />
+  const context = request ? (
+    <View style={styles.context}>
+      {!!request.message && (
+        <View style={styles.requestNote}>
+          <Text style={styles.requestLabel}>Mentorship request</Text>
+          <Text style={styles.requestMsg}>{request.message}</Text>
+        </View>
+      )}
+      {isRecipient && request.status === 'pending' && (
+        <View style={styles.actions}>
+          <Button
+            tone="home"
+            label="Accept"
+            onPress={() => respond('accepted')}
+            loading={responding}
+          />
+          <Button
+            tone="home"
+            label="Decline"
+            variant="secondary"
+            onPress={() => respond('declined')}
+            loading={responding}
+          />
+        </View>
+      )}
+      {!isRecipient && request.status === 'pending' && (
+        <Text style={styles.statusNote}>Waiting for a response…</Text>
+      )}
+      {request.status === 'declined' && (
+        <Text style={styles.statusNote}>This request was declined.</Text>
+      )}
+    </View>
+  ) : undefined;
 
+  return (
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <ConversationHeader
+        title={request ? (other?.name ?? 'Member') : 'Conversation'}
+        subtitle={accepted ? 'Mentorship conversation' : 'Mentorship request'}
+        onBack={() => router.back()}
+        onRefresh={request ? reload : undefined}
+        refreshing={loading}
+        onProfile={
+          request && other?.id
+            ? () => router.push({ pathname: '/profile/[id]', params: { id: other.id } })
+            : undefined
+        }
+      />
+      {accepted && (
+        <View style={styles.accepted}>
+          <Ionicons name="checkmark-circle-outline" size={17} color={colors.blue} />
+          <Text style={styles.acceptedText}>
+            Mentorship accepted
+            {request.focus_areas?.length ? ` · ${request.focus_areas.join(', ')}` : ''}
+          </Text>
+        </View>
+      )}
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={colors.gold} />
+          <ActivityIndicator color={colors.blue} />
         </View>
       ) : !request ? (
         <View style={styles.center}>
           <Text style={styles.muted}>{error ?? 'This request couldn’t be found.'}</Text>
-          <Button label="Reload conversation" onPress={reload} variant="secondary" />
+          <Button tone="home" label="Reload conversation" onPress={reload} variant="secondary" />
         </View>
       ) : (
         <KeyboardAvoidingView
@@ -123,85 +181,64 @@ export default function ThreadScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
         >
-          <ScrollView
-            contentContainerStyle={styles.scroll}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.gold} />
+          <ConversationList
+            key={JSON.stringify([requestId, myUserId])}
+            messages={accepted ? messages : []}
+            onRefresh={reload}
+            refreshing={loading}
+            header={context}
+            empty={
+              accepted ? <Text style={styles.statusNote}>You’re connected. Say hello.</Text> : null
             }
-          >
-            {/* Original request */}
-            {!!request.message && (
-              <View style={styles.requestCard}>
-                <Text style={styles.requestLabel}>Mentorship request</Text>
-                <Text style={styles.requestMsg}>{request.message}</Text>
-              </View>
-            )}
-
-            {/* Recipient action on a pending request */}
-            {isRecipient && request.status === 'pending' && (
-              <View style={styles.actions}>
-                <Button label="Accept" onPress={() => respond('accepted')} loading={responding} />
-                <Button
-                  label="Decline"
-                  variant="secondary"
-                  onPress={() => respond('declined')}
-                  loading={responding}
-                />
-              </View>
-            )}
-
-            {!isRecipient && request.status === 'pending' && (
-              <Text style={styles.statusNote}>Waiting for a response…</Text>
-            )}
-            {request.status === 'declined' && (
-              <Text style={styles.statusNote}>This request was declined.</Text>
-            )}
-
-            {/* Conversation (once accepted). Long-press another member's bubble
-                to report the message or block them (own bubbles are inert). */}
-            {accepted &&
-              messages.map((m) => {
-                const mine = m.sender_id === myUserId;
-                if (mine) {
-                  return (
-                    <View key={m.id} style={[styles.bubble, styles.bubbleMine]}>
-                      <Text style={[styles.bubbleText, styles.bubbleTextMine]}>{m.content}</Text>
-                    </View>
-                  );
-                }
-                return (
-                  <Pressable
-                    key={m.id}
-                    style={[styles.bubble, styles.bubbleTheirs]}
-                    onLongPress={() =>
-                      showMessageActions({
-                        senderName: other?.name ?? 'Member',
-                        onReport: () => startReport(m.id),
-                        onBlock: () => confirmBlock(m.sender_id),
-                      })
-                    }
-                  >
-                    <Text style={styles.bubbleText}>{m.content}</Text>
-                  </Pressable>
-                );
-              })}
-
-            {accepted && messages.length === 0 && (
-              <Text style={styles.statusNote}>You’re connected. Say hello 👋</Text>
-            )}
-          </ScrollView>
-
+            renderItem={({ item, index }) => {
+              const mine = item.sender_id === myUserId;
+              const actor = mine ? profile : other;
+              return (
+                <CompactMessage
+                  message={item}
+                  previous={messages[index - 1]}
+                  mine={mine}
+                  name={actor?.name ?? (mine ? 'You' : 'Member')}
+                  avatar={actor?.avatar_url}
+                  onProfile={
+                    actor?.id
+                      ? () => router.push({ pathname: '/profile/[id]', params: { id: actor.id } })
+                      : undefined
+                  }
+                  onActions={
+                    mine
+                      ? undefined
+                      : () =>
+                          showMessageActions({
+                            senderName: other?.name ?? 'Member',
+                            onReport: () => startReport(item.id),
+                            onBlock: () => confirmBlock(item.sender_id),
+                          })
+                  }
+                >
+                  <Text style={[conversationStyles.text, mine && conversationStyles.ownText]}>
+                    {item.content}
+                  </Text>
+                </CompactMessage>
+              );
+            }}
+          />
           {!!error && (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Reload messages"
               onPress={reload}
+              style={styles.reload}
             >
               <Text style={styles.muted}>{error} Tap to reload.</Text>
             </Pressable>
           )}
-          {accepted && <MessageComposer composer={composer} />}
+          {accepted && (
+            <MessageComposer
+              composer={composer}
+              placeholder={`Message ${other?.name ?? 'member'}`}
+            />
+          )}
         </KeyboardAvoidingView>
       )}
     </SafeAreaView>
@@ -211,42 +248,42 @@ export default function ThreadScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  muted: { ...typography.body, color: colors.textSecondary },
-  scroll: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xl },
-
-  requestCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: spacing.lg,
+    gap: spacing.md,
+  },
+  muted: { ...typography.body, color: colors.textSecondary },
+  context: { gap: spacing.sm },
+  requestNote: {
+    paddingVertical: spacing.md,
     gap: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.goldLight,
+    paddingHorizontal: 12,
   },
-  requestLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  requestLabel: { ...typography.caption, color: colors.textSecondary },
+  requestMsg: { ...typography.bodySmall, color: colors.textSecondary },
+  accepted: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gold,
+    backgroundColor: colors.gold,
   },
-  requestMsg: { ...typography.body, color: colors.textPrimary },
-
-  actions: { gap: spacing.sm },
+  acceptedText: { ...typography.caption, color: colors.navy, flex: 1 },
+  actions: { gap: spacing.sm, paddingVertical: spacing.md },
   statusNote: {
     ...typography.bodySmall,
-    color: colors.textTertiary,
+    color: colors.textSecondary,
     textAlign: 'center',
     paddingVertical: spacing.md,
   },
-
-  bubble: {
-    maxWidth: '80%',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.lg,
-  },
-  bubbleMine: { alignSelf: 'flex-end', backgroundColor: colors.gold },
-  bubbleTheirs: { alignSelf: 'flex-start', backgroundColor: colors.surfaceElevated },
-  bubbleText: { ...typography.body, color: colors.textPrimary },
-  bubbleTextMine: { color: colors.background },
+  reload: { minHeight: 48, justifyContent: 'center', padding: spacing.md },
 });

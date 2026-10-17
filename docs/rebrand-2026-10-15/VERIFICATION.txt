@@ -1,0 +1,73 @@
+DESIGN PROTOTYPE VERIFICATION / 2026-10-15
+
+FINAL PROTOTYPE RUN
+132 passed, 0 failed. See verification.json for named assertions.
+37 top-level screen designs rendered at:
+- 390-point preview width, standard text
+- 440-point preview width, standard text
+- 375-point preview width, 130% preview text
+111 primary screen screenshots + 8 no-cover/modal/recovery screenshots = 119 PNGs.
+These are HTML/CSS browser screenshots. They are not native iOS/Android screenshots.
+
+AUTOMATED COVERAGE
+Screen overflow/bounds and media loading; Home count-to-directory filter; combined
+filters/clear; inbox search/tab; RSVP draft cancel/save and count update; explicit
+map consent/revocation; event form time validation/review/back/local publish;
+escaped message text and own timestamp; dialog focus trap/Escape; invitation
+context/pending state; mentorship request remains pending; QA deletion disabled;
+read loading/empty/error/offline/access removed; 375px browser viewport; no runtime
+exceptions; no-cover fallbacks; calendar selected-day filtering; signup consent flow.
+
+VISUAL INSPECTION
+Inspected representative Home, Event detail, creation, Chats conversation, Network
+and enlarged Map visibility screenshots. Corrected inconsistent count-band alignment
+and a filter icon expanding into half of the directory search row. No screenshot
+review can establish actual native keyboard, safe-area or screen-reader behavior.
+
+PRESERVED FAILURES
+Initial bundled Chromium executable was absent. Used installed Google Chrome via
+Playwright channel='chrome'; no browser download or app setting change was needed.
+First automated suite: 122 passing assertions, one test failure because the harness
+tried to fill End time inside the closed Optional details disclosure. Corrected the
+harness to open the disclosure through the UI; preserved verification-first-run.json.
+Later calendar review caught a prototype condition that showed the reunion on
+other selected event dates. Fixed the condition and added a focused regression.
+Final run includes those corrections and the added auth/no-cover screens.
+
+PACKAGE CHECKS
+Run package-check.cjs after this report exists. package-check.json records actual
+contrast ratios, local gallery links/images, mobile gallery overflow and runtime
+results. manifest.json hashes the final assets, screenshots and documents.
+OVERVIEW.png is a browser capture of the gallery's four core designs, not a native
+app screenshot or an additional AI-generated UI image.
+
+REPRODUCE
+node /Users/pkarakala/Documents/Playground/greek-ties-rebrand/2026-10-15/verify.cjs
+node /Users/pkarakala/Documents/Playground/greek-ties-rebrand/2026-10-15/package-check.cjs
+
+Scripts use the bundled local Playwright package path and installed Chrome. They
+create a fresh isolated browser context and load local design files only. No
+production/member data, credentials, logged-in browser profile or backend is used.
+No server is needed: open index.html or GALLERY.html directly.
+
+LIMITATIONS / HONEST BOUNDARIES
+This is a visual/interaction contract, not a functional app replacement. Data is
+fictional, memory-only and reset on reload. Some secondary list links open a
+representative detail template rather than unique service-backed records. Simulated
+share/upload/calendar/legal/approval actions intentionally do not call a service.
+The month grid is a fixed November 2026 example; no recurrence/timezone engine is
+implemented here. The map is an explicitly schematic city-cluster proposal.
+The prototype's signup password minimum and invitation lifetime are illustrative;
+the actual backend policies must govern the app. The QA deletion guard stays on.
+Operation save/send failures, persistence, real authorization, pagination, actual
+Realtime, native accessibility and native lifecycle require application tests.
+130% browser font enlargement is not iOS Dynamic Type or Android font scaling.
+No claim is made that every screen state, admin workflow or future feature has
+complete implementation or independent visual approval. Written contracts enumerate
+those requirements, and the capability matrix separates existing/new/deferred work.
+
+APPLICATION PRESERVATION
+Only design-package files and generated assets were created. Application source was
+read, not edited. No app build, simulator, backend, migration, commit, push, upload
+or deployment was performed. A hanging git status was interrupted; do not treat
+this as a clean-worktree audit. CLI must inspect current source before editing.

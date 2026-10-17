@@ -1,0 +1,1722 @@
+{
+  "date": "2026-10-17",
+  "baseCommit": "4e30050fe06e1ee9bce4cdc6c7d75ec8a7865901",
+  "records": [
+    {
+      "file": ".env.example",
+      "bytes": 1169,
+      "sha256": "55dbaae1ffa3925672ff573b070e53b09c9be2ed3ac628b84a68c751fb302d1f",
+      "origin": "current-checkout"
+    },
+    {
+      "file": ".env.owner-qa.example",
+      "bytes": 543,
+      "sha256": "0dbf007e0df6cd40d63d544e8459cba4277fed97654bc1e6c68b7db6780ce4f3",
+      "origin": "current-checkout"
+    },
+    {
+      "file": ".github/workflows/ci.yml",
+      "bytes": 523,
+      "sha256": "5eeaf05cbac11c4bc226ac9d131bfccae69723ac98069be19ceead55a91a073f",
+      "origin": "current-checkout"
+    },
+    {
+      "file": ".github/workflows/deploy-pages.yml",
+      "bytes": 1725,
+      "sha256": "6e3ad5a2d822fa077bcd4d5eb21376424809bf67613bfca07e40d76c8be782f2",
+      "origin": "current-checkout"
+    },
+    {
+      "file": ".gitignore",
+      "bytes": 405,
+      "sha256": "f6a01c56a6e414859b79d4536d2b268d891738ca17a634fef252a86aa639447a",
+      "origin": "current-checkout"
+    },
+    {
+      "file": ".prettierrc",
+      "bytes": 73,
+      "sha256": "85378d4d734cb7d35641c44ffdf322fe0bc76a3b12841927f20aa5f0eba12695",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "README.md",
+      "bytes": 10370,
+      "sha256": "130c8778379c1ab441ba2fe212d479e540a5e53ffcc45277e8d9a9677595470d",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "RELEASE_OPERATOR_CHECKLIST.md",
+      "bytes": 26219,
+      "sha256": "d65efa4fefbd4f03ebbe166e93430165d79801546fa53a1ff134a997fd78ad12",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "V2_NEXT_STEPS.md",
+      "bytes": 4980,
+      "sha256": "abce66c468c9ab63217db377fd5e88e113e89664a937b9a6e74874eec6c19155",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/components/account-rebrand.test.tsx",
+      "bytes": 10744,
+      "sha256": "94b7d8c1b9cea2dee9999748a2046d8f9494e5fd4ada7149745b6f5320cf4978",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "__tests__/components/chapter-entry.test.tsx",
+      "bytes": 19372,
+      "sha256": "0438f5953e58503bcd8f6cf6f849e04ba22ce7a43be50235d463e5138c73bae7",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "__tests__/components/chats-inbox.test.tsx",
+      "bytes": 6303,
+      "sha256": "d982330e5c1d5bb15a7428418bd1cce960a35909b165907ce2d76e0adf6bac65",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/components/chats-rebrand.test.tsx",
+      "bytes": 2746,
+      "sha256": "cd5556e2357f60ed03d14b1bd192bd0893dafd15bf4d6fd33a2939e996a0462f",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "__tests__/components/compact-conversation.test.tsx",
+      "bytes": 19187,
+      "sha256": "13c37fc5ea8bc41b26ff77fa81b47b57539e7683b6603b6425d1b4e28affdce0",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "__tests__/components/completeness.test.ts",
+      "bytes": 3348,
+      "sha256": "ff16a8b3c205dd2c3790005d6442c6bf3bb77f52ff816f4910904ef1f554f68f",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/components/events-presentation.test.tsx",
+      "bytes": 10963,
+      "sha256": "f5898dac3c646372b8d5bed5716660c8f282ac7238c6cc6929bb2165ac88b0a8",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/components/events-rebrand.test.tsx",
+      "bytes": 3244,
+      "sha256": "34087e272b9e1bbc820427cf2c999f5bc5a9d79b50e2d1a801811a5c2a28c375",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "__tests__/components/home-people-polish.test.tsx",
+      "bytes": 11936,
+      "sha256": "e815012f76e171aa2e40e2647753d7602adf38f18c97c61ee53d875996d866cf",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "__tests__/components/home-profile-hub.test.tsx",
+      "bytes": 29201,
+      "sha256": "a9e66a5f91bf11de6313130cc920df46c08513dd0ce856947c182cb66f8f6b97",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "__tests__/components/home-rebrand.test.tsx",
+      "bytes": 4893,
+      "sha256": "edce289605944968aa8279213ff98eb9d8b0abce9650b7a995fc07499905ea5d",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "__tests__/components/job-form-navigation.test.tsx",
+      "bytes": 3068,
+      "sha256": "216d29ef1353b7e6ca6e6bf706c0807463829be09d22520a8c25524ebafa46be",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/components/map-consent.test.tsx",
+      "bytes": 3146,
+      "sha256": "bca3860309139ef2ef24572d225c3fcf0896001a9c1115fba74467bafc4d6704",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/components/me-profile-hub.test.tsx",
+      "bytes": 7564,
+      "sha256": "18e21e93fc6ee6e1b15f6949211e3f40133ff1b2be125a11a51827a16bb0d79c",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/components/message-composers.test.tsx",
+      "bytes": 20720,
+      "sha256": "1e53b395b2f0a30c196d9bc3ea6bc6b2f4426de92b7bf8ea1c79cdb9c061cb15",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/components/network-rebrand.test.tsx",
+      "bytes": 11267,
+      "sha256": "dd289bfc34f82697b4952f890bb50b8e9ced6f79077522e59412d32f369b269a",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "__tests__/components/notifications-recovery.test.tsx",
+      "bytes": 3244,
+      "sha256": "ad7728b0bb04590506b08b2c254654d1450bcd632fe30b86aa418230fe56e8a7",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/components/profile-map.test.tsx",
+      "bytes": 7430,
+      "sha256": "947448b89673d4728bcaf4df31cf5b82284d7078430ab6d8b209a284d71a7321",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/components/slice5-corrections.test.tsx",
+      "bytes": 19941,
+      "sha256": "86cf04c1dd554a77d52197e2e02340dafe7f403abb6e7e1f32d7c3fae81d16c0",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/components/slice5-event-forms.test.tsx",
+      "bytes": 5855,
+      "sha256": "6af089a7ecfcdeca78a0fe65603608ff25698426caee78248a320071b9ac7c7e",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/components/slice5-share.test.tsx",
+      "bytes": 12140,
+      "sha256": "4fed62cd350f8676869f0c33f58938c0e0500d2f987c9061bda7614608409528",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/helpers/chats-db.ts",
+      "bytes": 2323,
+      "sha256": "270d74006b6765cbdf94257954adb0218cc89f41aa79543df0746ae943a9a8a0",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/helpers/home-db.ts",
+      "bytes": 3173,
+      "sha256": "b409ecc36bad51d778ba1834845ca88daeb2b05e6fb35e7e0ecd410f2b06c814",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/helpers/message-db.ts",
+      "bytes": 4964,
+      "sha256": "b13a9bc05e7087e25cfb973a226d34228360dde9c94d3ab5b08368258e409378",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/helpers/slice5-db.ts",
+      "bytes": 3193,
+      "sha256": "0050cc7c30554e8e60ed5533314771bc6ae2733b6e31dae090687a1cf46487f0",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/account-deletion.test.ts",
+      "bytes": 5609,
+      "sha256": "9b7901a33e99479c9aa7720270f5f9233c6773a44ec32316350b653183f8fd4a",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "__tests__/lib/admin.test.ts",
+      "bytes": 2370,
+      "sha256": "51a06ea000961dbb35cb6fa43d58bbb5e8920ab70896df927727a99f81da0020",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/auth-links.test.ts",
+      "bytes": 824,
+      "sha256": "c721b2010d5ecc9e39eeacd3615e67925596e456bf911d7f9556abca944ae25e",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/auth.test.tsx",
+      "bytes": 12548,
+      "sha256": "eeeb74db85e120d760a75a7740d8460641aa6b25fa9370027af35cc1464a1a40",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/chapters.test.ts",
+      "bytes": 6028,
+      "sha256": "2e6dee847eb09630e144ae987ebf02cbf96df6740cd12ee5e507f0b22a762ae9",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/chats-inbox.test.tsx",
+      "bytes": 13506,
+      "sha256": "5be563ba719caa9c3e41fa5a74b7e801376e96b36e89e7da22d50159b11db560",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/entry.test.ts",
+      "bytes": 1873,
+      "sha256": "b914349bf6af151b40ce61f7b8e71c6411de6deb9437737e2af63c2c38d92035",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/events.test.ts",
+      "bytes": 9229,
+      "sha256": "0220850d344809dc8bd49bd5ac541e0828fd1d118cc16e77dbd4c747f2f44509",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/geocode.test.ts",
+      "bytes": 5781,
+      "sha256": "4cd49484c496682c0754675a0895b4d770407884b25017688d3020ed5760bdc0",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/invite-storage.test.ts",
+      "bytes": 2323,
+      "sha256": "4da59b54a646cc94269121861a0c93484acf8fbe7f8e42da8ec9df4872bdb517",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/invite.test.ts",
+      "bytes": 3465,
+      "sha256": "c742762829e7c2d837ba997baf6b25fe6ee995a45b31bb47e019b1f885269689",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/ios-scene-support.test.ts",
+      "bytes": 1476,
+      "sha256": "3af0363875e172b5b0714001333e28eed44aeed42ef5693d16e991155940170e",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "__tests__/lib/jobs.test.ts",
+      "bytes": 7054,
+      "sha256": "8cd983f4393f2d846575fb17fd93cf485115a76d2b7e767b2af4b4ecf3e43596",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/links.test.ts",
+      "bytes": 2283,
+      "sha256": "eb436772943bbfacea7275fb10d3e6f226bb214e74e501558c70cd2263b6fb0f",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/map-query.test.tsx",
+      "bytes": 3910,
+      "sha256": "7430effd40d033be43d779909ecb45d00b0ad269670b86137e038dda1f56db70",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/membership.test.tsx",
+      "bytes": 8643,
+      "sha256": "106bd68c9deacf203af0db7aeb610f5e102a76bff9439ced1d6e51cc5d5be746",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/message-auth.test.tsx",
+      "bytes": 4339,
+      "sha256": "6480df435906ec2295549e87ae378cf778c64cae78dca024f01e34753c116b3a",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/message-recovery.test.ts",
+      "bytes": 8552,
+      "sha256": "e8fc36ba3509b5a430107a433900e5a721752814d84ae83ceaff9f31305ed434",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/message-send.test.ts",
+      "bytes": 6263,
+      "sha256": "5ff8f54371be161bddd007c16e0e1c85d11ad776ff3a42fecdccb3af3722c887",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/message-thread.test.tsx",
+      "bytes": 14082,
+      "sha256": "3e2cb3139b1c597b1157fd33e081bc791072ea49467eab75ab9fae9792b305f2",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/moderation.test.ts",
+      "bytes": 6924,
+      "sha256": "6dd357cdd1a9262c2b9509fb8e2ea16157a55253378363c714a6819ef31c1266",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/network-regression.test.tsx",
+      "bytes": 2875,
+      "sha256": "70fbed22eba126e25bfc35432b1a23caee88fdf7055d18b071577e9c36a997ef",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "__tests__/lib/owner-qa-policy.test.ts",
+      "bytes": 2319,
+      "sha256": "9c090c92fa875ccbafd1ebef174495b05f79ac17392d91f154087703b0d45702",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "__tests__/lib/pending-invite.test.ts",
+      "bytes": 4658,
+      "sha256": "0d942ac73368ff68b96c8111f971d7edb3b94d34d5e0cdc1dca204be3432e095",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/profile-map.test.ts",
+      "bytes": 7146,
+      "sha256": "e2e2cae82c5cfbaa12b0ebf4ca1bdc4254c1ce1f8c35b593f34b798af14b359a",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/qa-runner.test.ts",
+      "bytes": 2710,
+      "sha256": "a982abf9c27414c31e9abb5edda3754badb69c6e4ef09a9178feefb5ce8fd679",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "__tests__/lib/reactions.test.ts",
+      "bytes": 8523,
+      "sha256": "ad01d62f5b1612598a9527a016c0c8363eca206afeb9a99ab6ce58759ba2c83d",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/send-push.test.ts",
+      "bytes": 3114,
+      "sha256": "f71f0bfc0cafea60b6f8f13cf421f660d42b2d028dbc09f60c48452f764694a2",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/slice5-events-directory.test.tsx",
+      "bytes": 21199,
+      "sha256": "61475c6ccb5c57afb7bb9f5c7c1e35615e3eeda796d61716f03d52e5af5ea685",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/slice5-time-jobs.test.ts",
+      "bytes": 4214,
+      "sha256": "aa16e4d39709dfaf0748cb7cc4f3f56834819268010f888c4e02b29668140700",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/time.test.ts",
+      "bytes": 2340,
+      "sha256": "4fa9fb9b15d7b2e1954308a5d2830ccd51bb86aae5912140ebda6f94e4a0b34e",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "__tests__/lib/url.test.ts",
+      "bytes": 2073,
+      "sha256": "7c404818755bb9d1cba2a3766d51e1e6700ad4d6350dc4b5a7da77b2f590fd14",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "app.config.ts",
+      "bytes": 3683,
+      "sha256": "91a51bf4ae81ef8af37d545c45c1b37ae54aa8b9939f0fdc2a875252cfe980f7",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/(tabs)/_layout.tsx",
+      "bytes": 2686,
+      "sha256": "94c94f1f991d21eaad51d3a416bb68c1a16d0101c29d37c2876330033016c6a3",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/(tabs)/admin.tsx",
+      "bytes": 6346,
+      "sha256": "b9cdc1c4b9157fd1701e10aa5bb3ffdf3645550bf7d623fe501333aa96cfd2c7",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/(tabs)/chats/README.md",
+      "bytes": 3703,
+      "sha256": "7b942be63d23e8dee872595a4c3ab2b1b18ea3bdf7eb46a75dd12fafac0c82d0",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "app/(tabs)/chats/[channelId].tsx",
+      "bytes": 14077,
+      "sha256": "244c618b6732da6ee255d1a0f3a9f4e8402f5b3a3303473af48c939a4f5bcd31",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/(tabs)/chats/_layout.tsx",
+      "bytes": 341,
+      "sha256": "8d38cff3207894c823e99f07b1a7c527b8703079ef200f8280c8c272a06cee6e",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "app/(tabs)/chats/index.tsx",
+      "bytes": 12560,
+      "sha256": "291913f1a83c1bbb57ebaa7f399a967c9d24b6fb805602dab294876a1e975b1e",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/(tabs)/events.tsx",
+      "bytes": 9399,
+      "sha256": "94f020cde9a4fffde485e602ad5503762b878aa2ce0f2998499e6f93e112ee5f",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/(tabs)/index.tsx",
+      "bytes": 16906,
+      "sha256": "3b10fe4c723438dc2f80291d593d2ddee226b368cd7f29f5940e4f1d4cf165cd",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/(tabs)/me.tsx",
+      "bytes": 16215,
+      "sha256": "68371e9d9e6d57debfbf9f6702df3fa8ae5f6a00918574c6d73a81498071995c",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/(tabs)/people.tsx",
+      "bytes": 18583,
+      "sha256": "87cd0bca47c22b1664ebde7dbc50f7e1f1a058f01a4de3e59dfa8d16e48466cf",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/_layout.tsx",
+      "bytes": 6255,
+      "sha256": "2ee60ea08176ca62916cae53d2e2cc92fc082a879ecd6e01ac320cbca3a4269f",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "app/admin/approvals.tsx",
+      "bytes": 4917,
+      "sha256": "3011a8ff31f8b8a8d9bdc9c76ad485df9f8f7689a8ccc9bb8e1cf737712a1c09",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/admin/channels.tsx",
+      "bytes": 9925,
+      "sha256": "8c7133b1a582856b51753b6991137f78e59a639257fdbd240388b7c0ff2dc8b3",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/admin/members.tsx",
+      "bytes": 13467,
+      "sha256": "b92229023958d7700973ab07a5a03fdf12579702114b7d8925d9dfd6ec176421",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/admin/reports.tsx",
+      "bytes": 6863,
+      "sha256": "92f1a5b8523860874d950d528e434e300bc8c75bb148569cb3529ec3a5b101ef",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/admin/settings.tsx",
+      "bytes": 6750,
+      "sha256": "f923921990d1eb8352a0738ccb4fcd36227358f8d9b2e1620152e4700c24063b",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/events/[id].tsx",
+      "bytes": 19427,
+      "sha256": "be6709bdf027026b67eca9560601ccc235a174ab4454d9a54aed03c01ecfbb90",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/events/edit/[id].tsx",
+      "bytes": 9621,
+      "sha256": "07c85501e88d6d0c438088d16c8e271d5bd2448dcc7518965ad926bd995d86b4",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/events/new.tsx",
+      "bytes": 7529,
+      "sha256": "5e5a6b9556ff4a674fb0f25be26dc4ab28f248e701e0558489d10be1d8593b97",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/forgot-password.tsx",
+      "bytes": 3995,
+      "sha256": "218690d2dd381f8f5a642dc573a409aa7e2ce8175d5662318a724780cfecb0e1",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/inbox/[requestId].tsx",
+      "bytes": 9692,
+      "sha256": "1587183ce308fd91a04e30cca54f09ed98c617e756fe7cf02a762f56254ab9ab",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/inbox/index.tsx",
+      "bytes": 5637,
+      "sha256": "711c1ec43458aac3eb7cea971e941282bb4a44a59b0ad87a7d6e5bf63bfb0aec",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/jobs/[id].tsx",
+      "bytes": 14711,
+      "sha256": "7014435aa4e016d9af5b2aee4ddeac2d39e4487f82332142cd17cc9bfe721629",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/jobs/edit/[id].tsx",
+      "bytes": 6774,
+      "sha256": "8aa12fb490f97c3d991f42767959a57fbb10229feb50b7acb486e04b161f16bb",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/jobs/new.tsx",
+      "bytes": 4681,
+      "sha256": "856b11972d4292276fe104bac45f9e095b63c73537e0864c74a7b1918ab3c6ff",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/join/[code].tsx",
+      "bytes": 12078,
+      "sha256": "15c71d1067332f4c34b3ef7c430dad3790a68049634caa926be9f2e57775ba88",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/login.tsx",
+      "bytes": 5288,
+      "sha256": "aaf80c8e4af5a6528d6110b8cc8c8fb5a62b8eeb33bcfc60a82278a475e911e1",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/map.tsx",
+      "bytes": 6183,
+      "sha256": "722475a8a8dfb0405056e77374af97b54926843000c8827c2af0e3e88f1800c5",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "app/membership.tsx",
+      "bytes": 5263,
+      "sha256": "a00381202e41fe8d1ee705d7563a8b274dac38d3a3a0c0b3d996b5ab392f935b",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/network.tsx",
+      "bytes": 7551,
+      "sha256": "1482080102bf781abe5bbeb793977573f49a5e5e25a9d757a45333243f1b8023",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "app/notifications.tsx",
+      "bytes": 5346,
+      "sha256": "22c08eca4e838bffb1fb01039f587b23a72de1f4b8dd1ed53883c6308ee81e5d",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "app/onboarding/complete-profile.tsx",
+      "bytes": 9744,
+      "sha256": "ecd69e8eca292d7b3fb10dd9ab0ebafe27dbbcf70da759780ba2fea4c546c13a",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/onboarding/create-chapter.tsx",
+      "bytes": 3887,
+      "sha256": "3ce9dfdf8ed8c111dec2ff1ac97db073175d26a2f9581c2030bd8ac15fb73f50",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/onboarding/enter-code.tsx",
+      "bytes": 2781,
+      "sha256": "f4e904e721270a42530f86328243ede8713ad20db449836a2a3e365e6cd37dae",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/profile/[id].tsx",
+      "bytes": 14006,
+      "sha256": "f713fe3b45d3006badcb4902f528c04d6f012699c1f67243aed3e535eba5d849",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/profile/edit.tsx",
+      "bytes": 11004,
+      "sha256": "aceee675bcecc6dce5bb79d062774759dd983ebb90c0b6fc85e1af1854c5cca9",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/reset-password.tsx",
+      "bytes": 4410,
+      "sha256": "0807c9c5d7d4c589a1faee229b6c9439dd8117406ea5152dea4df23b4c48cce9",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/settings/blocked.tsx",
+      "bytes": 5220,
+      "sha256": "6274cdea1ca92bbbff4a2fb9b4887309629723def08ba18e5222cca9345fa782",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "app/signup.tsx",
+      "bytes": 7046,
+      "sha256": "0169f02bbc23395855c786c19ac1295941e9a76a877fc7fa23de223d8c499a3a",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "assets/adaptive-icon.png",
+      "bytes": 6589,
+      "sha256": "9c10d53ee47fe95522f6a4c92082f573ba7f48823c9a0cf61b8bfbe0e133b733",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "assets/icon.png",
+      "bytes": 9988,
+      "sha256": "99f1e69b23b42bcea44a165bf1487297a0b2e03772f7299a81b0fcb147a245ff",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "assets/splash-icon.png",
+      "bytes": 2517,
+      "sha256": "11796a844b62668ee28ca67312e84df2de5651ee8a939ecfe8cfac73e3fe5c6e",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "babel.config.js",
+      "bytes": 218,
+      "sha256": "a0ec2122eac894a4bea4d8782f4260b24c03839c3b59efcd9934cba869d2e523",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "components/AccountReadStatus.tsx",
+      "bytes": 1397,
+      "sha256": "333cbba8a49eae07fe081481342003eef4a5e14f076b1c094d37473907dbe138",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/AdminAccess.tsx",
+      "bytes": 1166,
+      "sha256": "75a566d4d30300ac67341824b6b2b00c63fefa1c73f6a75bcd44805a7e2dafd9",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/AnimatedNumber.tsx",
+      "bytes": 1526,
+      "sha256": "ed54560e6f8d7d76e10fc72a9cffbf2969b045a56d5223cf4ba14a7e5401696a",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "components/Avatar.tsx",
+      "bytes": 2018,
+      "sha256": "69003f9f742c6cafd80411e96394365632bbba2f01b3de4be0afdcd618e19526",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/Badge.tsx",
+      "bytes": 1272,
+      "sha256": "e071e29d1f67f6ed5278fbd2dd22b4b59bc713bf3dcf79340c93b0f024eab695",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/Button.tsx",
+      "bytes": 4826,
+      "sha256": "44dc42d5056d52cb1189a8355aced73380da1bce72675a5c958330f9c89ee1b0",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/Card.tsx",
+      "bytes": 1535,
+      "sha256": "ff2a293c48144cce76edca75a19100420ded5aa08ca076b163144a2800b98921",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/ChannelMessageText.tsx",
+      "bytes": 1154,
+      "sha256": "bc5058b616453747fa911c26622252b9896f19b5079fb756145718bf1ed814e5",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/ChatShareReview.tsx",
+      "bytes": 2987,
+      "sha256": "64b26eb6ae6cc7c9ab899f6ecd3dd7ea15ffa2d0947404d790206454b88d7985",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/Chip.tsx",
+      "bytes": 2649,
+      "sha256": "7cd65b17c507ef447f03beabd46ce953a9beab71e965bcb6ae1e29b141a3b6b2",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/CompactConversation.tsx",
+      "bytes": 13547,
+      "sha256": "d6096cac87a1934eff0fac7e45c0a0955c29f4c88d24c9958475b81c1306cc7e",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/ErrorBoundary.tsx",
+      "bytes": 1541,
+      "sha256": "5220878814c42684829d67cb17bda6f6327b58ab166bc6878644cabcbce210e7",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "components/EventCard.tsx",
+      "bytes": 3547,
+      "sha256": "8c3f79cb34be7c363ebaad809dd249cd691946266610eb402dbc149b9fc1c0a1",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/EventDateInput.tsx",
+      "bytes": 5219,
+      "sha256": "781965df6905972c8c755edca206ada59e6383b71ee663e1e2f3b70c87471e26",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/EventDateInput.web.tsx",
+      "bytes": 3093,
+      "sha256": "d20408e058a322699edf77bbfdb6bdbebfbb607eef3f715b88e3439d27b705a1",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/EventDateTile.tsx",
+      "bytes": 2137,
+      "sha256": "631635295873ed78f3bd692acff4ca94b524b283a7b6f9b21ad49fdd5bc5ab6c",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/InvitationContext.tsx",
+      "bytes": 2355,
+      "sha256": "ab9e2d66195e57325b8d1acd99a5094080be46485048063196e1a6bbf84d24ed",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/InviteCard.tsx",
+      "bytes": 3443,
+      "sha256": "85c2b3485de9f0abac8715447b106ab707533c9e34977189aa1fd8597842cd03",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "components/JobCard.tsx",
+      "bytes": 3314,
+      "sha256": "02991350ece3b51a78d118d93f4bedc202f9ab70306447f2408f6b55caf30747",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/MapConsentField.tsx",
+      "bytes": 2080,
+      "sha256": "4fee641e22c27da2aed64ace5cec2f96c12fc7d1b5112bbbaf6c1c1ce777119a",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/MemberCard.tsx",
+      "bytes": 5596,
+      "sha256": "04126fdd3d13f74965ca1e2b9b084813965ff4493817a22f2e71f0dd9f9caed5",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/MessageActions.tsx",
+      "bytes": 642,
+      "sha256": "34475387f553bcb3883715782bc1f3a4fabe82c7db8e9016354a41d3572c9d4c",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "components/MessageComposer.tsx",
+      "bytes": 7756,
+      "sha256": "296b9fe1bd3bf7b8cc5656e8469e96e23c66903db2c17c8ae38e20b77a708f68",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/NextEventCard.tsx",
+      "bytes": 2309,
+      "sha256": "1fd94a105cb57a2790638698529970282297c4d0bd2e06973bf356496078b151",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "components/ProfileNudgeCard.tsx",
+      "bytes": 2833,
+      "sha256": "983f95dc2ec36ab98236779bb9de83261596f9a8f52b8c1cc9b71d144c33db5a",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "components/ReactionPills.tsx",
+      "bytes": 2594,
+      "sha256": "fef8ec1f18228ac93d0997ad360627f4577fa1f0490226db4c6a80c796e12947",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/ReadStatus.tsx",
+      "bytes": 1428,
+      "sha256": "b3f1cda0210c9e41d5061c39229d955115071f059d0a9d097c716479b154a978",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/ScreenHeader.tsx",
+      "bytes": 3406,
+      "sha256": "1ee6935ba76d24e9ed50731e21ed6d8645b472cea432faad7a22cd7649fc3ea9",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/SearchBar.tsx",
+      "bytes": 3002,
+      "sha256": "a6ee6798735490fcd824df50bce594d709f3243f9bf4149c39d63283815aa5f3",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/SegmentedControl.tsx",
+      "bytes": 2464,
+      "sha256": "90fed14755b5af9fe6d888801d37ac5060b30aa6cb57c5813c5322fd21bd97c2",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/ShareToChat.tsx",
+      "bytes": 6702,
+      "sha256": "9d0deae55a8fb97d65528e5dc1ecb9db8ac9d31ba4ab49882daae5c798724515",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/StatPill.tsx",
+      "bytes": 1178,
+      "sha256": "f2d275269faa3eeff406f949323c1cb777d5b36eef23db77aa9a64a44a3b6db5",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "components/TextField.tsx",
+      "bytes": 2526,
+      "sha256": "8376e0547d51297451ab03a196c52ff7e33ab40d5d11a93cd3528f8aa8d9fde5",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "components/Wordmark.tsx",
+      "bytes": 1353,
+      "sha256": "eed0552edb17e88b382de480c9f0be7412642eb641b135a5da3ee7e9fec7004f",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "config/OwnerQAExportOptions.plist",
+      "bytes": 761,
+      "sha256": "6bbcbaceae9a82f43ece5c09e4e7178204723cb97f3c697d6d43924882488e6e",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "config/ios-scene-support.cjs",
+      "bytes": 911,
+      "sha256": "fd3237b6edab395aee78592a70b5e9c1103ecab120fc922008a45d0aeefe21be",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "config/ios-scene-support.d.cts",
+      "bytes": 166,
+      "sha256": "c047e8ad3d79fb32a92ab8b68347a26a0736756b355c82cf31f4fc64317792cd",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "config/owner-qa-policy.cjs",
+      "bytes": 1472,
+      "sha256": "8183ef897f3a46c57c2c5859378cfb88d7c11b71585dfe324698f2ee5846e246",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "config/owner-qa-policy.d.cts",
+      "bytes": 241,
+      "sha256": "def3d0e73bb94567f66c8bdd74c3dcfc1e8bd36c8e69c7d2e4945b1fe10bee69",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "config/owner-qa-release.json",
+      "bytes": 429,
+      "sha256": "7a2ecbf11966123abd48d33e0a4f173c3dde10de9999fe734fdda85d98dccf2b",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/ACCOUNT_DELETION_COORDINATION_LIMITS.md",
+      "bytes": 3401,
+      "sha256": "2e2b13c5f4e78cfa67e70fc8451d4632ee835134160ddebc5c7db563b2da0afe",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "docs/ACCOUNT_DELETION_ROLLOUT.md",
+      "bytes": 5418,
+      "sha256": "45dd9cf09e9aed19312e4af6f81a62831d95cb1ad9bdd6d42fabb534d2c19982",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "docs/APP_STORE_CHECKLIST.md",
+      "bytes": 13846,
+      "sha256": "94fcb03111c6971b864fa922554d53cd9fec7a5c11bdf0b05208ba9ffa8d0d2f",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/LAUNCH_RUNBOOK.md",
+      "bytes": 18387,
+      "sha256": "b2ea39e4c0ad1c76953785d59d770c9f8a3137525d74830db55e705d6630183b",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/OWNER_ONLY_TESTFLIGHT_QA.md",
+      "bytes": 13863,
+      "sha256": "1206c0ccf54e66810619475adbc9cd9b62d85c383393e9c3e1d8233523f3018c",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "docs/PILOT_IMPLEMENTATION_PLAN.md",
+      "bytes": 71543,
+      "sha256": "7203e45cbd2cef4ec7432c0de5c25e1eabfb0de69e40c81df0acca782bdc3c4b",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/PRODUCTION_ROADMAP.md",
+      "bytes": 10732,
+      "sha256": "3c47bc9e28167faa4d28161cfb56cf0b125c67b0a06b9f8ac472c43e840eb28d",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/PUSH_NOTIFICATIONS.md",
+      "bytes": 6036,
+      "sha256": "e943675fd0195d6fe7021612b13d50c870684f9c5d07a7161d331d0c8e00c55d",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/SESSION_1_FOLLOWUP_PROMPT.md",
+      "bytes": 1683,
+      "sha256": "97cf7fa4bc58bc0dc61108040a808b10ed48fa7b429976af397af53807b71162",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/SESSION_1_PROMPT.md",
+      "bytes": 3866,
+      "sha256": "1bc5600d42e7ba1cd22eae1d07d06979b45addddecee5580ff4d9d6be166788f",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/SESSION_2_PROMPT.md",
+      "bytes": 6233,
+      "sha256": "95f3cf624ef51aaf2413b59e7981d116a53297af00a2903ef8dff87022496b44",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/SESSION_3_FOLLOWUP_PROMPT.md",
+      "bytes": 3158,
+      "sha256": "ffb5656eb19b609be2dc22b84cb71bfcb77b5bb29ee658ca9362a2f1d1cd0754",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/SESSION_3_PROMPT.md",
+      "bytes": 6439,
+      "sha256": "16abe167c91169d3996a2b85c8a65c9528ecff18858a14f3fbc18eadad6815fb",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/SESSION_3_QA_PROMPT.md",
+      "bytes": 4590,
+      "sha256": "ff8f5ca9321359aea85f871c8c8aa38fdf6427c4f1d6fcad845f2f5732c34d08",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/SESSION_4_PROMPT.md",
+      "bytes": 9947,
+      "sha256": "d8713814e2ccf5a5a3106c9f2780d662d909b510af70839734e3250a6c1176d8",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/SESSION_4_QA_PROMPT.md",
+      "bytes": 3048,
+      "sha256": "743713501ffa358e24b4a72dba991ef2190cc0d34dc30d3ce6b3499c0132bbf3",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/SESSION_5_FOLLOWUP_PROMPT.md",
+      "bytes": 3191,
+      "sha256": "9f9e7e5b37a5f0cb02d4d5eeeb52af9c9616bbafd8febd84bbf903cd3b98a485",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/SESSION_5_PROMPT.md",
+      "bytes": 11212,
+      "sha256": "902083c5a11bc0f5854d5c2bf1e6d2b3f95a91ab0713cf45822d06886cd8127b",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/SESSION_6_PROMPT.md",
+      "bytes": 5180,
+      "sha256": "29d56d97de377a8ef1b100e33ceee43657915e9a865bfafd4efe84f54b0d78fe",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/SIMULATOR_SETUP.md",
+      "bytes": 3105,
+      "sha256": "a0fbde85f369b9253e9a5c07376567bc652ba229c40721b1a25551a05cd07a78",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/SLICE_1_REVIEW.md",
+      "bytes": 10905,
+      "sha256": "e0e8f6b4df554e8ff4e9060138408110a14a5c33763b694ae5f7983d9dae9e51",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/SLICE_2_REVIEW.md",
+      "bytes": 3668,
+      "sha256": "95dc381201dd959e4326dab0755318e3a54729252584e945ac70bd3496dc6432",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/SLICE_3_REVIEW.md",
+      "bytes": 10261,
+      "sha256": "64db1060f140307318bfc668fbd23ca7d2bfd5990df528db249752025a84a45f",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/SLICE_4_IMPLEMENTATION.md",
+      "bytes": 9949,
+      "sha256": "fb1f76da9f4183cecba2632ff8a41c024b28c8bbd1617c17208587680c20e58d",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/SLICE_4_REVIEW.md",
+      "bytes": 5057,
+      "sha256": "87a8f87c600757f536fc8244301dcd4bdce4e01cd2aba8c28bc649dae64ba44c",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/SLICE_5_IMPLEMENTATION.md",
+      "bytes": 15454,
+      "sha256": "023f1fa08ac2198c1713b250a23590a8a02863977c7c212b31979c65b31a8def",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/SLICE_5_REVIEW.md",
+      "bytes": 12131,
+      "sha256": "e973047b3dc5b759d82a762722c1992a9f6ea0ecb77a6b7923af49d3b60e81ef",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/SLICE_6_DATABASE_QA_2026-09-19.md",
+      "bytes": 7727,
+      "sha256": "2ade2132750edecdd9a7adcea887cd8c1d2714225e7176f9897a195264d33cbc",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/SLICE_6_READINESS.md",
+      "bytes": 17097,
+      "sha256": "48ce339805cd6545c1fba7e6bd34ff164db3107cbd5bc89a19aed919ff892d53",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/STATUS.md",
+      "bytes": 11233,
+      "sha256": "cc227aba39e79c9e1e78f4474653824179beae275713c6eb24c047b8e652a19d",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/STEWARD_DISTRIBUTION_RUNBOOK.md",
+      "bytes": 9360,
+      "sha256": "a79d13844c0f2c96836dfa7ecd8fd5a794cd290588b29007b33bef6c665572a0",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/UNIVERSAL_LINKS.md",
+      "bytes": 4375,
+      "sha256": "3477a1777b5bf2596bd9bce550e7a23c8dd2f8cbde2ef8ef6c3c1d9a64427aa5",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/legal/PRIVACY_POLICY.md",
+      "bytes": 6623,
+      "sha256": "827281224df264a81022e6e4027991740c493e2a18afde68caf285a82f274c98",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "docs/legal/TERMS.md",
+      "bytes": 6813,
+      "sha256": "c3d3c41e09d9c0c6ae69580ac6cdfe559d5b97e11bdb156916adc92431db9b73",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "eas.json",
+      "bytes": 681,
+      "sha256": "a03711e20ec0951723cf833f72ab727d7ecba38af18cd4fce0ef97c6db7a5ca9",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "eslint.config.js",
+      "bytes": 1153,
+      "sha256": "bce4b38e04b0573605084c8b60ace46d8253cb978af473e484d7a66efff9a163",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "jest.config.js",
+      "bytes": 575,
+      "sha256": "d8f9e3526a809f93209d8ae988af17229b316dcdc996f53df2b83e71a89755a6",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/admin.ts",
+      "bytes": 9485,
+      "sha256": "aad83b6e8625e571629833eec97197f308a5fd1a3fe3682afe947eef865204b6",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/auth-links.ts",
+      "bytes": 1036,
+      "sha256": "c9cb39a0c6ff7fba46277df946d645c8bcc9015a42f4eaccf5bf0b0fd182c8d1",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/auth.tsx",
+      "bytes": 9553,
+      "sha256": "41de8154e12d4a36e8443e0365250fd923893a93195d0f9d7ebd9549081d4a48",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/chapters.ts",
+      "bytes": 3377,
+      "sha256": "b0f1f7b710812d639c87a11d374d6466452edf91a7dcc21c2d32ad0e6ba8f98c",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/chat-share.ts",
+      "bytes": 5895,
+      "sha256": "97a7f611a5cd533cf2f76d4333623eeaf756f5526635213643bbb35593b34da5",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/chat.ts",
+      "bytes": 6200,
+      "sha256": "b9c6f9499d8f42129549ddae8b35922b43c9471f0488acaf2626a3a844a7a5f0",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/chats-inbox.ts",
+      "bytes": 9437,
+      "sha256": "93876a53742bba185dc9a0bfee462834b659eeb1c8dbb60faaa8823925380b9a",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/directory.ts",
+      "bytes": 6480,
+      "sha256": "f5880dcb45ca7409008dee03f5b61857c7dba441ec9368053b78f8e593370d07",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/entry.ts",
+      "bytes": 1689,
+      "sha256": "aaae1943ae02c59fb447f29f13961411433c17289bfc99d6b6b5cd42835422c1",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/events.ts",
+      "bytes": 17418,
+      "sha256": "ee3fd4d85f7cd06105220a6cdc9e0f08effb84f2bde57fda162b46d8e5631b30",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/geocode.ts",
+      "bytes": 2776,
+      "sha256": "72b3301a357cab5c14653dad629718844783dfc7166abd4acc76f5f9981ef745",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/home.ts",
+      "bytes": 7663,
+      "sha256": "eb6c6c4bee2c536cc872951bc24113993b540180f51e6eb7a02284638174e6ad",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "lib/inbox-notifications.ts",
+      "bytes": 5844,
+      "sha256": "05059d3e1d1f2763495a4dfed4ac9e67580e8608a4971b5b57a5c5a2ea7d44e9",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/invite.ts",
+      "bytes": 3067,
+      "sha256": "e17052e3e4612c4263171757c7ec77fc59301460d59e943ea95d8269fa0fc684",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/job-application.ts",
+      "bytes": 1375,
+      "sha256": "51aac4893a16d5bf6a08ab8a057a45e77f7cb91c8edca9f95b1e45d26732acee",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/jobs.ts",
+      "bytes": 7893,
+      "sha256": "e65155f49005a82773d79326f035f3d9e3ebf013ba775fda11a3e35f440e834d",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/legal.ts",
+      "bytes": 389,
+      "sha256": "2fb4b6fa402a176002811317c54def5c1cd76d3a9ccad4945963eba1ba1b5216",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/links.ts",
+      "bytes": 2186,
+      "sha256": "998d403d8b3e1fff92977d704f6bd8046869b07ed673021bbcb5d3ef6cbc2f2a",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/map-consent.ts",
+      "bytes": 590,
+      "sha256": "4847176f576938e42dfb0606ab6aa31d6719fb92b357e75b6d5ed956bc13c4ff",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/mentorship.ts",
+      "bytes": 5434,
+      "sha256": "46156433db20b3702cced835826a936b866744514f0596b592c1019d3617f7cc",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/message-recovery.ts",
+      "bytes": 8821,
+      "sha256": "3d1b6eeac562870da8ffd19bdb70a48539f108599ff811bb5564391b6579b985",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/message-send.ts",
+      "bytes": 4562,
+      "sha256": "6ff8304c9ef8d8e658cf91e4ef810b97416993b6c355bb13b9d28711e489c62c",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/message-thread.ts",
+      "bytes": 10769,
+      "sha256": "506e4cba5ebc68859c5846ed1507d97237dcff4ddaa761403793c0bdd1c875a5",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/moderation.ts",
+      "bytes": 13160,
+      "sha256": "ef754592162c92b100270267d6b739ab6ee0260aeed2932d87aabe1bda70767b",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/notifications.ts",
+      "bytes": 8672,
+      "sha256": "401eb7c7bfee21765568e0a4a8d49b5514e1049039b3bf43e6da273dc27cce80",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/pending-invite.ts",
+      "bytes": 3353,
+      "sha256": "17c4a8f3f43a899a056f7896a2efc52fcab60ff560071ef9141e5113a62bf3e1",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/profile.ts",
+      "bytes": 5899,
+      "sha256": "d7fdae459a34234a757f200ae5be903e613d1bef27688a5793c2c9644308298f",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/qa-build.ts",
+      "bytes": 269,
+      "sha256": "6fb426d6705491a4de3b5411d68db1a53a8db7d4d1aa6c772a6695fb29c72e75",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/queries.ts",
+      "bytes": 12159,
+      "sha256": "fe32eee472ec346d13c75d87c4f961d3c3e7f29187ff7fc393856d4d0e9b37e8",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/reactions.ts",
+      "bytes": 7416,
+      "sha256": "683ff67261ed397f21d6c3e058d35741a516674142405e764358473ca9446de2",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/reads.ts",
+      "bytes": 3289,
+      "sha256": "9d9d82d4b85044ac2f9552aa2b2fcc09d77db980b0180313071e5fe84393198b",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/realtime.ts",
+      "bytes": 306,
+      "sha256": "7450e5dd21a409d99098745328028f18e87fe72fc31ce6193767bc16747ec0e9",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/scoped-read.ts",
+      "bytes": 2794,
+      "sha256": "9fc8e3cfc536c9d9a337c1c4e1d18b8efbd82dd53d3715dc77401cd11be8fd51",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/supabase.ts",
+      "bytes": 2912,
+      "sha256": "9acd07653afe7f66679b8b79e76a8b254e9455ea4ed36e3d04a29937faa4a35c",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "lib/time.ts",
+      "bytes": 3722,
+      "sha256": "5dcfb4cb7aef01295577234635c6b6542ae99484795b059b25804f89597537e1",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/types.ts",
+      "bytes": 3853,
+      "sha256": "8942f4a66485b87ca95c242cd2e37ca174597c4a18301294205289d7f9939793",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "lib/url.ts",
+      "bytes": 1279,
+      "sha256": "6df79dd6e17dffe5a54d80b8b27b482b29f3a3b4412ded53e0217ffb1f3e26c9",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "package-lock.json",
+      "bytes": 613844,
+      "sha256": "29fd8295388bbb23f38b4e7f5dd9ee8f843fc8832ad879fe0e92e112f79192a5",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "package.json",
+      "bytes": 1861,
+      "sha256": "74ab33f0df9f65246d03e41865308971e696c9cf580c297e822af92f85a3d797",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "scripts/generate-assets.js",
+      "bytes": 7523,
+      "sha256": "7c2cc749dad209b8f8b13e50962d3274a551f811b20ce921a3398f20aa2d2107",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "scripts/qa/account-deletion-runner.cjs",
+      "bytes": 2761,
+      "sha256": "150184659239ffadcb14fe8908c5b080eaee2b38b6e18b3f9b7b3927802e7ae6",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "scripts/qa/capture-rebrand-account.cjs",
+      "bytes": 21752,
+      "sha256": "d1fd98a97dc12bc76ab04a01674207543109bf5e2d38b0812cc110c3a2713425",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "scripts/qa/capture-rebrand-chats.cjs",
+      "bytes": 15189,
+      "sha256": "bb16b94d785fd508df78a7b90b30e4c4cdee20d2ce6ebd7906f01951540dbb36",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "scripts/qa/capture-rebrand-events.cjs",
+      "bytes": 12841,
+      "sha256": "ef076c5a9907b413bf0b3aac3979378712c9f36f73acf927321db03e9d2afc69",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "scripts/qa/capture-rebrand-home.cjs",
+      "bytes": 4205,
+      "sha256": "1eacac0e3ca1c02d29cfbf4f77ef6826c0fce81895ba44b517c923c32b19b4cd",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "scripts/qa/capture-rebrand-network.cjs",
+      "bytes": 17099,
+      "sha256": "34f400055c09ef61f026fba8a25d3e23c8569b80875e3caa55cf74cae81fe81e",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "scripts/qa/measure-slice4-contrast.cjs",
+      "bytes": 1613,
+      "sha256": "076cd93c173e72919e94dddaffff855426b8f430afc795c7bad9ec3d3c1c8989",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "scripts/qa/owner-qa-preflight.cjs",
+      "bytes": 3758,
+      "sha256": "fa1960fc9fa3de3367a5ad4799c4c4fc7a13d2c3fe6e17199393174b2c719a62",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "scripts/qa/render-rebrand-account.cjs",
+      "bytes": 18074,
+      "sha256": "6f8527a205f1b63940d12fb456d58fc21c5d308080edb61a9b4c4e24959de2b4",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "scripts/qa/render-rebrand-chats.cjs",
+      "bytes": 14966,
+      "sha256": "23186f27d64ecf8f711c77de20d28445178f77f4e1d87d791bc628c1efd50332",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "scripts/qa/render-rebrand-events.cjs",
+      "bytes": 10949,
+      "sha256": "4e65955fcf18c947baf32b76e7d6d754f0a0089d21fe18fd5a5700dac1c36760",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "scripts/qa/render-rebrand-home.cjs",
+      "bytes": 9289,
+      "sha256": "db7bb8ed0eca589213b918fb88cc909a8e3cec766160f1a00989b6affdf34c06",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "scripts/qa/render-rebrand-network.cjs",
+      "bytes": 13499,
+      "sha256": "524665acd8051d0e62e6cdb7a80832a058f8b4578d060049e1a9c2956680ef2c",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "scripts/qa/render-slice4.cjs",
+      "bytes": 9292,
+      "sha256": "8d055271be27454fd4e0bbd8d3082e59875ac851254398a4aa0cac0e3a598314",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "scripts/qa/render-slice5.cjs",
+      "bytes": 9153,
+      "sha256": "1449935097093000a57d8da48e05a9cbb038bd485670f731416d5a0c639b18b7",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/functions/delete-account/handler.ts",
+      "bytes": 3774,
+      "sha256": "67c1f2a95fa1c159932e63fd3256acfa76eb2eb05a9409c4a33054e2670e1201",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "supabase/functions/delete-account/index.ts",
+      "bytes": 1290,
+      "sha256": "8cec4041d072b54293b29cf949f07cb7da7f1aeaa9f4f76c36161fec3b80a2ef",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/functions/send-push/index.ts",
+      "bytes": 14312,
+      "sha256": "1ed0d629ab7a475d9060f64dbff8fb30e139387a0094db83cadd79f9855b81c6",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/functions/send-push/recipients.ts",
+      "bytes": 1741,
+      "sha256": "c6eecc133b726bf9524d27db722028b383c2778971fc8ca54915464089251169",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/migrations/20261014151406_server_owned_account_deletion.sql",
+      "bytes": 6531,
+      "sha256": "7f97e9653fed59115416744d651115a3d7d4c0fe49ad62a34a1dbb9d108d4903",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "supabase/migrations/20261014232805_account_deletion_review_safety.sql",
+      "bytes": 2173,
+      "sha256": "1b86d89c823a98b2f95fc4fad3952b08860380505866bd2e56b591d5bab7fa89",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "supabase/migrations/README.md",
+      "bytes": 25586,
+      "sha256": "1ef3e5e8f93e12c7278039dcace2e5704f3117ed7c0b384120330e2808945808",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/migrations/app-v1-chat.sql",
+      "bytes": 11534,
+      "sha256": "b63777ad35e55339eca2b8707d69ec9a58cc399f74f959cb50cec7684fd5514e",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/migrations/app-v1-jobs.sql",
+      "bytes": 4296,
+      "sha256": "eba90739747eb43b4b287fc50e6daa407e4df553ab00e4f4c473bbfe220d4ceb",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/migrations/app-v1-seed-channels.sql",
+      "bytes": 1668,
+      "sha256": "7072526ec2e544eb433aaf996d095dda73ef7470219400e3efc41d5b891230a3",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/migrations/app-v10-explicit-map-consent.sql",
+      "bytes": 5540,
+      "sha256": "90126ab52510af4b218eea99e084ffb3e24aaa0f8d2b0b8c90d8444235d16682",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/migrations/app-v11-message-retry-identities.sql",
+      "bytes": 3226,
+      "sha256": "a8d5507d0fa23bda3d095182f2670fe51dd35eaabf947010d89037d1c0786d71",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/migrations/app-v2-account-deletion.sql",
+      "bytes": 5524,
+      "sha256": "ee25555009db487bb67f9bc0d3e3c1072abb4c291fdd09878403601e906c759c",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/migrations/app-v2-avatars-storage.sql",
+      "bytes": 3705,
+      "sha256": "36a2d4bfb04fd04111f9c505ae300e96563c960e0b6eb3db883c532331af6d50",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/migrations/app-v2-invites.sql",
+      "bytes": 8288,
+      "sha256": "f7a2a1439c80beaf2b8347eba5cb5b3c4ef0118f525e64c198a392908124d913",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/migrations/app-v2-moderation.sql",
+      "bytes": 5070,
+      "sha256": "47c75a3e5598f552e51d0319c5f772c1696aa1aab1c6c0c37b4584c17b6c5ff2",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/migrations/app-v3-chapters.sql",
+      "bytes": 6468,
+      "sha256": "ff091157dcd16348f944b6639f5e20ba435de6f74f08bc326c142a64508e4805",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/migrations/app-v3-events.sql",
+      "bytes": 7618,
+      "sha256": "e99071ad71ea0379634bf95561ba2888980e0322ae93342084c6f16b22b881fe",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/migrations/app-v3-push.sql",
+      "bytes": 3357,
+      "sha256": "0c790bee7a7ff8fb67cae6191c553e9d85f144cbfa3de9661f6c550747cfb6c9",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/migrations/app-v4-chat-delete.sql",
+      "bytes": 5052,
+      "sha256": "fc7382b2743f61589b174efeec567e746f9d3f6a8cc01a00b56b942eb862da85",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/migrations/app-v4-notifications.sql",
+      "bytes": 5214,
+      "sha256": "a4838c57a7d76e290e46e7453c0fa260f49b810058639514cf4e2fe5db6a353b",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/migrations/app-v4-reactions.sql",
+      "bytes": 6893,
+      "sha256": "42f11224f7e2422f65b68d01e02003eee08206951fc7e2ecae8a6fb8d5cfd84e",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/migrations/app-v5-chat-rls-recursion.sql",
+      "bytes": 6293,
+      "sha256": "2345f8d6aed345cc25ea0cb5a3e71772f4f7f15bffac78308a35b4f6685222dc",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/migrations/app-v6-p0-authorization-invites.sql",
+      "bytes": 41920,
+      "sha256": "d8340129bdcc1d96b433aa038fc76d703ed1c8183108d4eee08e54c190941aed",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/migrations/app-v7-p0-followup.sql",
+      "bytes": 9140,
+      "sha256": "a77b6a2e812e58611b0971dc55890bc23f2959589db2f9dd3d20908898c28357",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/migrations/app-v8-security-membership-blocks.sql",
+      "bytes": 22171,
+      "sha256": "e3b9ae3cbb6d44d93d4935999bab742f9aa2680659834ec8bae0a1c6791f1496",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/migrations/app-v9-pilot-reinstatement.sql",
+      "bytes": 3876,
+      "sha256": "8aabdf22b8caed2c71057658adb93dd99ef931f4b79c44cfdb790ec722a3b366",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/tests/account-deletion-review.sql",
+      "bytes": 1992,
+      "sha256": "3b7f3641a82245d58fa96536f2eea249c24cc33086304d09ac98ea950d70bc4b",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "supabase/tests/account-deletion.sql",
+      "bytes": 3370,
+      "sha256": "bc6b9902305771c70fe1da6ab76ce5be96bd186ad7cf8d652435cbe6acf7eaa4",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "supabase/tests/p0-authorization-invites.sql",
+      "bytes": 30900,
+      "sha256": "1e6f701ad5443ec38119be70c57e0473d4b0ab24f16628e29bec0aa7375d6b51",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/tests/p0-membership-blocks.sql",
+      "bytes": 16619,
+      "sha256": "61943c849548843666743b019593d9db265ed8a9a455a00cffe3011b0f8de78b",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/tests/pilot-map-consent.sql",
+      "bytes": 9523,
+      "sha256": "addb33138876949ab527a0bea05923741f4c2bc02d4917dfb146cda0ec2e4fd2",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "supabase/tests/pilot-message-retries.sql",
+      "bytes": 14000,
+      "sha256": "05643517ae0579610eb2b49ad3a6edf4b341e13164434a13e4b736abe01ce166",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "theme/account.ts",
+      "bytes": 825,
+      "sha256": "6d299219d74390a2d664a5f5adb51997fffee569ff3698be7165274d4782cd3b",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "theme/chats.ts",
+      "bytes": 670,
+      "sha256": "c6c8b517f88326fcf2d1aaa5e09ea7dc6f63b0cf7dad54e01bc20290aeac5841",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "theme/colors.ts",
+      "bytes": 1182,
+      "sha256": "67bd077f059a96ecd9861763995365b81c31fbd2816d3039b5a2cd697aa71f97",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "theme/events-rebrand.ts",
+      "bytes": 826,
+      "sha256": "f8895da84a889de09cf85540f231c8915a2e05cefc6bd39a51454b592075fd09",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "theme/events.ts",
+      "bytes": 854,
+      "sha256": "c9aec58d03df009b3145eb7fd184bc6869fad3dd1ecd3792288ab6d4eb4ea984",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "theme/home.ts",
+      "bytes": 811,
+      "sha256": "df8d5a4b40b35eeceb5e5fad767119174125528ea77777472c95b5e6cb8d8807",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "theme/index.ts",
+      "bytes": 491,
+      "sha256": "4645aba687ceac0eb564b4f86506a3e9ea4e4cab773a51d5adf4dc9bfc3dd96d",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "theme/network.ts",
+      "bytes": 634,
+      "sha256": "097426f1ce2169b3ab5b97e719be837e80149a8e588d98c883bf62c2bfbfac19",
+      "origin": "current-checkout"
+    },
+    {
+      "file": "theme/spacing.ts",
+      "bytes": 321,
+      "sha256": "561046284acd45dd21ebdb531e098f26d4c65b222c4105daec82897b6baff7a1",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "theme/typography.ts",
+      "bytes": 820,
+      "sha256": "fa4ce344ab78b3ac215bdadde21258d288dc9c61ca68d73e643952ade69ebcbd",
+      "origin": "hash-verified-build16-copy"
+    },
+    {
+      "file": "tsconfig.json",
+      "bytes": 226,
+      "sha256": "69cff581dd2ab73c2a4a938bb1ea9f7abc7549a51c58992bbceec0c6e028ec39",
+      "origin": "hash-verified-build16-copy"
+    }
+  ]
+}

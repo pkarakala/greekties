@@ -1,3 +1,5 @@
+import { AdminAccess } from '@/components/AdminAccess';
+import { AccountReadStatus } from '@/components/AccountReadStatus';
 import { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,10 +11,19 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Card } from '@/components/Card';
 import { Avatar } from '@/components/Avatar';
 import { Button } from '@/components/Button';
-import { colors, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/account';
 import type { Profile } from '@/lib/types';
 
 export default function ApprovalsScreen() {
+  return (
+    <AdminAccess>
+      <ApprovalsScreenContent />
+    </AdminAccess>
+  );
+}
+
+function ApprovalsScreenContent() {
   const router = useRouter();
   const { profile } = useAuth();
   const { loading, error, members, reload } = usePendingMembers(profile?.chapter_id ?? null);
@@ -29,7 +40,7 @@ export default function ApprovalsScreen() {
   function confirmReject(p: Profile) {
     Alert.alert(
       'Reject member?',
-      `This removes ${p.name ?? 'this pending member'}’s request. They can rejoin with an invite link.`,
+      `This removes ${p.name ?? 'this pending member'}’s request. A chapter admin must explicitly reinstate them; an invitation cannot restore access.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -49,9 +60,17 @@ export default function ApprovalsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="Member approvals" onBack={() => router.back()} />
+      <ScreenHeader tone="home" title="Member approvals" onBack={() => router.back()} />
 
       <FlatList
+        ListHeaderComponent={
+          <AccountReadStatus
+            loading={loading}
+            error={error}
+            reload={reload}
+            label="member approvals"
+          />
+        }
         data={members}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
@@ -59,20 +78,30 @@ export default function ApprovalsScreen() {
           <RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.gold} />
         }
         renderItem={({ item }) => (
-          <Card style={styles.card}>
+          <Card tone="home" style={styles.card}>
             <View style={styles.identity}>
-              <Avatar uri={item.avatar_url} name={item.name} size="sm" />
+              <Avatar tone="home" uri={item.avatar_url} name={item.name} size="sm" />
               <View style={styles.flex}>
                 <Text style={styles.name}>{item.name ?? 'New member'}</Text>
                 {!!item.email && <Text style={styles.email}>{item.email}</Text>}
               </View>
             </View>
             <View style={styles.actions}>
-              <View style={styles.flex}>
-                <Button label="Approve" onPress={() => approve(item)} loading={busyId === item.id} />
+              <View style={styles.actionBody}>
+                <Button
+                  tone="home"
+                  label="Approve"
+                  onPress={() => approve(item)}
+                  loading={busyId === item.id}
+                />
               </View>
-              <View style={styles.flex}>
-                <Button label="Reject" variant="secondary" onPress={() => confirmReject(item)} />
+              <View style={styles.actionBody}>
+                <Button
+                  tone="home"
+                  label="Reject"
+                  variant="secondary"
+                  onPress={() => confirmReject(item)}
+                />
               </View>
             </View>
           </Card>
@@ -82,7 +111,7 @@ export default function ApprovalsScreen() {
             <View style={styles.empty}>
               <Ionicons name="checkmark-done-outline" size={40} color={colors.textTertiary} />
               <Text style={styles.emptyText}>
-                {error ? `Couldn’t load requests: ${error}` : 'No pending members. All caught up.'}
+                {error ? 'Member approvals are unavailable.' : 'No pending members. All caught up.'}
               </Text>
             </View>
           )
@@ -95,17 +124,18 @@ export default function ApprovalsScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  list: { padding: spacing.lg, gap: spacing.md },
-  card: { gap: spacing.md },
+  list: { padding: 20, gap: spacing.md },
+  card: { gap: spacing.md, borderTopWidth: 6, borderTopColor: colors.gold },
   identity: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   name: { ...typography.h3, color: colors.textPrimary },
   email: { ...typography.bodySmall, color: colors.textSecondary },
-  actions: { flexDirection: 'row', gap: spacing.md },
+  actionBody: { width: '100%', flexShrink: 0 },
+  actions: { gap: spacing.md },
   empty: { alignItems: 'center', gap: spacing.md, paddingTop: spacing.xxxl },
   emptyText: {
     ...typography.body,
     color: colors.textSecondary,
     textAlign: 'center',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: 20,
   },
 });

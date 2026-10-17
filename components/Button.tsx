@@ -8,14 +8,19 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, radius, spacing, typography } from '@/theme';
+import { homeColors } from '@/theme/home';
+import { eventColors, eventTypography } from '@/theme/events';
 
 type Variant = 'primary' | 'secondary' | 'ghost';
+export type ButtonTone = 'default' | 'events' | 'home';
 
 interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> {
   label: string;
   variant?: Variant;
   loading?: boolean;
   fullWidth?: boolean;
+  tone?: ButtonTone;
+  compact?: boolean;
 }
 
 export function Button({
@@ -23,8 +28,11 @@ export function Button({
   variant = 'primary',
   loading = false,
   fullWidth = true,
+  tone = 'default',
+  compact = false,
   disabled,
   onPress,
+  accessibilityState,
   ...rest
 }: ButtonProps) {
   const isDisabled = disabled || loading;
@@ -32,7 +40,11 @@ export function Button({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: !!isDisabled, busy: loading }}
+      accessibilityState={{
+        ...accessibilityState,
+        disabled: !!isDisabled,
+        busy: loading || !!accessibilityState?.busy,
+      }}
       disabled={isDisabled}
       onPress={(e) => {
         Haptics.selectionAsync().catch(() => {});
@@ -41,11 +53,23 @@ export function Button({
       style={({ pressed }) => [
         styles.base,
         fullWidth && styles.fullWidth,
+        compact && { paddingHorizontal: 12 },
         variant === 'primary' && styles.primary,
         variant === 'secondary' && styles.secondary,
         variant === 'ghost' && styles.ghost,
         pressed && !isDisabled && styles.pressed,
         isDisabled && styles.disabled,
+        tone === 'events' && styles.events,
+        tone === 'home' && styles.home,
+        tone === 'home' && variant === 'primary' && { backgroundColor: homeColors.blue },
+        tone === 'home' &&
+          variant === 'secondary' && {
+            backgroundColor: homeColors.surface,
+            borderColor: homeColors.border,
+          },
+        tone === 'events' && variant === 'primary' && styles.eventsPrimary,
+        tone === 'events' && variant === 'secondary' && styles.eventsSecondary,
+        tone === 'events' && isDisabled && styles.eventsDisabled,
       ]}
       {...rest}
     >
@@ -55,7 +79,9 @@ export function Button({
             size="small"
             color={
               isDisabled
-                ? colors.textSecondary
+                ? tone === 'events'
+                  ? eventColors.muted
+                  : colors.textSecondary
                 : variant === 'primary'
                   ? colors.cream
                   : colors.textPrimary
@@ -68,6 +94,15 @@ export function Button({
             styles.label,
             variant === 'primary' ? styles.labelOnPrimary : styles.labelOnLight,
             isDisabled && styles.disabledLabel,
+            tone === 'events' && styles.eventsLabel,
+            tone === 'home' && {
+              color: variant === 'primary' ? homeColors.surface : homeColors.blue,
+              fontSize: 15,
+              lineHeight: 23,
+              letterSpacing: 0,
+            },
+            tone === 'events' && isDisabled && { color: eventColors.muted },
+            tone === 'events' && variant === 'primary' && !isDisabled && styles.eventsOnPrimary,
           ]}
         >
           {label}
@@ -106,4 +141,11 @@ const styles = StyleSheet.create({
   label: { ...typography.h3, flexShrink: 1, textAlign: 'center' },
   labelOnPrimary: { color: colors.cream },
   labelOnLight: { color: colors.textPrimary },
+  home: { borderRadius: 6 },
+  events: { borderRadius: 8, paddingHorizontal: spacing.md },
+  eventsPrimary: { backgroundColor: eventColors.action },
+  eventsSecondary: { backgroundColor: eventColors.surface, borderColor: eventColors.control },
+  eventsDisabled: { backgroundColor: eventColors.soft, borderColor: eventColors.control },
+  eventsLabel: { ...eventTypography.support, fontWeight: '600', color: eventColors.text },
+  eventsOnPrimary: { color: eventColors.onAction },
 });

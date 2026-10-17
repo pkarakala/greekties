@@ -43,9 +43,12 @@ jest.mock('@/components/EventDateInput', () => ({
   },
 }));
 let auth: any, event: any;
-const back = jest.fn();
+const back = jest.fn(),
+  replace = jest.fn(),
+  canGoBack = jest.fn();
 beforeEach(() => {
   jest.clearAllMocks();
+  canGoBack.mockReturnValue(true);
   auth = {
     session: { user: { id: 'user' } },
     profile: { chapter_id: 'chapter', status: 'approved' },
@@ -61,7 +64,7 @@ beforeEach(() => {
     category: 'chapter',
   };
   jest.mocked(useAuth).mockImplementation(() => auth);
-  jest.mocked(useRouter).mockReturnValue({ back } as any);
+  jest.mocked(useRouter).mockReturnValue({ back, replace, canGoBack } as any);
   jest.mocked(useLocalSearchParams).mockReturnValue({ id: 'event' });
   jest
     .mocked(useEvent)
@@ -121,4 +124,15 @@ it('an edited start cannot silently leave an earlier saved end', async () => {
   fireEvent.press(ui.getByText('Save changes'));
   expect(ui.getByText(/Choose a valid end time after/)).toBeTruthy();
   expect(updateEvent).not.toHaveBeenCalled();
+});
+
+it.each([
+  { Screen: NewEvent, destination: '/events' },
+  { Screen: EditEvent, destination: { pathname: '/events/[id]', params: { id: 'event' } } },
+])('a directly opened event form has a safe Back destination', ({ Screen, destination }) => {
+  canGoBack.mockReturnValue(false);
+  const ui = render(<Screen />);
+  fireEvent.press(ui.getByRole('button', { name: 'Go back' }));
+  expect(replace).toHaveBeenCalledWith(destination);
+  expect(back).not.toHaveBeenCalled();
 });

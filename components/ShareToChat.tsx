@@ -9,14 +9,24 @@ import {
   type ShareResource,
   type ShareChannel,
 } from '@/lib/chat-share';
-import { Button } from './Button';
+import { Button, type ButtonTone } from './Button';
+import { homeColors } from '@/theme/home';
+import { eventColors } from '@/theme/events';
 import { colors, spacing, typography } from '@/theme';
 
-export function ShareToChat({ resource }: { resource: ShareResource }) {
+export function ShareToChat({
+  resource,
+  tone = 'default',
+}: {
+  resource: ShareResource;
+  tone?: ButtonTone;
+}) {
   const scope = useMemberScope();
-  return <SharePicker key={`${scope}:${resource.kind}:${resource.id}`} resource={resource} />;
+  return (
+    <SharePicker key={`${scope}:${resource.kind}:${resource.id}`} resource={resource} tone={tone} />
+  );
 }
-function SharePicker({ resource }: { resource: ShareResource }) {
+function SharePicker({ resource, tone }: { resource: ShareResource; tone: ButtonTone }) {
   const { session, profile } = useAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -119,11 +129,33 @@ function SharePicker({ resource }: { resource: ShareResource }) {
   return (
     <View style={{ gap: spacing.sm }}>
       {!open ? (
-        <Button label="Share to chat" variant="secondary" onPress={() => load()} />
+        <Button label="Share to chat" variant="secondary" tone={tone} onPress={() => load()} />
       ) : (
         <>
-          <Text style={{ ...typography.h3, color: colors.textPrimary }}>Choose a channel</Text>
-          <Text style={{ ...typography.bodySmall, color: colors.textSecondary }}>
+          <Text
+            style={{
+              ...typography.h3,
+              color:
+                tone === 'home'
+                  ? homeColors.navy
+                  : tone === 'events'
+                    ? eventColors.text
+                    : colors.textPrimary,
+            }}
+          >
+            Choose a channel
+          </Text>
+          <Text
+            style={{
+              ...typography.bodySmall,
+              color:
+                tone === 'home'
+                  ? homeColors.muted
+                  : tone === 'events'
+                    ? eventColors.muted
+                    : colors.textSecondary,
+            }}
+          >
             Review the text in chat, then press Send.
           </Text>
           {channels.map((c) => (
@@ -131,33 +163,67 @@ function SharePicker({ resource }: { resource: ShareResource }) {
               key={c.id}
               label={`# ${c.name}`}
               variant="secondary"
+              tone={tone}
               disabled={busy}
               onPress={() => choose(c.id)}
             />
           ))}
-          {busy && <Text style={{ color: colors.textSecondary }}>Checking access…</Text>}
+          {busy && (
+            <Text
+              style={{
+                color:
+                  tone === 'home'
+                    ? homeColors.muted
+                    : tone === 'events'
+                      ? eventColors.muted
+                      : colors.textSecondary,
+              }}
+            >
+              Checking access…
+            </Text>
+          )}
           {!busy && !error && channels.length === 0 && (
-            <Text style={{ color: colors.textSecondary }}>
+            <Text
+              style={{
+                color:
+                  tone === 'home'
+                    ? homeColors.muted
+                    : tone === 'events'
+                      ? eventColors.muted
+                      : colors.textSecondary,
+              }}
+            >
               No accessible channels on this page.
             </Text>
           )}
           {!!error && (
             <>
-              <Text accessibilityRole="alert" style={{ color: colors.red }}>
+              <Text
+                accessibilityRole="alert"
+                style={{
+                  color:
+                    tone === 'home'
+                      ? homeColors.error
+                      : tone === 'events'
+                        ? eventColors.error
+                        : colors.red,
+                }}
+              >
                 {error}
               </Text>
-              <Button label="Retry channels" disabled={busy} onPress={() => load()} />
+              <Button label="Retry channels" tone={tone} disabled={busy} onPress={() => load()} />
             </>
           )}
           {hasMore && (
             <Button
               label="More channels"
+              tone={tone}
               variant="secondary"
               disabled={busy}
               onPress={() => load(true)}
             />
           )}
-          <Button label="Cancel sharing" variant="ghost" onPress={cancel} />
+          <Button label="Cancel sharing" variant="ghost" tone={tone} onPress={cancel} />
         </>
       )}
     </View>

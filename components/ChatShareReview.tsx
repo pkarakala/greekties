@@ -10,7 +10,8 @@ import {
 } from '@/lib/chat-share';
 import type { RecoveryEntry } from '@/lib/message-recovery';
 import { Button } from './Button';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
+import { colors } from '@/theme/chats';
 
 export function ChatShareReview({
   entry,
@@ -82,11 +83,13 @@ function Review({ share }: { share: ChatShare }) {
         </Text>
       )}
       <Button
+        tone="home"
         label={share.entry.state.draft ? 'Append to current draft' : 'Add to draft'}
         onPress={append}
         loading={busy}
       />
       <Button
+        tone="home"
         label="Cancel share"
         variant="ghost"
         onPress={() => {

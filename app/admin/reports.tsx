@@ -1,3 +1,5 @@
+import { AdminAccess } from '@/components/AdminAccess';
+import { AccountReadStatus } from '@/components/AccountReadStatus';
 import { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,7 +18,8 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Card } from '@/components/Card';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
-import { colors, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/account';
 
 const TARGET_LABELS: Record<ReportTargetType, string> = {
   profile: 'Profile',
@@ -32,6 +35,14 @@ function statusTone(status: string): 'gold' | 'green' | 'neutral' {
 }
 
 export default function ReportsScreen() {
+  return (
+    <AdminAccess>
+      <ReportsScreenContent />
+    </AdminAccess>
+  );
+}
+
+function ReportsScreenContent() {
   const router = useRouter();
   const { profile } = useAuth();
   const { loading, error, reports, reload } = useChapterReports(profile?.chapter_id ?? null);
@@ -68,9 +79,12 @@ export default function ReportsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="Reports" onBack={() => router.back()} />
+      <ScreenHeader tone="home" title="Reports" onBack={() => router.back()} />
 
       <FlatList
+        ListHeaderComponent={
+          <AccountReadStatus loading={loading} error={error} reload={reload} label="reports" />
+        }
         data={reports}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
@@ -81,10 +95,18 @@ export default function ReportsScreen() {
           const status = overrides[item.id] ?? item.status;
           const tappable = item.target_type === 'profile' || item.target_type === 'job';
           return (
-            <Card style={styles.card} onPress={tappable ? () => openTarget(item) : undefined}>
+            <Card
+              tone="home"
+              style={styles.card}
+              onPress={tappable ? () => openTarget(item) : undefined}
+            >
               <View style={styles.badgeRow}>
-                <Badge label={TARGET_LABELS[item.target_type] ?? item.target_type} tone="neutral" />
-                <Badge label={status} tone={statusTone(status)} />
+                <Badge
+                  appearance="home"
+                  label={TARGET_LABELS[item.target_type] ?? item.target_type}
+                  tone="neutral"
+                />
+                <Badge appearance="home" label={status} tone={statusTone(status)} />
                 <View style={styles.flex} />
                 <Text style={styles.time}>{timeAgoShort(item.created_at)}</Text>
               </View>
@@ -104,15 +126,17 @@ export default function ReportsScreen() {
 
               {status === 'open' && (
                 <View style={styles.actions}>
-                  <View style={styles.flex}>
+                  <View style={styles.actionBody}>
                     <Button
+                      tone="home"
                       label="Resolve"
                       onPress={() => setStatus(item, 'resolved')}
                       loading={busyId === item.id}
                     />
                   </View>
-                  <View style={styles.flex}>
+                  <View style={styles.actionBody}>
                     <Button
+                      tone="home"
                       label="Dismiss"
                       variant="secondary"
                       onPress={() => setStatus(item, 'dismissed')}
@@ -129,7 +153,7 @@ export default function ReportsScreen() {
             <View style={styles.empty}>
               <Ionicons name="shield-checkmark-outline" size={40} color={colors.textTertiary} />
               <Text style={styles.emptyText}>
-                {error ?? 'No reports. Your chapter is in good standing.'}
+                {error ? 'Reports are unavailable.' : 'No reports have been submitted.'}
               </Text>
             </View>
           )
@@ -142,19 +166,20 @@ export default function ReportsScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  list: { padding: spacing.lg, gap: spacing.md },
-  card: { gap: spacing.sm },
-  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  list: { padding: 20, gap: spacing.md },
+  card: { gap: spacing.sm, borderTopWidth: 6, borderTopColor: colors.gold },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
   time: { ...typography.caption, color: colors.textTertiary },
   reason: { ...typography.body, color: colors.textPrimary },
-  targetRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  targetRow: { flexWrap: 'wrap', flexDirection: 'row', alignItems: 'center', gap: 2 },
   targetHint: { ...typography.caption, color: colors.textTertiary },
-  actions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs },
+  actionBody: { width: '100%', flexShrink: 0 },
+  actions: { gap: spacing.md, marginTop: spacing.xs },
   empty: { alignItems: 'center', gap: spacing.md, paddingTop: spacing.xxxl },
   emptyText: {
     ...typography.body,
     color: colors.textSecondary,
     textAlign: 'center',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: 20,
   },
 });

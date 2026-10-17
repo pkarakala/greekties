@@ -1,15 +1,25 @@
 import { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Alert, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Alert,
+  RefreshControl,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { useBlockedProfiles, unblockUser, type BlockedEntry } from '@/lib/moderation';
+import { AccountReadStatus } from '@/components/AccountReadStatus';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Card } from '@/components/Card';
 import { Avatar } from '@/components/Avatar';
 import { Button } from '@/components/Button';
-import { colors, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/account';
 
 function subtitle(entry: BlockedEntry): string {
   // "Software Engineer at Google" / "Google" / "Member" — same as the directory.
@@ -20,6 +30,7 @@ function subtitle(entry: BlockedEntry): string {
 
 export default function BlockedMembersScreen() {
   const router = useRouter();
+  const { width, fontScale } = useWindowDimensions();
   const { session } = useAuth();
   const myUserId = session?.user?.id ?? null;
   const { loading, error, blocked, reload } = useBlockedProfiles(myUserId);
@@ -67,9 +78,17 @@ export default function BlockedMembersScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="Blocked members" onBack={() => router.back()} />
+      <ScreenHeader tone="home" title="Blocked members" onBack={() => router.back()} />
 
       <FlatList
+        ListHeaderComponent={
+          <AccountReadStatus
+            loading={loading}
+            error={error}
+            reload={reload}
+            label="blocked members"
+          />
+        }
         data={visible}
         keyExtractor={(item) => item.blockedId}
         contentContainerStyle={styles.list}
@@ -77,17 +96,22 @@ export default function BlockedMembersScreen() {
           <RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.gold} />
         }
         renderItem={({ item }) => (
-          <Card style={styles.row}>
-            <Avatar uri={item.profile?.avatar_url} name={item.profile?.name} size="sm" />
+          <Card
+            tone="home"
+            style={[styles.row, (width < 350 || fontScale >= 1.4) && styles.stacked]}
+          >
+            <Avatar
+              tone="home"
+              uri={item.profile?.avatar_url}
+              name={item.profile?.name}
+              size="sm"
+            />
             <View style={styles.rowBody}>
-              <Text style={styles.name} numberOfLines={1}>
-                {item.profile?.name ?? 'Member'}
-              </Text>
-              <Text style={styles.sub} numberOfLines={1}>
-                {subtitle(item)}
-              </Text>
+              <Text style={styles.name}>{item.profile?.name ?? 'Member'}</Text>
+              <Text style={styles.sub}>{subtitle(item)}</Text>
             </View>
             <Button
+              tone="home"
               label="Unblock"
               variant="secondary"
               fullWidth={false}
@@ -100,7 +124,9 @@ export default function BlockedMembersScreen() {
           loading ? null : (
             <View style={styles.empty}>
               <Ionicons name="shield-checkmark-outline" size={40} color={colors.textTertiary} />
-              <Text style={styles.emptyText}>{error ?? 'You haven’t blocked anyone.'}</Text>
+              <Text style={styles.emptyText}>
+                {error ? 'Blocked members are unavailable.' : 'You haven’t blocked anyone.'}
+              </Text>
             </View>
           )
         }
@@ -111,9 +137,10 @@ export default function BlockedMembersScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  list: { padding: spacing.lg, gap: spacing.md },
+  list: { padding: 20, gap: spacing.md },
+  stacked: { flexDirection: 'column', alignItems: 'flex-start' },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  rowBody: { flex: 1, gap: 2 },
+  rowBody: { flexShrink: 1, minWidth: 0, gap: 2 },
   name: { ...typography.h3, color: colors.textPrimary },
   sub: { ...typography.bodySmall, color: colors.textSecondary },
   empty: { alignItems: 'center', gap: spacing.md, paddingTop: spacing.xxxl },

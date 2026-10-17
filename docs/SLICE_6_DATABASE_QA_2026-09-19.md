@@ -80,3 +80,65 @@ defect.
   applying only missing V9, V10, and V11 in order.
 
 Release remains **NO-GO** until these gates are closed.
+
+## Independent rerun — 2026-09-22
+
+The prior results were independently rerun in this session using the owner-
+provided `/private/tmp/greekties-schema-capture/schema.sql`. Raw schema remains
+private and outside the repository. Sanitization removed exactly the four
+outbound-push trigger declarations; no top-level row `COPY` or `INSERT` data
+statements remained. Sanitized derivative SHA-256:
+`5b7bb75e7f51430f2018eb417f49bf26bfd9552bf464986934b189e324495bd7`.
+This derivative differs from the September 19 derivative hash above because
+the sanitizer output was freshly produced; both restore runs are documented.
+
+Restored successfully to vanilla PostgreSQL 17.6 in a disposable Docker
+container with network disabled, no exposed host ports and no mounted volumes.
+After creating only the Supabase role/schema/extension prerequisites, applied
+V9, V10 and V11 in order. V10 retained synthetic city, reset legacy coordinates
+and sharing consent as expected; a deliberate second application failed without
+changing the fixture. V11 assigned identities to synthetic legacy rows in both
+message tables. All four suites listed above passed separately with
+`ON_ERROR_STOP=1`. Five independent concurrent-session scenarios also passed:
+delayed map completion after opt-out, competing same-UUID channel inserts,
+rollback followed by same-ID retry, delete followed by retry without
+resurrection, and membership revocation between preflight and insert.
+
+The Supabase Postgres image finding was independently controlled. On
+`public.ecr.aws/supabase/postgres:17.6.1.104`, a minimal unrelated function
+revoked from `anon` caused the backend to terminate with signal 11. The same
+control on `public.ecr.aws/supabase/postgres:17.6.1.095` returned the expected
+permission-denied error and the server remained healthy. This isolates the
+observed crash to the tested image behavior; it does not establish which image
+is currently supported for deployment. Do not weaken function privileges to
+work around it. The exact .104 behavior matches the upstream
+[supautils issue #214](https://github.com/supabase/supautils/issues/214).
+
+The report's suites and races therefore have independent local reproduction.
+Still open: acceptance on the current supported Supabase stack, PostgREST query
+semantics, Realtime ordering, production-scale V11 lock duration, rendered
+browser UI, installed native picker, and exact-build physical-device flows.
+No remote database, production data, credentials, EAS, build, or deployment was
+used or changed.
+
+### Supabase Postgres .136 acceptance — 2026-09-22
+
+Also tested `public.ecr.aws/supabase/postgres:17.6.1.136` (linux/arm64,
+PostgreSQL 17.6; digest
+`sha256:f371b5f3f2ac0a05703f33d6e6134515fb2498cab708fb948a0aeb7481467c00`)
+in a disposable network-disabled container. A clean test database was restored
+using the image's `supabase_admin` role. V9, V10 and V11 each applied with
+fail-on-error enabled. The same four SQL suites all passed, including expected
+authorization-denial assertions; the message-retry suite emitted a non-fatal
+`pg_temp` privilege warning. A minimal revoked-function call as `anon` returned
+`permission denied` and the database stayed healthy. This confirms the .104
+crash does not reproduce on the tested .136 image. The official self-hosted
+Supabase Docker changelog currently names `.136` as its default image
+([source](https://github.com/supabase/supabase/blob/master/docker/CHANGELOG.md));
+the exact managed-project image remains unknown. The reported upstream
+[supautils issue #214](https://github.com/supabase/supautils/issues/214) remains
+relevant context, but this run does not establish managed-project behavior.
+
+PostgREST, Realtime, V11 lock duration at production scale, browser rendering,
+installed native picker and exact-build device flows remain untested. All
+containers created in this session were removed after the run.

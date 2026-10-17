@@ -15,7 +15,8 @@ import {
   type SendAttempt,
   type useMessageRecovery,
 } from '@/lib/message-recovery';
-import { colors, radius, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/chats';
 
 type Props = {
   composer: ReturnType<typeof useMessageRecovery>;
@@ -164,7 +165,7 @@ export function MessageComposer({ composer, placeholder = 'Message' }: Props) {
           onChangeText={setDraft}
           placeholder={placeholder}
           placeholderTextColor={colors.textSecondary}
-          selectionColor={colors.gold}
+          selectionColor={colors.blue}
           multiline
         />
         <Pressable
@@ -175,7 +176,7 @@ export function MessageComposer({ composer, placeholder = 'Message' }: Props) {
           disabled={disabled}
           style={[styles.sendBtn, disabled && styles.sendDisabled]}
         >
-          <Ionicons name="arrow-up" size={20} color={colors.background} />
+          <Ionicons name="arrow-up" size={20} color={colors.surface} />
         </Pressable>
       </View>
     </View>
@@ -183,13 +184,12 @@ export function MessageComposer({ composer, placeholder = 'Message' }: Props) {
 }
 const styles = StyleSheet.create({
   recovery: {
-    marginHorizontal: spacing.lg,
+    marginHorizontal: spacing.md,
     padding: spacing.md,
     gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
+    backgroundColor: colors.goldLight,
+    borderLeftWidth: 6,
+    borderLeftColor: colors.gold,
   },
   savedPreview: { maxHeight: 120 },
   savedText: { ...typography.body, color: colors.textPrimary },
@@ -199,40 +199,42 @@ const styles = StyleSheet.create({
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   status: { ...typography.bodySmall, color: colors.textSecondary, flex: 1 },
   retry: {
-    minHeight: 44,
+    minWidth: 48,
+    minHeight: 48,
     justifyContent: 'center',
     alignSelf: 'flex-start',
     paddingHorizontal: spacing.sm,
   },
-  retryText: { ...typography.body, color: colors.textPrimary, fontWeight: '600' },
-  error: { ...typography.bodySmall, color: colors.textSecondary, paddingHorizontal: spacing.lg },
+  retryText: { ...typography.body, color: colors.blue, fontWeight: '600' },
+  error: { ...typography.bodySmall, color: colors.textSecondary, paddingHorizontal: spacing.md },
   composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
   },
   input: {
     flex: 1,
+    minHeight: 48,
     maxHeight: 120,
     ...typography.body,
     color: colors.textPrimary,
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
+    borderColor: colors.borderStrong,
+    borderRadius: 6,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
   sendBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    backgroundColor: colors.navy,
+    width: 48,
+    height: 48,
+    borderRadius: 6,
+    backgroundColor: colors.blue,
     alignItems: 'center',
     justifyContent: 'center',
   },

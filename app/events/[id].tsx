@@ -1,19 +1,28 @@
 import { ShareToChat } from '@/components/ShareToChat';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Pressable } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  Pressable,
+  useWindowDimensions,
+} from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
-import { useEvent, useEventClock, deleteEvent } from '@/lib/events';
+import { useEvent, useEventClock, deleteEvent, eventDayKey } from '@/lib/events';
 import { isAdmin } from '@/lib/types';
 import type { EventCategory, RsvpStatus } from '@/lib/types';
-import { eventDateTime, eventPhase } from '@/lib/time';
-import { ScreenHeader } from '@/components/ScreenHeader';
-import { Badge } from '@/components/Badge';
+import { eventDateTime, eventClockTime, eventPhase } from '@/lib/time';
+import { EventDateTile } from '@/components/EventDateTile';
 import { Button } from '@/components/Button';
 import { Avatar } from '@/components/Avatar';
-import { colors, radius, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { eventColors, eventTypography } from '@/theme/events-rebrand';
 
 const CATEGORY_LABELS: Record<EventCategory, string> = {
   chapter: 'Chapter',
@@ -50,6 +59,9 @@ function EventDetailContent() {
   const router = useRouter();
   const { session, profile: me, blockedIds } = useAuth();
   const myUserId = session?.user?.id ?? null;
+  const { width, fontScale } = useWindowDimensions();
+  // Keep the full labels readable as text grows instead of squeezing three columns.
+  const stackRsvp = width < 360 || fontScale >= 1.2;
 
   const {
     loading,
@@ -62,6 +74,8 @@ function EventDetailContent() {
     reload,
     metaError,
     attendees,
+    attendeeState,
+    recoveryMessage,
     saving,
     saveError,
     saveRsvp,
@@ -118,138 +132,202 @@ function EventDetailContent() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="" onBack={() => router.back()} />
-
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <StatusBar style="dark" />
+      <View style={styles.header}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          onPress={() => router.back()}
+          style={({ pressed }) => [styles.back, pressed && styles.pressed]}
+        >
+          <Ionicons name="chevron-back" size={24} color={eventColors.text} />
+        </Pressable>
+        <Text style={styles.headerTitle}>Event</Text>
+      </View>
       {loading && !event ? (
         <View style={styles.center}>
-          <ActivityIndicator color={colors.gold} />
+          <ActivityIndicator color={eventColors.action} accessibilityLabel="Loading event" />
+          <Text style={styles.muted}>Loading event…</Text>
         </View>
       ) : !event ? (
-        <View style={styles.center}>
-          <Text style={styles.muted}>{error ?? 'This event is removed or unavailable.'}</Text>
-          {!!error && <Button label="Retry" onPress={reload} />}
-        </View>
+        <ScrollView contentContainerStyle={styles.center}>
+          <View style={styles.emptyIcon}>
+            <Ionicons name="calendar-outline" size={28} color={eventColors.action} />
+          </View>
+          <Text accessibilityRole="header" style={styles.emptyTitle}>
+            {error ? 'Event couldn’t load' : 'Event unavailable'}
+          </Text>
+          <Text accessibilityRole={error ? 'alert' : undefined} style={styles.emptyText}>
+            {error
+              ? `${error} This does not mean the event was deleted.`
+              : 'This event is removed or unavailable.'}
+          </Text>
+          {!!error && <Button tone="home" label="Retry" variant="secondary" onPress={reload} />}
+        </ScrollView>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          <Badge label={CATEGORY_LABELS[event.category]} tone="gold" />
-          <Text style={styles.metaText}>
-            {eventPhase(event, now)}
-            {!event.ends_at && eventPhase(event, now) === 'Ended'
-              ? ' · Start has passed; no end time provided'
-              : ''}
+          <View style={[styles.banner, fontScale >= 1.5 && styles.largeBanner]}>
+            <EventDateTile
+              tone="home"
+              startsAt={event.starts_at}
+              prominent
+              compact={fontScale >= 1.5}
+            />
+            <View style={[styles.bannerCopy, fontScale >= 1.5 && styles.largeBannerCopy]}>
+              <Text style={styles.bannerTitle}>{CATEGORY_LABELS[event.category]} event</Text>
+              <Text style={styles.bannerMeta}>
+                {eventPhase(event, now)}
+                {!event.ends_at && eventPhase(event, now) === 'Ended'
+                  ? ' · Start has passed; no end time provided'
+                  : ''}
+              </Text>
+            </View>
+          </View>
+          {!!error && (
+            <View style={styles.notice}>
+              <Text accessibilityRole="alert" style={styles.error}>
+                {error} Showing saved details.
+              </Text>
+            </View>
+          )}
+          {loading && (
+            <Text accessibilityLiveRegion="polite" style={styles.muted}>
+              Refreshing…
+            </Text>
+          )}
+          <Text
+            accessibilityRole="header"
+            lineBreakStrategyIOS="standard"
+            textBreakStrategy="highQuality"
+            style={[styles.title, fontScale >= 1.5 && styles.largeTitle]}
+          >
+            {event.title}
           </Text>
-          {!!error && <Text style={styles.muted}>{error} Showing saved details.</Text>}
-          {loading && <Text style={styles.muted}>Refreshing…</Text>}
-          <Text style={styles.title}>{event.title}</Text>
-
           <View style={styles.meta}>
             <View style={styles.metaItem}>
-              <Ionicons name="time-outline" size={15} color={colors.textTertiary} />
-              <Text style={styles.metaText}>
-                {eventDateTime(event.starts_at)}
-                {event.ends_at ? ` – ${eventDateTime(event.ends_at)}` : ' · No end time provided'}
-              </Text>
+              <Ionicons name="calendar-outline" size={22} color={eventColors.muted} />
+              <View style={styles.flex}>
+                <Text style={styles.factText}>
+                  {new Date(event.starts_at).toLocaleDateString([], {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </Text>
+                <Text style={styles.metaText}>
+                  {eventClockTime(event.starts_at)}
+                  {event.ends_at
+                    ? ` – ${eventDayKey(event.starts_at) === eventDayKey(event.ends_at) ? eventClockTime(event.ends_at) : eventDateTime(event.ends_at)}`
+                    : ' · No end time provided'}
+                </Text>
+              </View>
             </View>
             {!!event.location && (
               <View style={styles.metaItem}>
-                <Ionicons name="location-outline" size={15} color={colors.textTertiary} />
-                <Text style={styles.metaText}>{event.location}</Text>
+                <Ionicons name="location-outline" size={22} color={eventColors.muted} />
+                <Text style={[styles.factText, styles.flex]}>{event.location}</Text>
               </View>
             )}
           </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Are you going?</Text>
-            <View style={styles.rsvpRow}>
-              {RSVP_OPTIONS.map((opt) => (
-                <View key={opt.status} style={styles.rsvpButton}>
-                  <Button
-                    label={opt.label}
-                    variant={myStatus === opt.status ? 'primary' : 'secondary'}
-                    onPress={() => void saveRsvp(opt.status)}
-                    disabled={saving || deleting || loading || !!error || myStatus === undefined}
-                  />
-                </View>
-              ))}
-            </View>
-            <Text style={styles.counts}>
+          {!!creator && (
+            <Pressable
+              style={({ pressed }) => [styles.creator, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel={`View ${creator.name ?? 'creator'} profile`}
+              onPress={() => router.push({ pathname: '/profile/[id]', params: { id: creator.id } })}
+            >
+              <Avatar tone="home" uri={creator.avatar_url} name={creator.name} size="sm" />
+              <View style={styles.flex}>
+                <Text style={styles.metaText}>Created by</Text>
+                <Text style={styles.factText}>{creator.name ?? 'Member'}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={eventColors.muted} />
+            </Pressable>
+          )}
+          <View style={styles.attendance}>
+            <Text style={styles.metaText}>
               {goingCount === null
                 ? 'Attendance unavailable'
                 : `${goingCount} going · ${maybeCount} interested · RSVPs visible to you`}
             </Text>
-            {myStatus !== undefined && (
-              <Text style={styles.muted}>
-                {myStatus === null
-                  ? 'You haven’t responded yet.'
-                  : `Your response: ${RSVP_OPTIONS.find((option) => option.status === myStatus)?.label}`}
-              </Text>
-            )}
-            {myStatus === undefined && (
-              <Text style={styles.muted}>Your response is unavailable.</Text>
-            )}
             {!!metaError && (
               <Text style={styles.muted}>
                 {metaError}
                 {goingCount !== null ? ' Showing previous attendance.' : ''}
               </Text>
             )}
-            {!!saveError && (
-              <Text accessibilityRole="alert" style={styles.muted}>
-                {saveError}
+            {!!recoveryMessage && (
+              <Text accessibilityLiveRegion="polite" style={styles.metaText}>
+                {recoveryMessage}
               </Text>
+            )}
+            {!!saveError && (
+              <View style={styles.notice}>
+                <Text accessibilityRole="alert" style={styles.error}>
+                  {saveError}
+                </Text>
+              </View>
             )}
             {(error || metaError || saveError) && (
               <Button
+                tone="home"
                 label="Retry attendance and details"
                 onPress={reload}
                 disabled={saving}
                 variant="secondary"
               />
             )}
-            {saving && <Text style={styles.muted}>Saving your response…</Text>}
-            <View style={styles.attendees}>
-              {attendees
-                .filter((a) => !blockedIds.has(a.user_id))
-                .slice(0, 4)
-                .map((a) => (
-                  <View key={a.id} style={styles.attendee}>
-                    <Avatar uri={a.avatar_url} name={a.name} size="sm" />
-                    <Text style={styles.metaText}>{a.name ?? 'Member'}</Text>
-                  </View>
-                ))}
-            </View>
           </View>
-
-          <ShareToChat resource={{ kind: 'events', id: event.id }} />
-
           {!!event.description && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Details</Text>
+              <Text accessibilityRole="header" style={styles.sectionTitle}>
+                Details
+              </Text>
               <Text style={styles.body}>{event.description}</Text>
             </View>
           )}
-
-          {!!creator && (
-            <Pressable
-              style={styles.creator}
-              accessibilityRole="button"
-              accessibilityLabel={`View ${creator.name ?? 'creator'} profile`}
-              onPress={() => router.push({ pathname: '/profile/[id]', params: { id: creator.id } })}
-            >
-              <Avatar uri={creator.avatar_url} name={creator.name} size="sm" />
-              <View style={styles.flex}>
-                <Text style={styles.creatorLabel}>Created by</Text>
-                <Text style={styles.creatorName}>{creator.name ?? 'Member'}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
-            </Pressable>
-          )}
-
-          {canManage && (
+          {
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Manage event</Text>
+              <Text accessibilityRole="header" style={styles.sectionTitle}>
+                Guests visible to you
+              </Text>
+              {attendeeState === 'loading' && (
+                <Text accessibilityLiveRegion="polite" style={styles.metaText}>
+                  Loading guest preview…
+                </Text>
+              )}
+              {attendeeState === 'error' && (
+                <Text accessibilityRole="alert" style={styles.metaText}>
+                  Guest preview couldn’t refresh. Retry to check again.
+                </Text>
+              )}
+              {attendeeState === 'ready' &&
+                attendees.filter((a) => !blockedIds.has(a.user_id)).length === 0 && (
+                  <Text style={styles.metaText}>No guest profiles are visible to you.</Text>
+                )}
+              <View style={styles.attendees}>
+                {attendees
+                  .filter((a) => !blockedIds.has(a.user_id))
+                  .slice(0, 4)
+                  .map((a) => (
+                    <View key={a.id} style={styles.attendee}>
+                      <Avatar tone="home" uri={a.avatar_url} name={a.name} size="sm" />
+                      <Text style={styles.metaText}>{a.name ?? 'Member'}</Text>
+                    </View>
+                  ))}
+              </View>
+            </View>
+          }
+          <ShareToChat resource={{ kind: 'events', id: event.id }} tone="home" />
+          {canManage && (
+            <View style={styles.manage}>
+              <Text accessibilityRole="header" style={styles.sectionTitle}>
+                Manage event
+              </Text>
               <Button
+                tone="home"
                 disabled={deleting || loading || !!error}
                 label="Edit event"
                 variant="secondary"
@@ -258,7 +336,7 @@ function EventDetailContent() {
                 }
               />
               {!!deleteError && (
-                <Text accessibilityRole="alert" style={styles.muted}>
+                <Text accessibilityRole="alert" style={styles.error}>
                   {deleteError}
                 </Text>
               )}
@@ -266,6 +344,7 @@ function EventDetailContent() {
                 <View style={styles.section}>
                   <Text style={styles.muted}>Delete this event and all its RSVPs permanently?</Text>
                   <Button
+                    tone="home"
                     label="Cancel deletion"
                     variant="secondary"
                     disabled={deleting}
@@ -275,6 +354,7 @@ function EventDetailContent() {
                     }}
                   />
                   <Button
+                    tone="home"
                     label="Permanently delete event"
                     loading={deleting}
                     onPress={confirmDelete}
@@ -282,6 +362,7 @@ function EventDetailContent() {
                 </View>
               )}
               <Button
+                tone="home"
                 label="Delete event"
                 disabled={loading || !!error}
                 variant="ghost"
@@ -295,38 +376,160 @@ function EventDetailContent() {
           )}
         </ScrollView>
       )}
+      {!!event && (
+        <View testID="event-rsvp-dock" style={styles.dock}>
+          <Text accessibilityRole="header" style={styles.sectionTitle}>
+            Are you going?
+          </Text>
+          <View style={styles.rsvpRow}>
+            {RSVP_OPTIONS.map((opt) => (
+              <View key={opt.status} style={[styles.rsvpButton, stackRsvp && styles.stackedRsvp]}>
+                <Button
+                  tone="home"
+                  compact
+                  label={opt.label}
+                  variant={myStatus === opt.status ? 'primary' : 'secondary'}
+                  accessibilityState={{ selected: myStatus === opt.status, busy: saving }}
+                  onPress={() => void saveRsvp(opt.status)}
+                  disabled={saving || deleting || loading || !!error || myStatus === undefined}
+                />
+              </View>
+            ))}
+          </View>
+          <Text accessibilityLiveRegion="polite" style={styles.metaText}>
+            {myStatus === undefined
+              ? 'Your response is unavailable.'
+              : myStatus === null
+                ? 'You haven’t responded yet.'
+                : `Your response: ${RSVP_OPTIONS.find((option) => option.status === myStatus)?.label}`}
+          </Text>
+          {saving && (
+            <Text accessibilityLiveRegion="polite" style={styles.muted}>
+              Saving your response…
+            </Text>
+          )}
+        </View>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  attendees: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  attendee: { gap: spacing.xs, maxWidth: 140 },
-  safe: { flex: 1, backgroundColor: colors.background },
-  flex: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  muted: { ...typography.body, color: colors.textSecondary },
-  scroll: { padding: spacing.xl, gap: spacing.lg, paddingBottom: spacing.xxxl },
-  title: { ...typography.h1, color: colors.textPrimary },
-  meta: { gap: spacing.sm },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  metaText: { ...typography.bodySmall, color: colors.textSecondary },
-  section: { gap: spacing.sm },
-  sectionTitle: { ...typography.h3, color: colors.textPrimary },
-  body: { ...typography.body, color: colors.textSecondary },
-  rsvpRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  rsvpButton: { flexGrow: 1, flexBasis: 100 },
-  counts: { ...typography.caption, color: colors.textTertiary },
-  creator: {
+  safe: { flex: 1, backgroundColor: eventColors.canvas },
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    backgroundColor: eventColors.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: eventColors.divider,
   },
-  creatorLabel: { ...typography.caption, color: colors.textTertiary },
-  creatorName: { ...typography.h3, color: colors.textPrimary },
+  back: {
+    minWidth: 48,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+  },
+  pressed: { backgroundColor: eventColors.soft },
+  headerTitle: { ...eventTypography.support, fontWeight: '600', color: eventColors.text, flex: 1 },
+  flex: { flex: 1 },
+  center: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+    gap: spacing.lg,
+  },
+  emptyIcon: { backgroundColor: eventColors.soft, borderRadius: 8, padding: spacing.md },
+  emptyTitle: {
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: '600',
+    color: eventColors.text,
+    textAlign: 'center',
+  },
+  emptyText: { ...eventTypography.body, color: eventColors.muted, textAlign: 'center' },
+  muted: { ...eventTypography.support, color: eventColors.muted },
+  scroll: {
+    padding: 20,
+    maxWidth: 760,
+    width: '100%',
+    alignSelf: 'center',
+    gap: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+    padding: spacing.lg,
+    backgroundColor: eventColors.surface,
+    borderWidth: 1,
+    borderColor: eventColors.divider,
+    borderRadius: 8,
+  },
+  largeBanner: {
+    gap: spacing.md,
+    padding: spacing.md,
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
+  largeBannerCopy: { paddingLeft: 0, borderLeftWidth: 0, flex: 0 },
+  bannerCopy: {
+    flex: 1,
+    gap: spacing.xs,
+    borderLeftWidth: 1,
+    borderLeftColor: eventColors.divider,
+    paddingLeft: spacing.lg,
+  },
+  bannerTitle: { fontSize: 15, lineHeight: 23, fontWeight: '600', color: eventColors.text },
+  bannerMeta: { ...eventTypography.meta, color: eventColors.muted },
+  title: { ...eventTypography.title, color: eventColors.text },
+  // A smaller base heading at accessibility sizes leaves room for whole words.
+  // Dynamic Type remains enabled with no maximum multiplier or line limit.
+  largeTitle: { fontSize: 22, lineHeight: 28 },
+  meta: { gap: spacing.md },
+  metaItem: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  factText: { ...eventTypography.support, color: eventColors.text },
+  metaText: { ...eventTypography.meta, color: eventColors.muted },
+  section: { gap: spacing.sm },
+  sectionTitle: { ...eventTypography.section, color: eventColors.text },
+  body: { ...eventTypography.body, color: eventColors.text },
+  dock: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    gap: 8,
+    backgroundColor: eventColors.soft,
+    borderTopWidth: 2,
+    borderTopColor: eventColors.accent,
+  },
+  attendance: {
+    gap: spacing.sm,
+    paddingVertical: spacing.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: eventColors.divider,
+  },
+  rsvpRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  rsvpButton: { flexGrow: 1, flexBasis: 95 },
+  stackedRsvp: { flexBasis: '100%' },
+  creator: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  attendees: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg },
+  attendee: { gap: spacing.xs, flexShrink: 1 },
+  manage: {
+    gap: spacing.sm,
+    paddingTop: spacing.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: eventColors.divider,
+  },
+  notice: {
+    padding: spacing.md,
+    borderLeftWidth: 3,
+    borderLeftColor: eventColors.error,
+    backgroundColor: eventColors.errorSurface,
+  },
+  error: { ...eventTypography.support, color: eventColors.error },
 });

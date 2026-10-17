@@ -7,10 +7,15 @@ import { createJob } from '@/lib/jobs';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextField } from '@/components/TextField';
 import { Button } from '@/components/Button';
-import { colors, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/network';
 
 export default function NewJobScreen() {
   const router = useRouter();
+  function returnFromForm() {
+    if (router.canGoBack()) router.back();
+    else router.replace({ pathname: '/people', params: { view: 'jobs' } });
+  }
   const { session, profile } = useAuth();
 
   const [title, setTitle] = useState('');
@@ -50,12 +55,12 @@ export default function NewJobScreen() {
       setError(err);
       return;
     }
-    router.back();
+    returnFromForm();
   }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="Post a job" onBack={() => router.back()} />
+      <ScreenHeader tone="home" title="Post a job" onBack={returnFromForm} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -65,21 +70,37 @@ export default function NewJobScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <TextField label="Title" value={title} onChangeText={setTitle} placeholder="Software Engineer" />
-          <TextField label="Company" value={company} onChangeText={setCompany} placeholder="Acme Inc." />
+          <Text style={styles.context}>An opportunity for your chapter.</Text>
           <TextField
+            tone="home"
+            label="Title"
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Software Engineer"
+          />
+          <TextField
+            tone="home"
+            label="Company"
+            value={company}
+            onChangeText={setCompany}
+            placeholder="Acme Inc."
+          />
+          <TextField
+            tone="home"
             label="Location"
             value={location}
             onChangeText={setLocation}
             placeholder="San Francisco, CA"
           />
           <TextField
+            tone="home"
             label="Industry"
             value={industry}
             onChangeText={setIndustry}
             placeholder="Technology"
           />
           <TextField
+            tone="home"
             label="Description"
             value={description}
             onChangeText={setDescription}
@@ -89,6 +110,7 @@ export default function NewJobScreen() {
             style={styles.multiline}
           />
           <TextField
+            tone="home"
             label="Apply link"
             value={applyUrl}
             onChangeText={setApplyUrl}
@@ -97,9 +119,13 @@ export default function NewJobScreen() {
             keyboardType="url"
           />
 
-          {!!error && <Text style={styles.error}>{error}</Text>}
+          {!!error && (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {error}
+            </Text>
+          )}
 
-          <Button label="Post job" onPress={submit} loading={submitting} />
+          <Button tone="home" label="Post job" onPress={submit} loading={submitting} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -107,9 +133,18 @@ export default function NewJobScreen() {
 }
 
 const styles = StyleSheet.create({
+  context: {
+    ...typography.body,
+    color: colors.navy,
+    backgroundColor: colors.goldLight,
+    borderTopWidth: 6,
+    borderTopColor: colors.gold,
+    padding: 16,
+    marginBottom: 20,
+  },
   safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  scroll: { padding: spacing.xl, paddingBottom: spacing.xxxl },
-  multiline: { height: 110, textAlignVertical: 'top' },
+  scroll: { padding: 20, paddingBottom: spacing.xxxl },
+  multiline: { minHeight: 120, textAlignVertical: 'top' },
   error: { ...typography.bodySmall, color: colors.red, marginBottom: spacing.lg },
 });

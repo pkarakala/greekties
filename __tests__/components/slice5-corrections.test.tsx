@@ -102,7 +102,9 @@ beforeEach(() => {
     profile: { chapter_id: 'chapter', status: 'approved' },
     blockedIds: new Set(),
   } as any);
-  jest.mocked(useRouter).mockReturnValue({ back: jest.fn() } as any);
+  jest
+    .mocked(useRouter)
+    .mockReturnValue({ back: jest.fn(), canGoBack: () => true, replace: jest.fn() } as any);
   jest.mocked(useLocalSearchParams).mockReturnValue({ id: 'event' });
   jest
     .mocked(useEvent)

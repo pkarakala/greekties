@@ -10,7 +10,8 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextField } from '@/components/TextField';
 import { Button } from '@/components/Button';
 import { Chip } from '@/components/Chip';
-import { colors, spacing, typography } from '@/theme';
+import { spacing, typography } from '@/theme';
+import { eventColors as colors } from '@/theme/events-rebrand';
 import type { EventCategory } from '@/lib/types';
 
 export default function EventFormScreen() {
@@ -22,6 +23,10 @@ export default function EventFormScreen() {
 
 function NewEventForm() {
   const router = useRouter();
+  function returnFromForm() {
+    if (router.canGoBack()) router.back();
+    else router.replace('/events');
+  }
   const { session, profile } = useAuth();
 
   const [entryZone] = useState(localTimeZone);
@@ -97,12 +102,12 @@ function NewEventForm() {
       setError(err);
       return;
     }
-    router.back();
+    returnFromForm();
   }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="New event" onBack={() => router.back()} />
+      <ScreenHeader tone="home" title="New event" onBack={returnFromForm} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -112,7 +117,11 @@ function NewEventForm() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <View style={styles.intro}>
+            <Text style={styles.introText}>Your chapter, together.</Text>
+          </View>
           <TextField
+            tone="home"
             label="Title"
             value={title}
             onChangeText={setTitle}
@@ -123,6 +132,7 @@ function NewEventForm() {
           <View style={styles.chips}>
             {EVENT_CATEGORIES.map((cat) => (
               <Chip
+                tone="home"
                 key={cat.value}
                 label={cat.label}
                 selected={category === cat.value}
@@ -132,6 +142,7 @@ function NewEventForm() {
           </View>
 
           <EventDateInput
+            tone="home"
             timeZone={entryZone}
             label="Start"
             date={date}
@@ -142,6 +153,7 @@ function NewEventForm() {
             onOccurrence={setOccurrence}
           />
           <EventDateInput
+            tone="home"
             timeZone={entryZone}
             label="End (optional)"
             optional
@@ -157,12 +169,14 @@ function NewEventForm() {
             chat.
           </Text>
           <TextField
+            tone="home"
             label="Location"
             value={location}
             onChangeText={setLocation}
             placeholder="Chapter house"
           />
           <TextField
+            tone="home"
             label="Description"
             value={description}
             onChangeText={setDescription}
@@ -172,9 +186,13 @@ function NewEventForm() {
             style={styles.multiline}
           />
 
-          {!!error && <Text style={styles.error}>{error}</Text>}
+          {!!error && (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {error}
+            </Text>
+          )}
 
-          <Button label="Create event" onPress={submit} loading={submitting} />
+          <Button tone="home" label="Create event" onPress={submit} loading={submitting} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -182,16 +200,31 @@ function NewEventForm() {
 }
 
 const styles = StyleSheet.create({
-  mutedNote: { ...typography.bodySmall, color: colors.textSecondary, marginBottom: spacing.lg },
-  safe: { flex: 1, backgroundColor: colors.background },
+  intro: {
+    backgroundColor: colors.action,
+    borderBottomWidth: 8,
+    borderBottomColor: colors.accent,
+    padding: 20,
+    marginBottom: 24,
+  },
+  introText: { fontSize: 15, lineHeight: 23, color: colors.onAction },
+  mutedNote: { ...typography.bodySmall, color: colors.muted, marginBottom: spacing.lg },
+  safe: { flex: 1, backgroundColor: colors.canvas },
   flex: { flex: 1 },
-  scroll: { padding: spacing.xl, paddingBottom: spacing.xxxl },
+  scroll: {
+    padding: 20,
+    maxWidth: 760,
+    width: '100%',
+    alignSelf: 'center',
+    paddingBottom: spacing.xxxl,
+  },
   chipsLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
+    fontSize: 15,
+    lineHeight: 23,
+    fontWeight: '600',
+    color: colors.text,
     marginBottom: spacing.sm,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0,
   },
   chips: {
     flexDirection: 'row',
@@ -199,6 +232,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginBottom: spacing.lg,
   },
-  multiline: { height: 110, textAlignVertical: 'top' },
-  error: { ...typography.bodySmall, color: colors.red, marginBottom: spacing.lg },
+  multiline: { minHeight: 110, textAlignVertical: 'top' },
+  error: { ...typography.bodySmall, color: colors.error, marginBottom: spacing.lg },
 });

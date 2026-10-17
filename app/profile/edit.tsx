@@ -20,10 +20,15 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextField } from '@/components/TextField';
 import { Button } from '@/components/Button';
 import { Avatar } from '@/components/Avatar';
-import { colors, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/account';
 
 export default function EditProfileScreen() {
   const router = useRouter();
+  function returnToProfile() {
+    if (router.canGoBack()) router.back();
+    else router.replace('/me');
+  }
   const { session, profile, refreshProfile } = useAuth();
 
   const [name, setName] = useState(profile?.name ?? '');
@@ -131,13 +136,13 @@ export default function EditProfileScreen() {
       return;
     }
     if (!city.trim()) setMapSharing(false);
-    router.back();
+    returnToProfile();
   }
 
   if (!profile) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <ScreenHeader title="Edit profile" onBack={() => router.back()} />
+        <ScreenHeader tone="home" title="Edit profile" onBack={returnToProfile} />
         <View style={styles.center}>
           <Text style={styles.muted}>Join a chapter to set up your profile.</Text>
         </View>
@@ -147,7 +152,7 @@ export default function EditProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="Edit profile" onBack={() => router.back()} />
+      <ScreenHeader tone="home" title="Edit profile" onBack={returnToProfile} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -158,8 +163,15 @@ export default function EditProfileScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.avatarSection}>
-            <Avatar uri={avatarUrl} name={name || profile.name} size="lg" />
-            <Pressable onPress={changePhoto} disabled={uploading} hitSlop={8}>
+            <Avatar tone="home" uri={avatarUrl} name={name || profile.name} size="lg" />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Change photo"
+              style={styles.photoControl}
+              onPress={changePhoto}
+              disabled={uploading}
+              hitSlop={8}
+            >
               {uploading ? (
                 <ActivityIndicator color={colors.gold} />
               ) : (
@@ -169,12 +181,14 @@ export default function EditProfileScreen() {
           </View>
 
           <TextField
+            tone="home"
             label="Name"
             value={name}
             onChangeText={setName}
             placeholder="Your full name"
           />
           <TextField
+            tone="home"
             label="Class year"
             value={classYear}
             onChangeText={setClassYear}
@@ -183,18 +197,21 @@ export default function EditProfileScreen() {
             maxLength={4}
           />
           <TextField
+            tone="home"
             label="Professional role"
             value={role}
             onChangeText={setRole}
             placeholder="e.g. Product manager"
           />
           <TextField
+            tone="home"
             label="Industry"
             value={industry}
             onChangeText={setIndustry}
             placeholder="Technology"
           />
           <TextField
+            tone="home"
             label="City (optional)"
             accessibilityLabel="City (optional)"
             value={city}
@@ -209,18 +226,21 @@ export default function EditProfileScreen() {
             available={!!profile.map_revision && typeof profile.map_sharing_enabled === 'boolean'}
           />
           <TextField
+            tone="home"
             label="Company"
             value={company}
             onChangeText={setCompany}
             placeholder="Acme Inc."
           />
           <TextField
+            tone="home"
             label="Job title"
             value={jobTitle}
             onChangeText={setJobTitle}
             placeholder="Software Engineer"
           />
           <TextField
+            tone="home"
             label="LinkedIn URL"
             value={linkedinUrl}
             onChangeText={setLinkedinUrl}
@@ -229,6 +249,7 @@ export default function EditProfileScreen() {
             keyboardType="url"
           />
           <TextField
+            tone="home"
             label="Bio"
             value={bio}
             onChangeText={setBio}
@@ -251,9 +272,13 @@ export default function EditProfileScreen() {
             onChange={setIsHiring}
           />
 
-          {!!error && <Text style={styles.error}>{error}</Text>}
+          {!!error && (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {error}
+            </Text>
+          )}
 
-          <Button label="Save" onPress={save} loading={saving} />
+          <Button tone="home" label="Save" onPress={save} loading={saving} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -278,11 +303,13 @@ function ToggleRow({
         <Text style={styles.toggleHint}>{hint}</Text>
       </View>
       <Switch
+        style={{ minWidth: 56, minHeight: 48 }}
+        accessibilityLabel={label}
         value={value}
         onValueChange={onChange}
-        trackColor={{ false: colors.surfaceElevated, true: colors.gold }}
-        thumbColor={colors.textPrimary}
-        ios_backgroundColor={colors.surfaceElevated}
+        trackColor={{ false: colors.borderStrong, true: colors.blue }}
+        thumbColor={colors.surface}
+        ios_backgroundColor={colors.borderStrong}
       />
     </View>
   );
@@ -293,11 +320,22 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   muted: { ...typography.body, color: colors.textSecondary },
-  scroll: { padding: spacing.xl, paddingBottom: spacing.xxxl },
-  avatarSection: { alignItems: 'center', gap: spacing.md, marginBottom: spacing.xl },
-  changePhoto: { ...typography.h3, color: colors.gold },
-  multiline: { height: 110, textAlignVertical: 'top' },
+  scroll: { padding: 20, paddingBottom: spacing.xxxl },
+  avatarSection: {
+    backgroundColor: colors.goldLight,
+    borderTopWidth: 6,
+    borderTopColor: colors.gold,
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  photoControl: { minHeight: 48, minWidth: 48, justifyContent: 'center' },
+  changePhoto: { ...typography.h3, color: colors.blue },
+  multiline: { minHeight: 120, textAlignVertical: 'top' },
   toggleRow: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,

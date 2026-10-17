@@ -15,7 +15,8 @@ import { WEB_BASE_URL } from '@/lib/links';
 import { Wordmark } from '@/components/Wordmark';
 import { Button } from '@/components/Button';
 import { TextField } from '@/components/TextField';
-import { colors, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/account';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
@@ -54,12 +55,13 @@ export default function ForgotPasswordScreen() {
       >
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <Wordmark size={36} />
+            <Wordmark tone="home" size={36} />
             <Text style={styles.tagline}>Reset your password</Text>
           </View>
 
           <View style={styles.form}>
             <TextField
+              tone="home"
               label="Email"
               value={email}
               onChangeText={setEmail}
@@ -72,15 +74,23 @@ export default function ForgotPasswordScreen() {
               onSubmitEditing={handleReset}
             />
 
-            {!!error && <Text style={styles.error}>{error}</Text>}
-            {!!notice && <Text style={styles.notice}>{notice}</Text>}
+            {!!error && (
+              <Text accessibilityRole="alert" style={styles.error}>
+                {error}
+              </Text>
+            )}
+            {!!notice && (
+              <Text accessibilityLiveRegion="polite" style={styles.notice}>
+                {notice}
+              </Text>
+            )}
 
-            <Button label="Send reset link" onPress={handleReset} loading={loading} />
+            <Button tone="home" label="Send reset link" onPress={handleReset} loading={loading} />
           </View>
 
           <View style={styles.footer}>
             <Link href="/login" asChild>
-              <Pressable>
+              <Pressable style={styles.linkControl}>
                 <Text style={styles.link}>Back to log in</Text>
               </Pressable>
             </Link>
@@ -97,7 +107,7 @@ const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: 20,
     paddingVertical: spacing.xxxl,
   },
   header: { alignItems: 'center', marginBottom: spacing.xxl },
@@ -118,5 +128,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   footer: { alignItems: 'center' },
-  link: { ...typography.body, color: colors.gold, fontWeight: '600' },
+  linkControl: {
+    minHeight: 48,
+    minWidth: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  link: { ...typography.body, color: colors.blue, fontWeight: '600' },
 });

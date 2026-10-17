@@ -1,6 +1,7 @@
 import { Pressable, Text, View, StyleSheet } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, radius, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/chats';
 import type { ReactionSummary } from '@/lib/reactions';
 
 interface ReactionPillsProps {
@@ -24,6 +25,9 @@ export function ReactionPills({ reactions, onToggle, onAdd }: ReactionPillsProps
       {reactions.map((r) => (
         <Pressable
           key={r.emoji}
+          accessibilityRole="button"
+          accessibilityLabel={`${r.emoji}, ${r.count} reactions`}
+          accessibilityState={{ selected: r.mine }}
           onPress={() => {
             Haptics.selectionAsync().catch(() => {});
             onToggle(r.emoji);
@@ -35,6 +39,8 @@ export function ReactionPills({ reactions, onToggle, onAdd }: ReactionPillsProps
         </Pressable>
       ))}
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Add reaction"
         onPress={() => {
           Haptics.selectionAsync().catch(() => {});
           onAdd();
@@ -55,15 +61,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
     paddingHorizontal: spacing.sm,
+    minWidth: 48,
+    minHeight: 48,
+    justifyContent: 'center',
     paddingVertical: 2,
-    borderRadius: radius.full,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
-  pillMine: { backgroundColor: colors.goldSoft, borderColor: colors.gold },
+  pillMine: { backgroundColor: colors.gold, borderColor: colors.blue },
   emoji: { fontSize: 13 },
   count: { ...typography.caption, color: colors.textSecondary },
-  countMine: { color: colors.gold, fontWeight: '600' },
+  countMine: { color: colors.navy, fontWeight: '600' },
   addText: { ...typography.caption, color: colors.textTertiary, fontWeight: '600' },
 });

@@ -7,7 +7,8 @@ import { useAuth } from '@/lib/auth';
 import { Wordmark } from '@/components/Wordmark';
 import { Button } from '@/components/Button';
 import { TextField } from '@/components/TextField';
-import { colors, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/account';
 
 // Reached via the recovery deep link (greekties://reset-password), which signs
 // the user in first — the auth gate allows this segment with a session.
@@ -51,12 +52,13 @@ export default function ResetPasswordScreen() {
       >
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <Wordmark size={36} />
+            <Wordmark tone="home" size={36} />
             <Text style={styles.tagline}>Choose a new password</Text>
           </View>
 
           <View style={styles.form}>
             <TextField
+              tone="home"
               label="New password"
               value={password}
               onChangeText={setPassword}
@@ -66,6 +68,7 @@ export default function ResetPasswordScreen() {
               textContentType="newPassword"
             />
             <TextField
+              tone="home"
               label="Confirm password"
               value={confirm}
               onChangeText={setConfirm}
@@ -77,21 +80,31 @@ export default function ResetPasswordScreen() {
               onSubmitEditing={handleUpdate}
             />
 
-            {!!error && <Text style={styles.error}>{error}</Text>}
+            {!!error && (
+              <Text accessibilityRole="alert" style={styles.error}>
+                {error}
+              </Text>
+            )}
 
-            {!!authError && <Text style={styles.error}>{authError}</Text>}
+            {!!authError && (
+              <Text accessibilityRole="alert" style={styles.error}>
+                {authError}
+              </Text>
+            )}
             {!initializing && !session && (
-              <Text style={styles.error}>
+              <Text accessibilityRole="alert" style={styles.error}>
                 Open the reset link from your email to choose a new password.
               </Text>
             )}
             <Button
+              tone="home"
               label="Update password"
               onPress={handleUpdate}
               loading={loading || initializing}
               disabled={!session || !!authError}
             />
             <Button
+              tone="home"
               label="Request a new reset link"
               variant="secondary"
               onPress={() => router.replace('/forgot-password')}
@@ -109,7 +122,7 @@ const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: 20,
     paddingVertical: spacing.xxxl,
   },
   header: { alignItems: 'center', marginBottom: spacing.xxl },

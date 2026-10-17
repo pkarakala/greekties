@@ -51,19 +51,22 @@ export const EVENT_COLUMNS =
   'id, chapter_id, created_by, title, description, location, category, starts_at, ends_at, created_at';
 
 /** Counts describe only RSVPs visible under RLS, never a chapter-wide total.
- * Exact head counts avoid PostgREST's row cap. Preview selects four IDs only;
- * approved chapter profiles and symmetric-block RLS can further reduce it. */
+ * Going count and four preview IDs share one PostgREST snapshot. Exact counts
+ * avoid the row cap without downloading every RSVP. Approved chapter profiles
+ * and symmetric-block RLS can further reduce the preview. */
 export async function fetchRsvpMeta(
   eventId: string,
   userId: string,
   chapterId: string,
 ): Promise<RsvpMeta> {
-  const [going, maybe, mine, preview] = await Promise.all([
+  const [going, maybe, mine] = await Promise.all([
     supabase
       .from('event_rsvps')
-      .select('user_id', { count: 'exact', head: true })
+      .select('user_id', { count: 'exact' })
       .eq('event_id', eventId)
-      .eq('status', 'going'),
+      .eq('status', 'going')
+      .order('user_id')
+      .limit(4),
     supabase
       .from('event_rsvps')
       .select('user_id', { count: 'exact', head: true })
@@ -75,30 +78,32 @@ export async function fetchRsvpMeta(
       .eq('event_id', eventId)
       .eq('user_id', userId)
       .maybeSingle(),
-    supabase
-      .from('event_rsvps')
-      .select('user_id')
-      .eq('event_id', eventId)
-      .eq('status', 'going')
-      .order('user_id')
-      .limit(4),
   ]);
-  if (going.error || maybe.error || mine.error || going.count == null || maybe.count == null)
+  if (
+    going.error ||
+    maybe.error ||
+    mine.error ||
+    !going.data ||
+    going.count == null ||
+    maybe.count == null
+  )
     throw new Error('RSVP unavailable');
   let attendees: EventCreator[] = [];
-  let metaError = preview.error ? 'Attendee preview unavailable. Retry to refresh.' : null;
-  if (!preview.error && preview.data?.length) {
-    const result = await supabase
-      .from('profiles')
-      .select('id, user_id, name, avatar_url')
-      .eq('chapter_id', chapterId)
-      .eq('status', 'approved')
-      .in(
-        'user_id',
-        preview.data.map((r) => r.user_id),
-      )
-      .limit(4);
-    if (result.error) metaError = 'Attendee preview unavailable. Retry to refresh.';
+  let metaError: string | null = null;
+  if (going.data.length) {
+    const result = await Promise.resolve(
+      supabase
+        .from('profiles')
+        .select('id, user_id, name, avatar_url')
+        .eq('chapter_id', chapterId)
+        .eq('status', 'approved')
+        .in(
+          'user_id',
+          going.data.map((r) => r.user_id),
+        )
+        .limit(4),
+    ).catch(() => ({ data: null, error: { message: 'preview unavailable' } }));
+    if (result.error || !result.data) metaError = 'Attendee preview unavailable. Retry to refresh.';
     else attendees = result.data ?? [];
   }
   return {
@@ -214,7 +219,7 @@ export function useEvent(
         result.data && canShowActorContent(result.data.created_by, blockedIds)
           ? (result.data as Event)
           : null;
-      if (!event) return { event: null, meta: UNKNOWN, creator: null };
+      if (!event) return { event: null, meta: UNKNOWN, creator: null, responseRead: false };
       const [metaResult, creatorResult] = await Promise.allSettled([
         fetchRsvpMeta(event.id, userId!, event.chapter_id),
         supabase
@@ -239,6 +244,7 @@ export function useEvent(
       return {
         event,
         meta,
+        responseRead: metaResult.status === 'fulfilled',
         creator:
           creatorResult.status === 'fulfilled' && !creatorResult.value.error
             ? (creatorResult.value.data as EventCreator)
@@ -257,6 +263,8 @@ export function useEvent(
     token: typeof result.token;
     busy: boolean;
     error: string | null;
+    attempted?: RsvpStatus;
+    failedData?: typeof result.data;
   }>();
   const busy = useRef(false);
   const saveRsvp = async (status: RsvpStatus) => {
@@ -281,16 +289,43 @@ export function useEvent(
         },
       });
     }
-    setSave({ token, busy: false, error: outcome.error });
+    setSave({
+      token,
+      busy: false,
+      error: outcome.error,
+      attempted: status,
+      failedData: token.data,
+    });
     result.reload();
   };
+  // Retry is read-only. A fresh own-RSVP read reconciles an uncertain write;
+  // neither a cached value nor a failed refresh can confirm the attempted change.
+  const currentSave = save?.token === result.token ? save : undefined;
+  const reconciled =
+    !!currentSave?.error &&
+    !result.loading &&
+    !result.error &&
+    !!result.data?.event &&
+    result.data !== currentSave.failedData &&
+    result.data.responseRead &&
+    result.data.meta.myStatus !== undefined;
   return {
     ...result,
+    attendeeState: result.loading
+      ? 'loading'
+      : result.error || result.data?.meta.metaError
+        ? 'error'
+        : 'ready',
+    recoveryMessage: reconciled
+      ? result.data!.meta.myStatus === currentSave?.attempted
+        ? 'Your response is confirmed by the backend.'
+        : 'Attendance refreshed. Your saved response is shown above. Choose a response to change it.'
+      : null,
     event: result.data?.event ?? null,
     creator: result.data?.creator ?? null,
     ...(result.data?.meta ?? UNKNOWN),
     saving: save?.token === result.token && save.busy,
-    saveError: save?.token === result.token ? save.error : null,
+    saveError: reconciled ? null : (currentSave?.error ?? null),
     saveRsvp,
   };
 }
@@ -344,11 +379,28 @@ export async function rsvp(
   let writeError: { message: string } | null = null;
   try {
     try {
-      const result = await supabase
-        .from('event_rsvps')
-        .upsert({ event_id: eventId, user_id: userId, status }, { onConflict: 'event_id,user_id' })
-        .select('event_id, user_id, status')
-        .maybeSingle();
+      // Only status is mutable: authenticated members have UPDATE(status),
+      // not permission to rewrite either key column through an upsert.
+      const updateStatus = () =>
+        supabase
+          .from('event_rsvps')
+          .update({ status })
+          .eq('event_id', eventId)
+          .eq('user_id', userId)
+          .select('event_id, user_id, status')
+          .maybeSingle();
+      let result = await updateStatus();
+      if (!current()) return { error: 'This RSVP session has ended.' };
+      if (!result.error && !result.data) {
+        result = await supabase
+          .from('event_rsvps')
+          .insert({ event_id: eventId, user_id: userId, status })
+          .select('event_id, user_id, status')
+          .maybeSingle();
+        if (!current()) return { error: 'This RSVP session has ended.' };
+        // Another client may have inserted this same response after our update.
+        if (result.error?.code === '23505') result = await updateStatus();
+      }
       if (!current()) return { error: 'This RSVP session has ended.' };
       writeError = result.error;
       if (

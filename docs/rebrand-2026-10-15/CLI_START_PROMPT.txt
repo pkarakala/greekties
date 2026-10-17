@@ -1,0 +1,54 @@
+Implement Greek Ties Rebrand Slice A: Foundation and Home only.
+
+The design package is:
+/Users/pkarakala/Documents/Playground/greek-ties-rebrand/2026-10-15
+
+Read START_HERE.txt, DESIGN_SPEC.txt, tokens.json, SCREEN_CONTRACTS.txt,
+CAPABILITY_MATRIX.csv, IMPLEMENTATION_PLAN.txt and ACCEPTANCE.txt. Inspect the
+interactive index.html and the Home screenshots in GALLERY.html. The approved
+direction is prominent royal blue and gold, navy typography, light backgrounds,
+editorial headings, compact conversations and a useful private chapter network.
+Do not replace the blue/gold direction with green, purple or generic SaaS styling.
+
+Before editing, read applicable repository instructions and inspect current source.
+Establish a bounded checkpoint of files you will touch and record any pre-existing
+changes. Do not revert, reset, stash away or overwrite unrelated work. If git status
+stalls, use bounded scoped inspection and report the limitation rather than opening
+multiple heavy sessions. Do not start another source-editing agent in this checkout.
+
+Scope: the design tokens/primitives actually needed by Home, five-tab selected
+styling, Home chapter identity, real active/alumni count band, existing upcoming-event
+presentation, compact supported conversation previews and existing network/job
+shortcuts. Preserve current service/data contracts, routes and member permissions.
+Active means chapter membership, not online presence. No demo counts, fake unread
+indicators, fabricated recommendations, generic event photos or AI features in the app.
+The prototype's generated reunion image is a fictional design asset, not automatically
+approved production media. If no cover capability exists, use the specified gold
+date/category no-media event variant; do not add a field, bucket or fake upload.
+
+Reuse existing framework, theme helpers, controls and Ionicons. Keep Expo 57 and
+scene support, native configuration, current signing, QA backend isolation and
+deletion-disabled guard intact. Preserve all Events RSVP/preview and Chats fixes.
+Do not import the HTML prototype as app source; implement native components using
+the existing architecture. Avoid global theme churn unless all affected consumers
+are included in regression coverage. Prefer scoped new tokens for this first slice.
+
+Use synthetic/local QA only. No production access or writes, migrations, auth/RLS
+changes, paid provisioning, major dependency upgrades, commits, pushes, builds for
+distribution, uploads or TestFlight changes. Public release remains on hold.
+No manual testing is required from me for this slice. Use available automated tools
+and your judgment; report unavailable native tests honestly, never as passed.
+My Mac has 8 GB RAM: one heavy task at a time, no simulator/archive/full-suite overlap.
+
+Run relevant tests, typecheck and scoped lint/format; examine actual rendered Home
+and affected navigation at 375 and 440 logical widths plus enlarged text. Cover
+loading, empty, error, Retry, long names, large membership counts, count-to-filter
+navigation and appropriate role variants. Keep original failing evidence, distinguish
+pre-existing failures, and verify any QA copy matches the final touched source.
+
+Save new output in:
+/Users/pkarakala/Documents/Playground/greek-ties-rebrand/2026-10-15/implementation/slice-a
+
+Deliver a concise handoff, changed-file list, preservation evidence, commands/results,
+visual gallery, and remaining limitations. Stop after Slice A is ready for review.
+Do not automatically begin Events, Chats, feature additions or distribution.

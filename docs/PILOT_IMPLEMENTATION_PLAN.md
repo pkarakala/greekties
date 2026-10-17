@@ -1,6 +1,6 @@
 # Greek Ties pilot implementation plan
 
-Recorded: 2026-09-16. Updated: 2026-09-17. Status: Slices 1–5 accepted locally for source/tested behavior; owner approves visual direction. Slice 6 distribution documents and readiness assessment prepared; SQL/runtime execution blocked on prerequisites. V9–V11 unapplied; SQL/concurrency, native picker and rendered/browser/device release QA pending. No release approval.
+Recorded: 2026-09-16. Updated: 2026-09-22. Status: Slices 1–5 accepted locally for source/tested behavior; owner approves visual direction. V9–V11, all four SQL suites and five concurrency cases independently passed on an isolated vanilla PostgreSQL 17.6 database. A Supabase Postgres .104 function-permission crash was reproduced with a minimal unrelated control; current Supabase-stack integration, browser/device, and native-picker QA remain open. No release approval.
 
 ## Purpose and authorization
 
@@ -1033,3 +1033,50 @@ commits, pushes, merges, external messages, or Slice 5 work.
 - Next: obtain that artifact and establish a confirmed disposable local backend,
   then execute the four SQL suites and concurrency checks. Native-picker and
   browser/device gates remain independently open. Only documentation changed.
+
+### 2026-09-22 — Review of local SQL run evidence
+
+- Found `docs/SLICE_6_DATABASE_QA_2026-09-19.md`, which records V9–V11 and all
+  four SQL suites passing on a disposable PostgreSQL 17.6 database, plus five
+  concurrent-session checks. This supersedes the earlier “SQL not executed”
+  report as reported evidence, not as an independently confirmed result.
+- Reviewed V9–V11 SQL and map/message acceptance-test source; no new blocking
+  source finding in that bounded review. The QA note reports the matching
+  Supabase Postgres image crashed on a denied anon function call; this remains an
+  unresolved environment/integration finding. PostgREST and Realtime are open.
+- This session could not reproduce: `/tmp` schema derivative and execution
+  output/harness are absent; Docker Desktop was started, Docker server responds,
+  but no containers are running. No SQL or remote access was performed.
+- Next: owner supplies the sanitized schema derivative, redacted outputs, and
+  concurrency harness/reproduction steps. Re-run locally; investigate the image
+  crash and validate Supabase integration. Keep the raw production-derived dump
+  private; do not fetch production schema again. Browser/device and native picker
+  verification remain separate release gates.
+
+### 2026-09-22 — Independent database rerun
+
+- Owner supplied `/private/tmp/greekties-schema-capture/schema.sql`. Created a
+  private sanitized derivative outside the repository, removing the four
+  outbound-push trigger declarations. No raw schema or member data was committed.
+- Restored into isolated vanilla PostgreSQL 17.6 (Docker network disabled, no
+  host port or volume), then applied V9 → V10 → V11. Verified V10 consent and
+  coordinate reset/city retention, safe failure on repeat, and V11 identity
+  backfill for synthetic channel and mentorship rows.
+- Independently passed each of the four SQL suites and five concurrency races:
+  stale map lookup after opt-out, duplicate UUID insertion, rollback/retry,
+  delete/no-resurrection, and membership revoke between preflight and insert.
+- Reproduced the Supabase Postgres 17.6.1.104 signal-11 crash for a minimal
+  unrelated function revoked from `anon`; .095 returned normal permission
+  denial and remained healthy. Then tested Supabase Postgres .136: sanitized
+  schema restore, V9–V11, all four SQL suites, and the permission-denial control
+  passed; the server stayed healthy. The message-retry suite emitted one
+  non-fatal temporary-schema privilege warning. The official self-hosted config
+  currently uses .136, but the managed pilot project's image/runtime remains
+  unknown. Do not weaken app revokes as a workaround.
+- Open gates: PostgREST, Realtime, production-shaped V11 lock duration, rendered
+  browser QA, installed native picker and exact-build physical-device journeys.
+  No production/remote database, credentials, EAS, deployment, commit or push.
+- Next: confirm the managed pilot project's backend version, then exercise
+  PostgREST and Realtime on an isolated supported Supabase stack; continue
+  browser/device QA.
+  Release remains NO-GO pending all gates and separately authorized rollout.

@@ -1,0 +1,503 @@
+{
+  "date": "2026-10-15",
+  "scope": "Offline design prototype only; not the React Native app",
+  "screens": 35,
+  "passed": 122,
+  "failed": 1,
+  "results": [
+    {
+      "name": "invitation / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "signin / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "reset / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "essentials / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "pending / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "home / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "notifications / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "events / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "calendar / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "event / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "guests / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "create / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "review / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "share / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "chats / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "conversation / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "threadinfo / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "mentorship / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "requests / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "network / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "filters / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "profile / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "request / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "opportunities / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "job / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "map / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "me / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "editprofile / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "privacy / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "settings / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "blocked / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "admin / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "approvals / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "invite / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "reports / 390 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "invitation / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "signin / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "reset / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "essentials / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "pending / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "home / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "notifications / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "events / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "calendar / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "event / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "guests / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "create / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "review / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "share / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "chats / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "conversation / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "threadinfo / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "mentorship / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "requests / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "network / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "filters / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "profile / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "request / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "opportunities / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "job / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "map / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "me / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "editprofile / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "privacy / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "settings / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "blocked / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "admin / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "approvals / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "invite / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "reports / 440 / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "invitation / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "signin / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "reset / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "essentials / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "pending / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "home / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "notifications / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "events / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "calendar / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "event / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "guests / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "create / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "review / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "share / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "chats / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "conversation / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "threadinfo / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "mentorship / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "requests / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "network / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "filters / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "profile / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "request / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "opportunities / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "job / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "map / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "me / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "editprofile / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "privacy / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "settings / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "blocked / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "admin / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "approvals / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "invite / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "reports / 375 enlarged / bounds and image",
+      "status": "PASS"
+    },
+    {
+      "name": "Home membership count opens combined directory filter",
+      "status": "PASS"
+    },
+    {
+      "name": "Combined filters and clear",
+      "status": "PASS"
+    },
+    {
+      "name": "Inbox search and group/mentorship selection",
+      "status": "PASS"
+    },
+    {
+      "name": "RSVP cancel does not save; save updates count",
+      "status": "PASS"
+    },
+    {
+      "name": "Consent is off, explicit opt-in, then revoke",
+      "status": "PASS"
+    },
+    {
+      "name": "Draft form validation, review, edit and publish simulation",
+      "status": "FAIL",
+      "error": "locator.fill: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[name=\"end\"]')\u001b[22m\n\u001b[2m    - locator resolved to <input name=\"end\" type=\"time\" value=\"18:00\"/>\u001b[22m\n\u001b[2m    - fill(\"15:00\")\u001b[22m\n\u001b[2m  - attempting fill action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and editable\u001b[22m\n\u001b[2m      - element is not visible\u001b[22m\n\u001b[2m    - retrying fill action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and editable\u001b[22m\n\u001b[2m      - element is not visible\u001b[22m\n\u001b[2m    - retrying fill action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    60 × waiting for element to be visible, enabled and editable\u001b[22m\n\u001b[2m       - element is not visible\u001b[22m\n\u001b[2m     - retrying fill action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+    },
+    {
+      "name": "Message send escapes markup and retains own timestamp",
+      "status": "PASS"
+    },
+    {
+      "name": "Dialog keyboard focus trap and Escape",
+      "status": "PASS"
+    },
+    {
+      "name": "Invite context and approval remains pending",
+      "status": "PASS"
+    },
+    {
+      "name": "Mentorship request does not create accepted DM",
+      "status": "PASS"
+    },
+    {
+      "name": "Deletion remains unavailable",
+      "status": "PASS"
+    },
+    {
+      "name": "Recovery state loading",
+      "status": "PASS"
+    },
+    {
+      "name": "Recovery state empty",
+      "status": "PASS"
+    },
+    {
+      "name": "Recovery state error",
+      "status": "PASS"
+    },
+    {
+      "name": "Recovery state offline",
+      "status": "PASS"
+    },
+    {
+      "name": "Recovery state denied",
+      "status": "PASS"
+    },
+    {
+      "name": "Small browser viewport has no document overflow",
+      "status": "PASS"
+    },
+    {
+      "name": "No JavaScript runtime exceptions",
+      "status": "PASS"
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,432 @@
+{
+  "date": "2026-10-15",
+  "scope": "Design package only",
+  "passed": 104,
+  "failed": 0,
+  "results": [
+    {
+      "name": "surface on blue >= 4.5:1",
+      "status": "PASS",
+      "detail": "9.36"
+    },
+    {
+      "name": "navy on gold >= 4.5:1",
+      "status": "PASS",
+      "detail": "8.47"
+    },
+    {
+      "name": "navy on goldLight >= 4.5:1",
+      "status": "PASS",
+      "detail": "13.43"
+    },
+    {
+      "name": "muted on surface >= 4.5:1",
+      "status": "PASS",
+      "detail": "6.31"
+    },
+    {
+      "name": "muted on background >= 4.5:1",
+      "status": "PASS",
+      "detail": "5.93"
+    },
+    {
+      "name": "error on surface >= 4.5:1",
+      "status": "PASS",
+      "detail": "7.49"
+    },
+    {
+      "name": "success on surface >= 4.5:1",
+      "status": "PASS",
+      "detail": "6.46"
+    },
+    {
+      "name": "Gallery image exists: screenshots/home-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/event-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/chats-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/network-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/invitation-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/signin-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/signup-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/emailverify-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/reset-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/essentials-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/pending-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/home-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/notifications-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/events-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/calendar-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/event-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/guests-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/create-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/review-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/share-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/chats-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/conversation-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/threadinfo-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/mentorship-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/requests-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/network-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/filters-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/profile-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/request-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/opportunities-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/job-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/map-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/me-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/editprofile-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/privacy-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/settings-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/blocked-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/admin-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/approvals-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/invite-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/reports-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/home-no-cover-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/event-no-cover-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/rsvp-sheet-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/events-loading-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/events-empty-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/events-error-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/events-offline-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery image exists: screenshots/events-denied-390.png",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: START_HERE.txt",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#home",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#event",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#chats",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#network",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#invitation",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#signin",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#signup",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#emailverify",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#reset",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#essentials",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#pending",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#notifications",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#events",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#calendar",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#guests",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#create",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#review",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#share",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#conversation",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#threadinfo",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#mentorship",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#requests",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#filters",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#profile",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#request",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#opportunities",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#job",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#map",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#me",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#editprofile",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#privacy",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#settings",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#blocked",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#admin",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#approvals",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#invite",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: index.html#reports",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: DESIGN_SPEC.txt",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: SCREEN_CONTRACTS.txt",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: CAPABILITY_MATRIX.csv",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: IMPLEMENTATION_PLAN.txt",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: ACCEPTANCE.txt",
+      "status": "PASS"
+    },
+    {
+      "name": "Local link exists: VERIFICATION.txt",
+      "status": "PASS"
+    },
+    {
+      "name": "All enlarged gallery images exist",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery mobile document has no horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "name": "Gallery has no JavaScript exceptions",
+      "status": "PASS",
+      "detail": []
+    }
+  ]
+}

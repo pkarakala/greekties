@@ -318,7 +318,7 @@ describe('explicit admin reinstatement UI', () => {
     const view = render(<MembersScreen />);
     expect(view.getByText('Chapter admin access required.')).toBeTruthy();
     expect(view.queryByText('Reinstate')).toBeNull();
-    expect(useChapterMemberList).toHaveBeenCalledWith(null, 'approved');
+    expect(useChapterMemberList).not.toHaveBeenCalled();
   });
 });
 

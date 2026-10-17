@@ -1,5 +1,6 @@
 import { View, Text, Switch, StyleSheet } from 'react-native';
-import { colors, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/account';
 
 export function MapConsentField({
   enabled,
@@ -20,11 +21,12 @@ export function MapConsentField({
       <View style={styles.row}>
         <Text style={styles.label}>Share my city on the alumni map</Text>
         <Switch
+          style={{ minWidth: 56, minHeight: 48 }}
           accessibilityLabel="Share my city on the alumni map"
           value={enabled}
           onValueChange={onChange}
           disabled={disabled || !available}
-          trackColor={{ false: colors.surfaceElevated, true: colors.navy }}
+          trackColor={{ false: colors.borderStrong, true: colors.blue }}
         />
       </View>
       <Text style={styles.hint}>
@@ -44,8 +46,16 @@ export function MapConsentField({
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: spacing.sm, marginBottom: spacing.lg },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  wrap: {
+    padding: 16,
+    backgroundColor: colors.goldLight,
+    borderTopWidth: 6,
+    borderTopColor: colors.gold,
+    borderRadius: 8,
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.md },
   label: { ...typography.h3, color: colors.textPrimary, flex: 1 },
   hint: { ...typography.bodySmall, color: colors.textSecondary },
 });

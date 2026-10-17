@@ -7,18 +7,21 @@ import {
   SectionList,
   ScrollView,
   RefreshControl,
+  Pressable,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { useEvents, EVENT_CATEGORIES, eventDayKey, eventDayLabel } from '@/lib/events';
 import type { EventWithMeta } from '@/lib/events';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { localTimeZone } from '@/lib/time';
 import { Chip } from '@/components/Chip';
 import { Button } from '@/components/Button';
 import { EventCard } from '@/components/EventCard';
-import { colors, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { eventColors, eventTypography } from '@/theme/events-rebrand';
 import type { EventCategory } from '@/lib/types';
 
 interface DaySection {
@@ -31,10 +34,8 @@ export default function EventsScreen() {
   const { profile } = useAuth();
   const chapterId = profile?.chapter_id ?? null;
   const { loading, error, events, reload } = useEvents(chapterId);
-
-  // Layered category filters — empty selection shows everything.
+  // Preserve the existing multi-select category filters. All clears them.
   const [selected, setSelected] = useState<Set<EventCategory>>(new Set());
-
   const toggleCategory = useCallback((category: EventCategory) => {
     setSelected((cur) => {
       const next = new Set(cur);
@@ -43,8 +44,6 @@ export default function EventsScreen() {
       return next;
     });
   }, []);
-
-  // Refresh when returning from the create form or a detail screen.
   useFocusEffect(
     useCallback(() => {
       reload();
@@ -53,7 +52,6 @@ export default function EventsScreen() {
 
   const sections = useMemo<DaySection[]>(() => {
     const filtered = selected.size === 0 ? events : events.filter((e) => selected.has(e.category));
-
     const byDay = new Map<string, DaySection>();
     for (const event of filtered) {
       const key = eventDayKey(event.starts_at);
@@ -61,18 +59,51 @@ export default function EventsScreen() {
       if (existing) existing.data.push(event);
       else byDay.set(key, { title: eventDayLabel(event.starts_at), data: [event] });
     }
-    // Events arrive sorted by starts_at ascending, so insertion order is
-    // already chronological.
     return [...byDay.values()];
   }, [events, selected]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader
-        title="Events"
-        right={{ icon: 'add', onPress: () => router.push('/events/new') }}
-      />
-
+      <StatusBar style="dark" />
+      <View style={styles.header}>
+        <View style={styles.headerRow}>
+          <Text accessibilityRole="header" style={styles.title}>
+            Events
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Create event"
+            style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+            onPress={() => router.push('/events/new')}
+          >
+            <Ionicons name="add" size={24} color={eventColors.text} />
+          </Pressable>
+        </View>
+        <Text style={styles.meta}>Upcoming chapter events</Text>
+      </View>
+      <View style={styles.filters}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chips}
+        >
+          <Chip
+            label="All"
+            selected={selected.size === 0}
+            tone="home"
+            onPress={() => setSelected(new Set())}
+          />
+          {EVENT_CATEGORIES.map((cat) => (
+            <Chip
+              key={cat.value}
+              label={cat.label}
+              selected={selected.has(cat.value)}
+              tone="home"
+              onPress={() => toggleCategory(cat.value)}
+            />
+          ))}
+        </ScrollView>
+      </View>
       <SectionList
         sections={sections}
         keyExtractor={(item) => item.id}
@@ -83,56 +114,87 @@ export default function EventsScreen() {
           />
         )}
         renderSectionHeader={({ section }) => (
-          <Text style={styles.sectionHeader}>{section.title}</Text>
+          <Text accessibilityRole="header" style={styles.sectionHeader}>
+            {section.title}
+          </Text>
         )}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         stickySectionHeadersEnabled={false}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.gold} />
+          <RefreshControl refreshing={loading} onRefresh={reload} tintColor={eventColors.action} />
         }
         ListHeaderComponent={
           <View>
-            {(error || loading) && (
-              <View>
-                <Text style={styles.emptyText}>{error ?? 'Loading events…'}</Text>
-                {!!error && <Button label="Retry" onPress={reload} />}
+            <View style={styles.agendaHeading}>
+              <Text accessibilityRole="header" style={styles.sectionTitle}>
+                Upcoming
+              </Text>
+              <Text style={styles.meta}>Times in {localTimeZone().replaceAll('_', ' ')}</Text>
+            </View>
+            {!!error && events.length > 0 && (
+              <View style={styles.notice}>
+                <Text accessibilityRole="alert" style={styles.error}>
+                  {error} Previously loaded information may be shown.
+                </Text>
+                <Button
+                  tone="home"
+                  label="Retry"
+                  variant="secondary"
+                  disabled={loading}
+                  onPress={reload}
+                />
               </View>
             )}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chips}
-            >
-              {EVENT_CATEGORIES.map((cat) => (
-                <Chip
-                  key={cat.value}
-                  label={cat.label}
-                  selected={selected.has(cat.value)}
-                  onPress={() => toggleCategory(cat.value)}
-                />
-              ))}
-            </ScrollView>
+            {loading && events.length > 0 && (
+              <Text accessibilityLiveRegion="polite" style={styles.refreshing}>
+                Refreshing events…
+              </Text>
+            )}
           </View>
         }
         ListEmptyComponent={
           loading ? (
-            <ActivityIndicator color={colors.gold} />
+            <View style={styles.empty}>
+              <ActivityIndicator color={eventColors.action} accessibilityLabel="Loading events" />
+              <Text style={styles.emptyText}>Loading events…</Text>
+            </View>
           ) : (
             <View style={styles.empty}>
-              <Ionicons name="calendar-outline" size={40} color={colors.textTertiary} />
-              <Text style={styles.emptyText}>
+              <View style={styles.emptyIcon}>
+                <Ionicons name="calendar-outline" size={28} color={eventColors.action} />
+              </View>
+              <Text accessibilityRole="header" style={styles.emptyTitle}>
+                {error
+                  ? 'Events couldn’t load'
+                  : selected.size > 0
+                    ? 'No matching events'
+                    : 'Nothing on the calendar yet'}
+              </Text>
+              <Text accessibilityRole={error ? 'alert' : undefined} style={styles.emptyText}>
                 {error ??
                   (selected.size > 0
-                    ? 'No upcoming events match your filters.'
-                    : 'No upcoming events. Get something on the calendar.')}
+                    ? 'Try another category or clear your filters.'
+                    : 'Create a chapter event to bring members together.')}
               </Text>
-              {!error && (
-                <Button
-                  label="Create an event"
-                  fullWidth={false}
-                  onPress={() => router.push('/events/new')}
-                />
+              {error ? (
+                <Button tone="home" label="Retry" variant="secondary" onPress={reload} />
+              ) : (
+                <>
+                  {selected.size > 0 && (
+                    <Button
+                      tone="home"
+                      label="Clear filters"
+                      variant="secondary"
+                      onPress={() => setSelected(new Set())}
+                    />
+                  )}
+                  <Button
+                    tone="home"
+                    label="Create an event"
+                    onPress={() => router.push('/events/new')}
+                  />
+                </>
               )}
             </View>
           )
@@ -143,19 +205,70 @@ export default function EventsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl, gap: spacing.md },
-  chips: { gap: spacing.sm, paddingRight: spacing.lg, paddingBottom: spacing.sm },
-  sectionHeader: {
-    ...typography.h3,
-    color: colors.textSecondary,
-    marginTop: spacing.md,
+  safe: { flex: 1, backgroundColor: eventColors.canvas },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
+    backgroundColor: eventColors.surface,
   },
-  empty: { alignItems: 'center', gap: spacing.lg, paddingTop: spacing.xxxl },
-  emptyText: {
-    ...typography.body,
-    color: colors.textSecondary,
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  title: { ...eventTypography.title, color: eventColors.text, flex: 1 },
+  iconButton: {
+    minWidth: 48,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+    backgroundColor: eventColors.accent,
+  },
+  pressed: { backgroundColor: eventColors.soft },
+  filters: {
+    backgroundColor: eventColors.surface,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: eventColors.divider,
+  },
+  chips: { gap: spacing.sm, padding: 20 },
+  list: { paddingBottom: spacing.xxl },
+  agendaHeading: { padding: 20, gap: spacing.xs },
+  sectionTitle: { ...eventTypography.section, color: eventColors.text },
+  sectionHeader: {
+    ...eventTypography.section,
+    color: eventColors.text,
+    paddingHorizontal: 20,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  meta: { ...eventTypography.meta, color: eventColors.muted },
+  empty: { alignItems: 'center', gap: spacing.lg, padding: spacing.xl, paddingTop: spacing.xxxl },
+  emptyIcon: { padding: spacing.md, borderRadius: 8, backgroundColor: eventColors.soft },
+  emptyTitle: {
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: '600',
+    color: eventColors.text,
     textAlign: 'center',
-    paddingHorizontal: spacing.xl,
+  },
+  emptyText: { ...eventTypography.body, color: eventColors.muted, textAlign: 'center' },
+  notice: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    padding: spacing.md,
+    gap: spacing.md,
+    borderLeftWidth: 3,
+    borderLeftColor: eventColors.error,
+    backgroundColor: eventColors.errorSurface,
+  },
+  error: { ...eventTypography.support, color: eventColors.error },
+  refreshing: {
+    ...eventTypography.support,
+    color: eventColors.muted,
+    paddingHorizontal: 20,
+    paddingBottom: spacing.sm,
   },
 });

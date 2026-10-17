@@ -20,7 +20,8 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextField } from '@/components/TextField';
 import { Button } from '@/components/Button';
 import { Avatar } from '@/components/Avatar';
-import { colors, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/account';
 
 /**
  * Post-join profile setup: one friendly screen shown right after joining or
@@ -123,10 +124,10 @@ export default function CompleteProfileScreen() {
   if (!profile) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <ScreenHeader title="Set up your profile" />
+        <ScreenHeader tone="home" title="Set up your profile" />
         <View style={styles.center}>
           <Text style={styles.muted}>Join a chapter to set up your profile.</Text>
-          <Pressable onPress={skip} hitSlop={8}>
+          <Pressable accessibilityRole="button" onPress={skip} hitSlop={8} style={styles.skipWrap}>
             <Text style={styles.skip}>Go home</Text>
           </Pressable>
         </View>
@@ -136,7 +137,7 @@ export default function CompleteProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="Set up your profile" />
+      <ScreenHeader tone="home" title="Set up your profile" />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -149,10 +150,17 @@ export default function CompleteProfileScreen() {
           <Text style={styles.subtitle}>Help your chapter members find you.</Text>
 
           <View style={styles.avatarSection}>
-            <Avatar uri={avatarUrl} name={profile.name} size="lg" />
-            <Pressable onPress={changePhoto} disabled={uploading} hitSlop={8}>
+            <Avatar tone="home" uri={avatarUrl} name={profile.name} size="lg" />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={avatarUrl ? 'Change photo' : 'Add a photo'}
+              style={styles.photoControl}
+              onPress={changePhoto}
+              disabled={uploading}
+              hitSlop={8}
+            >
               {uploading ? (
-                <ActivityIndicator color={colors.gold} />
+                <ActivityIndicator color={colors.blue} />
               ) : (
                 <Text style={styles.changePhoto}>{avatarUrl ? 'Change photo' : 'Add a photo'}</Text>
               )}
@@ -160,6 +168,7 @@ export default function CompleteProfileScreen() {
           </View>
 
           <TextField
+            tone="home"
             label="City (optional)"
             accessibilityLabel="City (optional)"
             value={city}
@@ -174,12 +183,14 @@ export default function CompleteProfileScreen() {
             available={!!profile.map_revision && typeof profile.map_sharing_enabled === 'boolean'}
           />
           <TextField
+            tone="home"
             label="Industry"
             value={industry}
             onChangeText={setIndustry}
             placeholder="Technology"
           />
           <TextField
+            tone="home"
             label="Role / job title"
             value={jobTitle}
             onChangeText={setJobTitle}
@@ -199,11 +210,15 @@ export default function CompleteProfileScreen() {
             onChange={setIsHiring}
           />
 
-          {!!error && <Text style={styles.error}>{error}</Text>}
+          {!!error && (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {error}
+            </Text>
+          )}
 
-          <Button label="Save" onPress={save} loading={saving} />
+          <Button tone="home" label="Save" onPress={save} loading={saving} />
 
-          <Pressable onPress={skip} hitSlop={8} style={styles.skipWrap}>
+          <Pressable accessibilityRole="button" onPress={skip} hitSlop={8} style={styles.skipWrap}>
             <Text style={styles.skip}>Skip for now</Text>
           </Pressable>
         </ScrollView>
@@ -230,11 +245,13 @@ function ToggleRow({
         <Text style={styles.toggleHint}>{hint}</Text>
       </View>
       <Switch
+        style={{ minWidth: 56, minHeight: 48 }}
+        accessibilityLabel={label}
         value={value}
         onValueChange={onChange}
-        trackColor={{ false: colors.surfaceElevated, true: colors.gold }}
-        thumbColor={colors.textPrimary}
-        ios_backgroundColor={colors.surfaceElevated}
+        trackColor={{ false: colors.borderStrong, true: colors.blue }}
+        thumbColor={colors.surface}
+        ios_backgroundColor={colors.borderStrong}
       />
     </View>
   );
@@ -248,19 +265,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.lg,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: 20,
   },
   muted: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  scroll: { padding: spacing.xl, paddingBottom: spacing.xxxl },
+  scroll: { padding: 20, paddingBottom: spacing.xxxl },
   subtitle: {
     ...typography.body,
     color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.xl,
   },
-  avatarSection: { alignItems: 'center', gap: spacing.md, marginBottom: spacing.xl },
-  changePhoto: { ...typography.h3, color: colors.gold },
+  avatarSection: {
+    padding: 16,
+    backgroundColor: colors.goldLight,
+    borderTopWidth: 6,
+    borderTopColor: colors.gold,
+    borderRadius: 8,
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  photoControl: { minHeight: 48, minWidth: 48, justifyContent: 'center' },
+  changePhoto: { ...typography.h3, color: colors.blue },
   toggleRow: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
@@ -269,6 +297,13 @@ const styles = StyleSheet.create({
   toggleLabel: { ...typography.h3, color: colors.textPrimary },
   toggleHint: { ...typography.bodySmall, color: colors.textSecondary },
   error: { ...typography.bodySmall, color: colors.red, marginBottom: spacing.lg },
-  skipWrap: { alignSelf: 'center', marginTop: spacing.lg, padding: spacing.sm },
+  skipWrap: {
+    minHeight: 48,
+    minWidth: 48,
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginTop: spacing.lg,
+    padding: spacing.sm,
+  },
   skip: { ...typography.bodySmall, color: colors.textSecondary, fontWeight: '600' },
 });

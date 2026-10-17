@@ -1,0 +1,11 @@
+{
+  "supabaseProjectRef": "cfeaytslodpfthjaypyo",
+  "buildConfiguration": "Release",
+  "bundleIdentifier": "com.greekties.app",
+  "ascAppId": "6811528438",
+  "internalGroupId": "20ebfaa8-3826-4a5e-9705-202ac7a811af",
+  "autoSubmit": false,
+  "exportOptionsPlist": "config/OwnerQAExportOptions.plist",
+  "ownerTesterEmailSHA256": "6d9cfa534e080754dcdffb8815aaaef3a5e76ad2d4a40a0424d04ef4f3ed3b10",
+  "appleTeamId": "4Z96MG78TQ"
+}

@@ -1,10 +1,15 @@
+import { useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/theme';
+import { colors as legacyColors } from '@/theme';
+import { homeColors as colors } from '@/theme/home';
 
 // Five member tabs for every role. Authorized admin access lives in Me.
 export default function TabsLayout() {
+  const { fontScale } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   return (
     <Tabs
       screenListeners={{
@@ -14,13 +19,18 @@ export default function TabsLayout() {
       }}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.navy,
-        tabBarInactiveTintColor: colors.textTertiary,
+        tabBarActiveTintColor: colors.blue,
+        tabBarActiveBackgroundColor: colors.goldLight,
+        tabBarItemStyle: { borderRadius: 5, marginHorizontal: 2 },
+        tabBarLabelStyle: { fontSize: 11 },
+        tabBarInactiveTintColor: colors.muted,
         tabBarStyle: {
+          height: (fontScale >= 1.4 ? 88 : 64) + insets.bottom,
+          paddingBottom: insets.bottom,
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
         },
-        sceneStyle: { backgroundColor: colors.background },
+        sceneStyle: { backgroundColor: legacyColors.background },
       }}
     >
       <Tabs.Screen
@@ -49,7 +59,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="people"
         options={{
-          title: 'People',
+          title: 'Network',
           tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color} />,
         }}
       />

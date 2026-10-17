@@ -1,0 +1,61 @@
+REBRAND ACCEPTANCE / IMPLEMENTATION CHECKLIST
+These are required future checks, not claims they ran against the app here.
+
+VISUAL
+[ ] Prominent blue and gold matches tokens; white/porcelain remains readable.
+[ ] No unsupported gradient, excessive card nesting, texture or overlapping dock.
+[ ] 375/390/440 logical widths; at least 320 usable; large text; long names/titles.
+[ ] Keyboard avoids composer/form; safe areas respected; actual OS status bar.
+[ ] No-image/no-avatar and slow/failed image states stable, no fake real-world photos.
+[ ] Real screenshots compared to the correct scenario, not just generated boards.
+[ ] Colors pass WCAG AA for required text, nontext targets and focus visibility.
+[ ] All custom icons named; meaningful content not hidden only in a hover tooltip.
+
+AUTH / PRIVACY
+[ ] Correct chapter/user scope after switching, sign-out, restart and token refresh.
+[ ] Invalid/expired/revoked invite distinct from transient resolver error.
+[ ] Email callback, pending/rejected/approved state authoritative; no client autojoin.
+[ ] False/missing/legacy map consent off; active members cannot opt in under current
+    approved-alumni contract; opt-out persists and removes discovery access.
+[ ] Private events/guest rows/chats never leak through public preview/cache/search.
+[ ] Revocation + unrelated read failure still removes conclusively denied previews.
+[ ] QA deletion guard remains before destructive requests; no false success.
+
+HOME / DIRECTORY
+[ ] Active means membership, not activity; total != filtered count; failure != zero.
+[ ] Count-to-directory correct; all supported filters combine and clear consistently.
+[ ] Pagination complete above 1000; no hardcoded preview totals or demo records.
+[ ] Blocking/revocation applies in list, count, profile, map and search as designed.
+
+EVENTS
+[ ] Existing allowed-field RSVP writes preserved; Going/Interested/Can't go mapping.
+[ ] Save pending, duplicate tap, rapid changes, failed save, Retry and reconciliation.
+[ ] Count/preview coherence under concurrent changes; explicit error vs empty.
+[ ] Real database persistence and authorized second-account view in isolated QA.
+[ ] Event create/edit end time, DST ambiguity, missing fields, timezone change guard.
+[ ] Edit/delete roles; no unauthorized host action rendered or callable.
+[ ] Full guest list endpoint audited before implementation; no frontend-only privacy.
+
+CHATS
+[ ] Long-history initial positioning after layout; user's later scrolling preserved.
+[ ] Jump to latest for new unseen messages; loading older history preserves anchor.
+[ ] Accepted mentorship only; pending/declined/blocked/revoked fail closed.
+[ ] Healthy refresh/pull-to-refresh recovers missed realtime updates.
+[ ] Every message timestamp available to assistive tech, including clustered own text.
+[ ] Send/retry/deduplication, failed send draft, reconnect/background, offline behavior.
+[ ] Reaction/copy/delete/report permissions unchanged; no fake presence/read receipts.
+
+MAP / MEDIA / DISTRIBUTION (ONLY WHEN SEPARATELY IMPLEMENTED)
+[ ] Server-side consent and recipient authorization, not only client filtering.
+[ ] No GPS/live location collection; declared city granularity; safe map list fallback.
+[ ] No cover upload until ownership/cleanup/races and data model are reviewed.
+[ ] Protected links handle unauthorized/expired access without leaking title/location.
+[ ] Calendar/export external destination and permission cancellation work honestly.
+
+EVIDENCE
+[ ] Scoped unit/component/integration checks actually executed; failure exits nonzero.
+[ ] Web/component/native/backend evidence explicitly separated.
+[ ] Source hashes confirm QA copy is current; preserve original failing evidence.
+[ ] No secrets in source/artifacts; source assets have origin/license recorded.
+[ ] One heavy job at a time; no unrelated environment resets or paid provisioning.
+[ ] No commit/push/migration/deployment/upload without separate authorization.

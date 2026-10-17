@@ -1,0 +1,162 @@
+GREEK TIES / SCREEN CONTRACTS
+Each section describes the intended shipped behavior, not evidence of current
+implementation. The offline prototype demonstrates a representative flow with
+memory-only data; it is not a service, security or persistence test.
+
+JOIN
+invitation -> signin -> essentials -> pending -> approved member Home
+1. Chapter invitation: safe server-resolved chapter/university; Continue and Sign in.
+   Invalid/revoked/expired code: explain unavailable and allow a new code, no leaked
+   private membership data. Transient resolution failure: Retry, never invalid-code
+   claim without evidence. Never auto-join solely from opening a link.
+2. Sign in: email/password labels, secure input, reset, create-account route.
+   Preserve existing auth methods. Do not replace secure storage or callbacks.
+   Handle invalid credentials, rate limit, offline, session expiration and an
+   already-approved member arriving through an invitation. Keep invitation context.
+3. Password recovery: neutral existence-preserving response, rate limiting, explicit
+   callback/expired link recovery. Preserve the existing reset-password screen.
+4. Essentials: name, graduation year, optional help intent. Find/offer may both be
+   chosen. Current backend exposes open_to_mentor; do not invent a persisted
+   help-intent schema without a separate decision. Collect only supported fields.
+   Membership designation/approval are server-controlled, not derived from year.
+5. Pending: saved profile, pending review, refresh status, edit details, sign out.
+   Rejected and revoked are separate states with an existing support/rejoin route.
+   No directory, chat or map access until an authoritative approved state exists.
+   Prototype keeps pending pending; production redirects only after real approval.
+
+HOME / NOTIFICATIONS
+6. Home: chapter band, active/alumni totals, upcoming event, compact supported
+   conversation previews, Network/Opportunities entrypoints. Counts navigate to
+   corresponding filters; no online count or fake engagement. Sparse chapters get
+   honest empty sections, not sample filler. Loading/error totals never display zero.
+   Authentication, chapter switch and revocation clear or replace scoped state.
+7. Notifications: only current service-supported types. Link to authorized existing
+   destinations. Removed/expired destinations get a clear unavailable screen. Do not
+   invent notification preferences, push delivery or unread semantics from the mockup.
+
+EVENTS
+8. Agenda: upcoming grouped by local date; existing category semantics, pagination,
+   end-time handling and timezone behavior. Date blocks gold; featured image only
+   when a real authorized cover exists. No-media state is a first-class design.
+9. Calendar: optional new presentation over the same data, not a new source. Month
+   navigation, selected day, events and empty day. Maintain timezone/DST correctness.
+   Prototype is a fixed November 2026 example. Never ship its hardcoded month grid.
+10. Detail: cover/title/category; start and optional end; named timezone; location;
+    host; description; eligible attendees. Persistent RSVP dock occupies layout
+    space, never overlays content. Guests are separate from event activity/comments.
+    Preserve can-edit/can-delete permissions; creator actions are not universal.
+11. RSVP sheet: Going / Interested / Can't go. Existing data: going / maybe / declined.
+    Selected saved value is distinct from unsaved draft. Close/Cancel changes nothing.
+    Save pending disables duplicate submit; rapid changes reconcile correctly.
+    Error retains previous confirmed response and offers Retry; fresh reconciliation
+    clears stale error only when supported by backend evidence. Count and preview
+    observe one coherent snapshot. Save does not block reading the rest of the page.
+12. Guests: selected Going/Interested tabs; exact count versus visible permitted rows
+    clearly distinguished. Search/pagination only if implemented. Preview failure
+    never becomes "nobody is going". Never show private restricted attendee identities.
+13. Create/edit: title, existing category, date, time, location, description; optional
+    end time. Preserve existing missing/ambiguous/DST time validation and timezone
+    change guard. Draft survives review/back within this flow; dirty-exit confirmation.
+    Covers, capacity, cohosts, dress codes and ticketing are NOT current fields.
+    Only cover is in this initial expanded visual proposal. Do not make decorative
+    affordances appear functional in the shipped app before capability work exists.
+14. Review: same draft, explicit chapter audience, timezone and editable summary.
+    Single create/update action; disabled pending, errors retain draft; successful
+    creation goes to canonical event ID and does not automatically notify everyone.
+15. Share: explicit protected-link copy and existing authorized conversation selection.
+    Confirm destination before sending. Respect chapter membership on link resolution
+    and on every message write; no bypass through client filtering alone. Cancel is
+    silent. Prevent duplicate sends. Do not expose titles/locations in public metadata.
+    No external guest RSVP/public distribution until separately designed and approved.
+16. Calendar export: confirmation includes provider privacy implications and accurate
+    time/end/location. Existing implementation not verified. Permission denial and
+    cancel return without mutation. Never promise reminders were scheduled by copy.
+
+CHATS
+17. Inbox: All / Groups / Mentorship; search; real previews and supported unread
+    indicators. Pending mentorship requests have a separate entry point. Existing
+    authorized accepted direct conversations remain; arbitrary DMs are not inferred.
+18. Group thread: compact author/content/time, existing reactions and actions; send
+    pending/error/retry states; preserve drafts, deduplication and moderation rules.
+    Opening long history lands at latest after layout settles, not on the first
+    content-size callback only. Subsequent user scrolling must not be stolen. New
+    messages below a scrolled-up user reveal a jump-to-latest control.
+19. Conversation details: current channel title/description/visibility, authorized
+    member information only, safe report path. Show mute/pin/channel management only
+    if actual services support them; do not invent 84 participants from Home totals.
+20. Accepted mentorship: same composer and typography as group thread. Explicit
+    refresh/reload while healthy plus native pull-to-refresh where supported.
+    Every own clustered message exposes a timestamp independently of action buttons.
+21. Requests: incoming and outgoing pending states; context before Accept/Decline.
+    Only acceptance opens messaging. Blocked/revoked/declined relationships must
+    fail closed. Prevent duplicate requests and duplicate decision submissions.
+22. Reporting/blocking: clear selected target, reason and optional explanation;
+    confirmation for block; preserve server roles and existing visibility behavior.
+    Admin-only report detail is not linked as a normal member inbox feature.
+
+NETWORK
+23. Directory: proposed visible Network label, current People route preserved.
+    Actual chapter total vs filtered result count; complete pagination beyond 1000.
+    Search by supported fields only. Active/Alumni + industry/city + open_to_mentor
+    combine using existing semantics. Never replace real query logic with demo arrays.
+24. Filter form: labelled controls, selected values retained, Apply and Clear.
+    Clear resets search plus all filters consistently. Back preserves unapplied draft
+    or discards it according to existing contract; choose and test one behavior.
+25. Member profile: supported fields only; optional biography/professional link;
+    mentorship availability self-declared. Restricted/blocked profile access clears
+    content. No private contact details revealed because a chapter count was tapped.
+26. Mentorship request: personal note/topic, length limits, explicit submit, pending
+    confirmation; duplicate/existing request opens existing status instead of creating
+    another. No autosend, forced contact sharing, fabricated common connections or AI.
+27. Opportunities: current Jobs list, filters, open/closed state and pagination.
+28. Opportunity detail/create/edit: current supported title/company/location/industry/
+    description/apply_url fields and permissions. External destination visible and
+    validated before opening. Prototype job form modal is condensed, not a replacement
+    for existing validation or permission logic. No new application service.
+29. Map: intended city-level clusters + selected-city member list. Current service
+    compatibility must be audited first. Preserve approved-alumni literal-true consent,
+    block rules, chapter isolation and map fallback. No precise/background GPS.
+    Prototype uses a labelled schematic, not Mapbox tiles or meaningful coordinates.
+    Native permission/map performance and online/offline tile behavior remain separate.
+
+ME / PRIVACY
+30. Me: profile summary/edit, chapter, mentorship, map state, notifications, settings;
+    admin tools only for actual roles. Default member has no management link.
+    Preview signed-in scenario is an approved alumni manager. Join scenario is a
+    different pending applicant; do not copy this navigation into authorization.
+31. Edit profile: existing fields/validation, current guarded avatar flow; save pending,
+    errors, dirty-exit and concurrent revisions. Editing city cannot enable map sharing.
+32. Map visibility: approved alumni gate, unchecked explicit consent; city and audience
+    disclosed; save/revoke is authoritative and fail-closed. When save fails, don't
+    claim public/private state changed. Revocation clears caches promptly and is
+    protected server-side. Retain the V10 consent policy and version/revision contract.
+33. Settings: existing account/legal/safety links. Deletion remains visibly unavailable
+    in private QA before any destructive request. Do not convert this into a hidden
+    fake successful action. Sign-out clears user/chapter-scoped caches and drafts.
+34. Blocked members: existing restrictions, unblock confirmation, failure recovery.
+
+ADMIN
+35. Management: members/approvals, existing invitations, channels/reports/settings.
+    Preserve existing routes not explicitly redesigned. No sixth tab for everyone.
+36. Approvals: authoritative profile state, confirmed affiliation, approve/decline
+    confirmation, pending/error/success; no graduation-year inference of permissions.
+37. Chapter invitations: current safe resolver/create/revoke semantics; expiry must
+    come from the server, never a hardcoded 7-day assumption. Confirmation before
+    revocation; existing members unaffected. No contact import or bulk dispatch.
+38. Reports: authorized reviewer context, confirmed action, audit-safe existing paths.
+    Mark reviewed is not delete message, block member or revoke membership.
+
+SHARED FAILURE / STATE DESIGN
+Prototype's State selector demonstrates read loading, empty, error, offline and
+access-removed layouts. These are generic visual references; use task-specific
+copy in implementation. It does NOT prove send/save failure or reconciliation.
+Required operation variants: pending; previous-confirmed state + failed draft;
+Retry; recovered from authoritative state; permission removed; duplicate action;
+session expired; long text; keyboard open; no-avatar/no-cover; missing optional data.
+Native state behavior and backend race/authorization contracts must remain tested.
+
+FUTURE, NOT HIDDEN IN THIS REBRAND
+Photos/GIF/audio in chat, polls, calls/video, event albums/activity, tickets, capacity,
+cohosts, rich reminders, public guest flow, date polls, saved searches, AI alumni
+matching, cross-chapter search, LinkedIn integration/enrichment, national analytics.
+These need their own product/privacy/service designs and implementation approvals.

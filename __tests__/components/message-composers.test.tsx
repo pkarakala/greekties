@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, renderAsync, waitFor } from '@testing-library/react-native';
 import { uuid } from 'expo-modules-core';
 import { Alert, Platform } from 'react-native';
 import { supabase } from '../../lib/supabase';
@@ -89,7 +89,9 @@ for (const kind of ['channel', 'mentorship'] as const)
       jest.restoreAllMocks();
     });
     it('ignores empty input, handles rapid taps, and preserves newer typing on older success', async () => {
-      const screen = render(<Screen />);
+      // React 19 async rendering settles immediate mock reads inside act before
+      // the default lookup deadline starts, including cold TextInput transforms.
+      const screen = await renderAsync(<Screen />);
       const input = await screen.findByLabelText('Message draft');
       fireEvent.changeText(input, '   ');
       fireEvent.press(screen.getByLabelText('Send message'));
@@ -112,6 +114,21 @@ for (const kind of ['channel', 'mentorship'] as const)
       await waitFor(() => expect(screen.queryByText(/Sending…/)).toBeNull());
       expect(screen.getByLabelText('Message draft').props.value).toBe('Newer typing');
       expect(screen.getAllByText('Submitted')).toHaveLength(1);
+    });
+    it('keeps the composer hidden until its initial conversation read settles', async () => {
+      const initial = deferred();
+      db.intercept((q) =>
+        q.table === (kind === 'channel' ? 'channels' : 'mentorship_requests')
+          ? initial.promise.then(() => db.base(q))
+          : undefined,
+      );
+      const screen = render(<Screen />);
+      expect(screen.queryByLabelText('Message draft')).toBeNull();
+      await act(async () => {
+        initial.resolve(null);
+      });
+      expect(screen.getByLabelText('Message draft')).toBeTruthy();
+      expect(screen.getByLabelText('Send message').props.accessibilityState.disabled).toBe(true);
     });
     it.each(['denied', 'network'] as const)(
       'offers accessible recovery after %s without erasing loaded messages/newer typing',

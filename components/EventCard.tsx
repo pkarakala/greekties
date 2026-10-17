@@ -1,71 +1,104 @@
-import { View, Text, StyleSheet, type PressableProps } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  useWindowDimensions,
+  type PressableProps,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Card } from './Card';
-import { Badge } from './Badge';
 import { eventClockTime, eventPhase } from '@/lib/time';
-import { colors, spacing, typography } from '@/theme';
-import type { EventWithMeta } from '@/lib/events';
-import type { EventCategory } from '@/lib/types';
-
-const CATEGORY_LABELS: Record<EventCategory, string> = {
-  chapter: 'Chapter',
-  alumni: 'Alumni',
-  philanthropy: 'Philanthropy',
-  social: 'Social',
-  recruitment: 'Recruitment',
-};
+import { EVENT_CATEGORIES, type EventWithMeta } from '@/lib/events';
+import { EventDateTile } from './EventDateTile';
+import { eventColors, eventTypography } from '@/theme/events-rebrand';
+import { spacing } from '@/theme';
 
 interface EventCardProps {
   event: EventWithMeta;
   onPress?: PressableProps['onPress'];
 }
 
-/** Agenda row: time, title, location, category badge, going count. */
+/** Full-length agenda row; counts include only RSVPs visible to this member. */
 export function EventCard({ event, onPress }: EventCardProps) {
+  const { fontScale } = useWindowDimensions();
+  const response =
+    event.myStatus === 'going'
+      ? 'You’re going'
+      : event.myStatus === 'maybe'
+        ? 'You’re interested'
+        : event.myStatus === 'declined'
+          ? 'You can’t go'
+          : null;
   return (
-    <Card style={styles.card} onPress={onPress}>
-      <View style={styles.top}>
-        <Text style={styles.time}>{eventClockTime(event.starts_at)}</Text>
-        <Badge label={CATEGORY_LABELS[event.category]} tone="gold" />
-      </View>
-
-      <Text style={styles.metaText}>{eventPhase(event)}</Text>
-      <Text style={styles.title} numberOfLines={2}>
-        {event.title}
-      </Text>
-
-      <View style={styles.meta}>
-        {!!event.location && (
-          <View style={styles.metaItem}>
-            <Ionicons name="location-outline" size={14} color={colors.textTertiary} />
-            <Text style={styles.metaText} numberOfLines={1}>
-              {event.location}
-            </Text>
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.row,
+        fontScale >= 1.5 && styles.stacked,
+        pressed && styles.pressed,
+      ]}
+    >
+      <EventDateTile tone="home" startsAt={event.starts_at} />
+      <View style={[styles.content, fontScale >= 1.5 && styles.stackedContent]}>
+        <Text style={styles.meta}>
+          {EVENT_CATEGORIES.find((category) => category.value === event.category)?.label}
+          {' · '}
+          {eventPhase(event)}
+        </Text>
+        <Text style={styles.title}>{event.title}</Text>
+        <Text style={styles.support}>{eventClockTime(event.starts_at)}</Text>
+        {!!event.location && <Text style={styles.support}>{event.location}</Text>}
+        <Text style={styles.attendance}>
+          {event.goingCount === null
+            ? 'Attendance unavailable'
+            : `${event.goingCount} going · visible to you`}
+          {event.metaError && event.goingCount !== null ? ' · Refresh unavailable' : ''}
+        </Text>
+        {response && (
+          <View style={styles.response}>
+            <Ionicons
+              name={event.myStatus === 'going' ? 'checkmark' : 'time-outline'}
+              size={16}
+              color={eventColors.action}
+            />
+            <Text style={styles.responseText}>{response}</Text>
           </View>
         )}
-        {
-          <View style={styles.metaItem}>
-            <Ionicons name="people-outline" size={14} color={colors.textTertiary} />
-            <Text style={styles.metaText}>
-              {event.goingCount === null
-                ? 'Attendance unavailable'
-                : `${event.goingCount} going · visible to you`}
-              {event.metaError && event.goingCount !== null ? ' · Refresh unavailable' : ''}
-            </Text>
-          </View>
-        }
-        {event.myStatus === 'going' && <Badge label="You’re going" tone="green" />}
       </View>
-    </Card>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { gap: spacing.sm },
-  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  time: { ...typography.caption, color: colors.gold },
-  title: { ...typography.h3, color: colors.textPrimary },
-  meta: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexWrap: 'wrap' },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
-  metaText: { ...typography.caption, color: colors.textTertiary },
+  row: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.lg,
+    padding: 16,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderRadius: 8,
+    borderColor: eventColors.divider,
+    backgroundColor: eventColors.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: eventColors.divider,
+  },
+  stacked: { flexDirection: 'column' },
+  stackedContent: { flex: 0 },
+  pressed: { backgroundColor: eventColors.soft },
+  content: { flex: 1, minWidth: 0, gap: spacing.xs, alignSelf: 'stretch' },
+  title: { ...eventTypography.section, color: eventColors.action },
+  meta: { ...eventTypography.meta, color: eventColors.muted },
+  support: { ...eventTypography.support, color: eventColors.muted },
+  attendance: { ...eventTypography.meta, color: eventColors.muted, marginTop: spacing.xs },
+  response: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.xs },
+  responseText: {
+    ...eventTypography.meta,
+    color: eventColors.action,
+    fontWeight: '600',
+    flexShrink: 1,
+  },
 });

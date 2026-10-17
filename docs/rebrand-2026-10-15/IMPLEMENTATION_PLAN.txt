@@ -1,0 +1,81 @@
+GREEK TIES / IMPLEMENTATION ORDER
+One fresh CLI session, one bounded slice at a time. Never replace a service merely
+to make it resemble the offline prototype. Preserve user work and record evidence.
+
+SLICE A / FOUNDATION + HOME (START HERE)
+Inspect repo instructions, current theme/shared components and source checkpoint.
+Build a current capability inventory using CAPABILITY_MATRIX.csv as a starting
+point, not a guarantee. Implement blue/gold tokens, scoped primitives, five-tab
+selected styling, and Home identity/count/event/conversation composition.
+Keep existing routes and labels until any Network label migration is reviewed.
+Use real fields only. Event imagery is not yet authorized as a backend change;
+implement the no-media date/category variant if no cover service exists.
+If changing a global token affects every screen, either scope new tokens to the
+slice or run visual regression on all affected consumers. Do not casually recolor
+unreviewed screens through a global replacement.
+Deliver source diff, scope list, tests, 375/440-point web screenshots and enlarged
+text, native evidence if available, a concise handoff. Stop for slice review.
+
+SLICE B / EVENTS VISUAL PARITY
+Agenda/detail/create/edit/RSVP sheet and dock; shared typography and layout.
+Preserve all proven RSVP race/recovery/permissions fixes. Keep the full existing
+validation and end-time/timezone semantics. Preserve edit/delete permissions.
+No cover upload, public invitations, guest access, calendar permissions or new
+tables here. Include no-cover rendering; provide a separate design gap list.
+Calendar presentation/review step may be implemented here only after an explicit
+scope decision that preserves the existing service contract.
+
+SLICE C / CHATS VISUAL PARITY
+Restyle approved unified inbox and compact group/accepted-mentorship conversation.
+Preserve preview revocation fix, settled initial scroll, healthy refresh and
+per-message accessibility timestamps. Test send/retry/deduplication and keyboard
+layouts. No media/calls/polls/arbitrary DM expansion.
+
+SLICE D / NETWORK, PROFILES, OPPORTUNITIES
+People visible label -> Network only if all links/a11y labels are consistent and
+existing route paths remain stable. Directory, combined filters, profiles,
+mentorship requests, Jobs details/create/edit. Counts above 1000 and permissions
+remain covered. No AI, data enrichment, inferred connections or new contact access.
+
+SLICE E / ONBOARDING, ME, PRIVACY, ADMIN CONSISTENCY
+Existing sign-in/sign-up/reset/verify/join/profile/pending flow; Me, edit, settings,
+blocked members and existing admin routes. Preserve map consent, auth callbacks,
+moderation, safe invite resolution and deletion guard. Use actual legal docs.
+No anonymous member data, false approved state or legacy-consent migration.
+
+SLICE F / PARTIFUL-INSPIRED CAPABILITIES (SEPARATE FEATURE AUTHORIZATION)
+Plan each separately, no automatic production changes:
+F1 event covers: authorized media lifecycle, dimension/size/type validation,
+ownership, read access, upload/update/removal races, cleanup and deletion model.
+Do not repeat the unresolved avatar race in a new bucket. Fail safely on interrupted
+uploads. Establish what can honestly be guaranteed before enabling this feature.
+F2 protected event distribution: share to an existing authorized conversation,
+safe link metadata, recipient review, duplicate prevention, revoked membership.
+F3 calendar presentation/export: accurate timezone/end/updated/canceled event
+behavior; explicit OS/provider consent; no assumed push/reminder delivery.
+F4 city-level alumni map: consent-preserving clustering/aggregation and accessible
+list fallback. Avoid exact user pins or local-only privacy filters.
+Any database work requires applicable Supabase/Postgres skills, isolated synthetic
+QA, migration review and explicit environment authorization. No paid provisioning.
+
+SLICE G / INTEGRATION AND OWNER TESTFLIGHT
+After implementation review, real isolated QA across auth, events, chats, network,
+map visibility and recovery. Run source parity and dependency checks. Validate
+native installed Release startup/lifecycle/navigation/keyboard/font scaling; don't
+call web evidence native. Keep Build 15/archive and signing configuration intact.
+Only after separate build/upload authorization: a new monotonically increasing
+build number, verify QA bundle/backend/guards/signature, fresh internal-recipient
+audit, upload exact artifact, wait for Apple processing, owner tests on phone.
+Do not add public/external groups or re-enable deletion to get through this step.
+
+PROGRESSION RULE
+At each handoff: show what changed, what actually passed, what is unsupported, and
+the next bounded prompt. Fix failures attributable to the slice; preserve unrelated
+failures. Do not count reruns as resolving an unexplained failure. Do not run
+simulator/archive and a full suite together on the 8 GB Mac. One heavy job at a time.
+
+FUTURE PRODUCT WORK
+Event albums/polls/cohosts/tickets; group media; a richer general DM model;
+AI-assisted alumni search with opt-in data and human-confirmed introductions;
+LinkedIn integration only through permitted, verified access. These are not
+implementation-ready merely because this design package describes their value.

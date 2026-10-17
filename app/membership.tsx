@@ -9,7 +9,8 @@ import type { PendingInvite } from '@/lib/pending-invite';
 import { Button } from '@/components/Button';
 import { Wordmark } from '@/components/Wordmark';
 import { SUPPORT_EMAIL } from '@/lib/legal';
-import { colors, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/account';
 
 export default function MembershipScreen() {
   const auth = useAuth();
@@ -52,24 +53,34 @@ export default function MembershipScreen() {
         contentContainerStyle={{
           flexGrow: 1,
           justifyContent: 'center',
-          padding: spacing.xl,
+          padding: 20,
           gap: spacing.lg,
         }}
       >
-        <Wordmark size={28} />
-        <Text style={{ ...typography.body, color: colors.textPrimary }}>
+        <Wordmark tone="home" size={28} />
+        <Text
+          accessibilityLiveRegion="polite"
+          style={{
+            ...typography.body,
+            color: colors.textPrimary,
+            backgroundColor: colors.goldLight,
+            padding: 16,
+            borderRadius: 8,
+          }}
+        >
           {auth.authError ?? message}
         </Text>
-        {state === 'loading' && <ActivityIndicator color={colors.gold} />}
+        {state === 'loading' && <ActivityIndicator color={colors.blue} />}
         {!!notice && <Text accessibilityRole="alert">{notice}</Text>}
         {state === 'approved' && (
-          <Button label="Continue to chapter" onPress={() => router.replace('/')} />
+          <Button tone="home" label="Continue to chapter" onPress={() => router.replace('/')} />
         )}
         {(state === 'missing' ||
           state === 'pending' ||
           state === 'removed' ||
           state === 'error') && (
           <Button
+            tone="home"
             label="Check again"
             onPress={() => void (auth.authError ? auth.retrySession() : auth.refreshProfile())}
           />
@@ -77,12 +88,14 @@ export default function MembershipScreen() {
         {invite && (
           <>
             <Button
+              tone="home"
               label="Resume invitation"
               onPress={() =>
                 router.push({ pathname: '/join/[code]', params: { code: invite.code } })
               }
             />
             <Button
+              tone="home"
               label="Cancel saved invitation"
               variant="secondary"
               onPress={async () => {
@@ -94,6 +107,7 @@ export default function MembershipScreen() {
           </>
         )}
         <Button
+          tone="home"
           label="Paste an invitation link or code"
           variant="secondary"
           onPress={() => router.push('/onboarding/enter-code')}
@@ -106,12 +120,14 @@ export default function MembershipScreen() {
           Contact your chapter admin for membership help, or {SUPPORT_EMAIL}.
         </Text>
         <Button
+          tone="home"
           label="Reset password"
           variant="ghost"
           onPress={() => router.push('/forgot-password')}
         />
         {auth.session || auth.authError ? (
           <Button
+            tone="home"
             label="Sign out"
             variant="secondary"
             onPress={async () => {
@@ -124,7 +140,7 @@ export default function MembershipScreen() {
             }}
           />
         ) : (
-          <Button label="Log in" onPress={() => router.replace('/login')} />
+          <Button tone="home" label="Log in" onPress={() => router.replace('/login')} />
         )}
       </ScrollView>
     </SafeAreaView>

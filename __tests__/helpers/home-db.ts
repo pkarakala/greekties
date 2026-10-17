@@ -1,6 +1,6 @@
 /** Synthetic query service: no real client, keys, storage, or network. */
 export type Row = Record<string, any>;
-export type Result = { data: any; error: { message: string } | null };
+export type Result = { data: any; error: { message: string } | null; count?: number | null };
 export function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (reason?: unknown) => void;
@@ -24,6 +24,7 @@ export function homeDb() {
     events: [],
     job_postings: [],
     channel_messages: [],
+    profiles: [],
   };
   const queued: Record<string, Promise<Result>[]> = {};
   const calls: { table: string; steps: [string, ...any[]][] }[] = [];
@@ -33,13 +34,26 @@ export function homeDb() {
     const queuedResult = queued[table]?.shift();
     let filtered = [...rows[table]];
     let single = false;
+    let head = false;
     const value = (row: Row, key: string) => key.split('.').reduce((v, k) => v?.[k], row);
     const query: any = {};
-    for (const method of ['select', 'eq', 'gt', 'or', 'not', 'order', 'limit', 'maybeSingle']) {
+    for (const method of [
+      'select',
+      'eq',
+      'neq',
+      'gt',
+      'or',
+      'not',
+      'order',
+      'limit',
+      'maybeSingle',
+    ]) {
       query[method] = (...args: any[]) => {
         call.steps.push([method, ...args]);
         const [column, param] = args;
+        if (method === 'select') head = param?.head === true;
         if (method === 'eq') filtered = filtered.filter((r) => value(r, column) === param);
+        if (method === 'neq') filtered = filtered.filter((r) => value(r, column) !== param);
         if (method === 'gt') filtered = filtered.filter((r) => value(r, column) > param);
         if (method === 'not')
           filtered = filtered.filter(
@@ -65,7 +79,11 @@ export function homeDb() {
     query.then = (yes: any, no: any) =>
       (
         queuedResult ??
-        Promise.resolve({ data: single ? (filtered[0] ?? null) : filtered, error: null })
+        Promise.resolve({
+          data: head ? null : single ? (filtered[0] ?? null) : filtered,
+          error: null,
+          count: filtered.length,
+        })
       ).then(yes, no);
     return query;
   }

@@ -18,6 +18,7 @@ jest.mock(
 );
 const back = jest.fn(),
   replace = jest.fn(),
+  canGoBack = jest.fn(),
   refresh = jest.fn<() => Promise<void>>();
 let profile: any;
 beforeEach(() => {
@@ -39,7 +40,8 @@ beforeEach(() => {
     .mockImplementation(
       () => ({ profile, refreshProfile: refresh, session: { user: { id: 'u' } } }) as any,
     );
-  jest.mocked(useRouter).mockReturnValue({ back, replace } as any);
+  canGoBack.mockReturnValue(true);
+  jest.mocked(useRouter).mockReturnValue({ back, replace, canGoBack } as any);
   jest.mocked(saveProfileWithMap).mockResolvedValue({ error: null });
 });
 
@@ -154,4 +156,19 @@ it('lookup retry uses the revision saved by this form even after auth refresh', 
   fireEvent.press(ui.getByText('Save'));
   await waitFor(() => expect(saveProfileWithMap).toHaveBeenCalledTimes(2));
   expect(jest.mocked(saveProfileWithMap).mock.calls[1][0].map_revision).toBe('our-save');
+});
+
+it('returns a directly opened editor to Me after saving without navigation history', async () => {
+  canGoBack.mockReturnValue(false);
+  const ui = render(<EditProfileScreen />);
+  fireEvent.press(ui.getByText('Save'));
+  await waitFor(() => expect(replace).toHaveBeenCalledWith('/me'));
+  expect(back).not.toHaveBeenCalled();
+});
+it('offers a working Back destination from a directly opened editor', () => {
+  canGoBack.mockReturnValue(false);
+  const ui = render(<EditProfileScreen />);
+  fireEvent.press(ui.getByLabelText('Go back'));
+  expect(replace).toHaveBeenCalledWith('/me');
+  expect(back).not.toHaveBeenCalled();
 });

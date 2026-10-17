@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import type { Mock } from 'jest-mock';
-import { fetchJobsPage, isMissingIsOpen } from '../../lib/jobs';
+import { fetchJobsPage, isMissingIsOpen, updateJob } from '../../lib/jobs';
 import { supabase } from '../../lib/supabase';
 
 jest.mock('../../lib/supabase', () => ({
@@ -127,5 +127,53 @@ describe('fetchJobsPage', () => {
       page: [],
       error: null,
     });
+  });
+});
+
+describe('acknowledged job edits', () => {
+  it.each([null, { id: 'job-1' }])('requires an authorized affected row: %j', async (data) => {
+    const builder = {
+      update: jest.fn(),
+      eq: jest.fn(),
+      select: jest.fn(),
+      maybeSingle: jest.fn(async () => ({ data, error: null })),
+    };
+    builder.update.mockReturnValue(builder);
+    builder.eq.mockReturnValue(builder);
+    builder.select.mockReturnValue(builder);
+    mockedFrom.mockReturnValue(builder);
+    const result = await updateJob('job-1', { title: 'Saved title' });
+    expect(result.error === null).toBe(data !== null);
+    expect(builder.select).toHaveBeenCalledWith('id');
+    expect(builder.eq).toHaveBeenCalledWith('id', 'job-1');
+  });
+});
+
+describe('stable pagination cursor', () => {
+  it('matches both creation time and ID, retaining the open-job filter', async () => {
+    const builders = mockQueryAttempts([{ data: [], error: null }]);
+    await fetchJobsPage(
+      'chapter-1',
+      '2026-10-13T00:00:00Z',
+      '00000000-0000-4000-8000-000000000010',
+    );
+    expect(builders[0].order.mock.calls).toEqual([
+      ['created_at', { ascending: false }],
+      ['id', { ascending: false }],
+    ]);
+    expect(builders[0].lt).not.toHaveBeenCalled();
+    expect(builders[0].or).toHaveBeenCalledWith(
+      'and(or(is_open.is.null,is_open.eq.true),or(created_at.lt.2026-10-13T00:00:00Z,and(created_at.eq.2026-10-13T00:00:00Z,id.lt.00000000-0000-4000-8000-000000000010)))',
+    );
+  });
+  it('preserves the stable cursor through the legacy missing-open-column fallback', async () => {
+    const builders = mockQueryAttempts([
+      { data: null, error: { message: 'column is_open does not exist' } },
+      { data: [], error: null },
+    ]);
+    await fetchJobsPage('chapter-1', '2026-10-13T00:00:00Z', 'job-10');
+    expect(builders[1].or).toHaveBeenCalledWith(
+      'created_at.lt.2026-10-13T00:00:00Z,and(created_at.eq.2026-10-13T00:00:00Z,id.lt.job-10)',
+    );
   });
 });

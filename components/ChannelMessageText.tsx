@@ -1,4 +1,4 @@
-import { Text, type TextStyle, type StyleProp } from 'react-native';
+import { StyleSheet, Text, type TextStyle, type StyleProp } from 'react-native';
 import { Link } from 'expo-router';
 import { parseDetailLink } from '@/lib/chat-share';
 
@@ -6,9 +6,11 @@ import { parseDetailLink } from '@/lib/chat-share';
 export function ChannelMessageText({
   content,
   style,
+  compactLinks = false,
 }: {
   content: string;
   style?: StyleProp<TextStyle>;
+  compactLinks?: boolean;
 }) {
   return (
     <Text style={style}>
@@ -22,9 +24,9 @@ export function ChannelMessageText({
               params: { id: link.id },
             }}
             accessibilityLabel={`Open ${link.kind === 'events' ? 'event' : 'job posting'}`}
-            style={{ textDecorationLine: 'underline' }}
+            style={{ textDecorationLine: 'underline', color: StyleSheet.flatten(style)?.color }}
           >
-            {part}
+            {compactLinks ? (link.kind === 'events' ? 'View event' : 'View job posting') : part}
           </Link>
         ) : (
           part

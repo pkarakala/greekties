@@ -5,7 +5,6 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   Pressable,
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -22,12 +21,16 @@ import { reportContent } from '@/lib/moderation';
 import { markChannelRead } from '@/lib/reads';
 import { fetchReactions, toggleReaction, useReactionSync, QUICK_EMOJI } from '@/lib/reactions';
 import type { ReactionsByMessage } from '@/lib/reactions';
-import { clockTime } from '@/lib/time';
-import { Avatar } from '@/components/Avatar';
 import { ReactionPills } from '@/components/ReactionPills';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import {
+  CompactMessage,
+  ConversationHeader,
+  ConversationList,
+  conversationStyles,
+} from '@/components/CompactConversation';
 import { MessageComposer } from '@/components/MessageComposer';
-import { colors, radius, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/chats';
 import { isAdmin } from '@/lib/types';
 import type { ChannelMessage } from '@/lib/types';
 
@@ -73,11 +76,6 @@ export default function ChannelThreadScreen() {
     composer,
     reload,
   } = useChannelThread(channelId ?? null, myUserId, blockedIds);
-
-  const listRef = useRef<FlatList<ChannelMessage>>(null);
-  // Last message id we auto-scrolled to — lets us skip the scroll-to-bottom when
-  // loadEarlier() prepends older messages (the newest message doesn't change).
-  const lastScrolledIdRef = useRef<string | null>(null);
 
   // ── Emoji reactions ────────────────────────────────────────────────────────
   // message id → aggregated { emoji, count, mine } pills. Kept live by the
@@ -290,62 +288,53 @@ export default function ChannelThreadScreen() {
 
   function renderItem({ item, index }: { item: ChannelMessage; index: number }) {
     const mine = item.sender_id === myUserId;
-    const prev = index > 0 ? visibleMessages[index - 1] : null;
-    const showHeader = !prev || prev.sender_id !== item.sender_id;
     const sender = senders[item.sender_id];
     const messageReactions = reactions.get(item.id) ?? [];
-
+    const actor = mine ? profile : sender;
     return (
-      <View style={[styles.cluster, showHeader && styles.clusterSpaced]}>
-        {showHeader && !mine && (
-          <Pressable
-            style={styles.senderRow}
-            onPress={() =>
-              sender && router.push({ pathname: '/profile/[id]', params: { id: sender.id } })
-            }
-          >
-            <Avatar uri={sender?.avatar_url} name={sender?.name} size="xs" />
-            <Text style={styles.senderName}>{sender?.name ?? 'Member'}</Text>
-            {!!sender?.class_year && (
-              <Text style={styles.gradYear}>’{String(sender.class_year).slice(-2)}</Text>
-            )}
-          </Pressable>
-        )}
-        <View style={[styles.bubbleRow, mine ? styles.alignRight : styles.alignLeft]}>
-          <Pressable
-            onLongPress={() => openReactionSheet(item)}
-            style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}
-          >
-            <ChannelMessageText
-              style={[styles.bubbleText, mine && styles.bubbleTextMine]}
-              content={item.content}
-            />
-          </Pressable>
-          <Text style={styles.bubbleTime}>{clockTime(item.created_at)}</Text>
-        </View>
-        {messageReactions.length > 0 && (
-          <View style={[styles.reactionsRow, mine ? styles.alignRight : styles.alignLeft]}>
+      <CompactMessage
+        message={item}
+        previous={visibleMessages[index - 1]}
+        mine={mine}
+        name={actor?.name ?? (mine ? 'You' : 'Member')}
+        avatar={actor?.avatar_url}
+        onProfile={
+          actor?.id
+            ? () => router.push({ pathname: '/profile/[id]', params: { id: actor.id } })
+            : undefined
+        }
+        onActions={() => openReactionSheet(item)}
+        reactions={
+          messageReactions.length > 0 ? (
             <ReactionPills
               reactions={messageReactions}
               onToggle={(emoji) => handleToggleReaction(item.id, emoji)}
               onAdd={() => openReactionSheet(item)}
             />
-          </View>
-        )}
-      </View>
+          ) : undefined
+        }
+      >
+        <ChannelMessageText
+          compactLinks
+          style={[conversationStyles.text, mine && conversationStyles.ownText]}
+          content={item.content}
+        />
+      </CompactMessage>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader
-        title={channel ? `# ${channel.name}` : 'Channel'}
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <ConversationHeader
+        title={channel?.name ?? 'Conversation'}
+        subtitle="Group conversation"
+        group
         onBack={() => router.back()}
       />
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={colors.gold} />
+          <ActivityIndicator color={colors.blue} />
         </View>
       ) : (
         <KeyboardAvoidingView
@@ -353,43 +342,14 @@ export default function ChannelThreadScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
         >
-          <FlatList
-            ref={listRef}
-            data={visibleMessages}
-            keyExtractor={(m) => m.id}
+          <ConversationList
+            key={JSON.stringify([channelId, myUserId])}
+            messages={visibleMessages}
             renderItem={renderItem}
-            contentContainerStyle={styles.list}
-            showsVerticalScrollIndicator={false}
-            // Keep the viewport anchored when loadEarlier() prepends history.
-            maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
-            onContentSizeChange={() => {
-              // Only auto-scroll when a *new* newest message arrives — not when
-              // loadEarlier() prepends history above the current scroll position.
-              const newestId = visibleMessages[visibleMessages.length - 1]?.id ?? null;
-              if (newestId && newestId !== lastScrolledIdRef.current) {
-                lastScrolledIdRef.current = newestId;
-                listRef.current?.scrollToEnd({ animated: true });
-              }
-            }}
-            ListHeaderComponent={
-              hasMore ? (
-                <Pressable
-                  onPress={loadEarlier}
-                  disabled={loadingEarlier}
-                  style={({ pressed }) => [
-                    styles.loadEarlier,
-                    pressed && styles.loadEarlierPressed,
-                  ]}
-                >
-                  {loadingEarlier ? (
-                    <ActivityIndicator size="small" color={colors.gold} />
-                  ) : (
-                    <Text style={styles.loadEarlierText}>Load earlier messages</Text>
-                  )}
-                </Pressable>
-              ) : null
-            }
-            ListEmptyComponent={
+            hasMore={hasMore}
+            loadingEarlier={loadingEarlier}
+            loadEarlier={loadEarlier}
+            empty={
               <View style={styles.center}>
                 <Text style={styles.emptyText}>
                   {error ? `Couldn’t load messages: ${error}` : 'Be the first to say something.'}
@@ -425,25 +385,10 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   emptyText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  list: { padding: spacing.lg, gap: spacing.xs, flexGrow: 1 },
-  loadEarlier: { alignItems: 'center', paddingVertical: spacing.sm },
-  loadEarlierPressed: { opacity: 0.6 },
-  loadEarlierText: { ...typography.bodySmall, color: colors.gold, fontWeight: '600' },
-
-  cluster: { gap: spacing.xs },
-  clusterSpaced: { marginTop: spacing.md },
-  senderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 2 },
-  senderName: { ...typography.bodySmall, color: colors.textPrimary, fontWeight: '600' },
-  gradYear: { ...typography.caption, color: colors.textTertiary },
-
-  bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, maxWidth: '85%' },
-  alignLeft: { alignSelf: 'flex-start' },
-  alignRight: { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
-  bubble: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.lg },
-  bubbleMine: { backgroundColor: colors.gold },
-  bubbleTheirs: { backgroundColor: colors.surfaceElevated },
-  bubbleText: { ...typography.body, color: colors.textPrimary },
-  bubbleTextMine: { color: colors.background },
-  bubbleTime: { ...typography.caption, color: colors.textTertiary },
-  reactionsRow: { maxWidth: '85%' },
+  loadEarlier: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.sm,
+  },
 });

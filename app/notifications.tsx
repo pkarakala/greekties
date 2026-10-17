@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth';
 import { useNotifications, type AppNotification } from '@/lib/inbox-notifications';
 import { timeAgoShort } from '@/lib/time';
+import { Button } from '@/components/Button';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -36,6 +37,19 @@ export default function NotificationsScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenHeader title="Notifications" onBack={() => router.back()} />
 
+      {!!error && (
+        <View style={styles.notice}>
+          <Text accessibilityRole="alert" style={styles.error}>
+            Couldn’t load notifications. Please try again.
+          </Text>
+          <Button
+            label="Retry notifications"
+            variant="secondary"
+            loading={loading}
+            onPress={reload}
+          />
+        </View>
+      )}
       {unreadCount > 0 && (
         <View style={styles.actionsRow}>
           <Pressable
@@ -63,9 +77,7 @@ export default function NotificationsScreen() {
             onPress={() => open(item)}
             style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
           >
-            <View style={styles.dotWrap}>
-              {!item.read && <View style={styles.unreadDot} />}
-            </View>
+            <View style={styles.dotWrap}>{!item.read && <View style={styles.unreadDot} />}</View>
             <View style={styles.rowBody}>
               <Text style={[styles.title, !item.read && styles.titleUnread]} numberOfLines={1}>
                 {item.title}
@@ -80,12 +92,10 @@ export default function NotificationsScreen() {
           </Pressable>
         )}
         ListEmptyComponent={
-          loading ? null : (
+          loading || error ? null : (
             <View style={styles.empty}>
               <Ionicons name="notifications-outline" size={40} color={colors.textTertiary} />
-              <Text style={styles.emptyText}>
-                {error ?? 'Nothing yet. We’ll let you know.'}
-              </Text>
+              <Text style={styles.emptyText}>Nothing yet. We’ll let you know.</Text>
             </View>
           )
         }
@@ -97,6 +107,14 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
 
+  notice: {
+    margin: spacing.lg,
+    paddingLeft: spacing.md,
+    gap: spacing.sm,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.red,
+  },
+  error: { ...typography.bodySmall, color: colors.red },
   actionsRow: { alignItems: 'flex-end', paddingHorizontal: spacing.lg },
   markAll: { ...typography.bodySmall, color: colors.gold, fontWeight: '600' },
 

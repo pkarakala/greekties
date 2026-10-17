@@ -3,9 +3,10 @@ import { supabase } from './supabase';
 import type { Chapter, Event, JobPosting, Profile } from './types';
 
 export type ChapterIdentity = Pick<Chapter, 'name' | 'designation' | 'university'>;
-export type HomeEvent = Pick<Event, 'id' | 'title' | 'location' | 'starts_at'>;
+export type HomeEvent = Pick<Event, 'id' | 'title' | 'location' | 'starts_at' | 'category'>;
 export type HomeJob = Pick<JobPosting, 'id' | 'title' | 'company' | 'location'>;
 export interface HomeConversation {
+  content?: string;
   channel_id: string;
   created_at: string;
   channels: { name: string };
@@ -87,6 +88,48 @@ export function useChapterIdentity(scope: string | null, chapterId: string | nul
   return useSectionRead(scope, read);
 }
 
+export interface MembershipCounts {
+  active: number;
+  alumni: number;
+}
+
+/** Exact authorized totals: HEAD requests count every matching row under RLS. */
+export async function fetchMembershipCounts(
+  chapterId: string,
+  blockedIds: ReadonlySet<string>,
+): Promise<MembershipCounts> {
+  const countMembers = async (membershipType: 'active' | 'alumni') => {
+    let query = supabase
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('chapter_id', chapterId)
+      .eq('status', 'approved')
+      .eq('membership_type', membershipType);
+    for (const id of blockedIds) query = query.neq('user_id', id);
+    const { count, error } = await query;
+    // Missing count metadata is an unavailable read, never an empty chapter.
+    if (error || typeof count !== 'number' || !Number.isSafeInteger(count) || count < 0)
+      throw new Error('Membership counts unavailable');
+    return count;
+  };
+  const [active, alumni] = await Promise.all([countMembers('active'), countMembers('alumni')]);
+  return { active, alumni };
+}
+
+export function useMembershipCounts(
+  scope: string | null,
+  chapterId: string | null,
+  blockedIds: ReadonlySet<string>,
+) {
+  const blocked = [...blockedIds].sort().join(',');
+  const contentScope = scope ? JSON.stringify([scope, chapterId, blocked]) : null;
+  const read = useCallback(
+    () => fetchMembershipCounts(chapterId!, new Set(blocked ? blocked.split(',') : [])),
+    [chapterId, blocked],
+  );
+  return useSectionRead(contentScope, read);
+}
+
 export function useHomeOverview(
   scope: string | null,
   chapterId: string | null,
@@ -99,7 +142,7 @@ export function useHomeOverview(
     const now = new Date().toISOString();
     let query = supabase
       .from('events')
-      .select('id, title, location, starts_at')
+      .select('id, title, location, starts_at, category')
       .eq('chapter_id', chapterId!)
       .gt('starts_at', now)
       .or(`ends_at.is.null,ends_at.gt.${now}`);
@@ -124,12 +167,25 @@ export function useHomeOverview(
     // channel-creation timestamp masquerading as conversation activity.
     let query = supabase
       .from('channel_messages')
-      .select('channel_id, created_at, channels!inner(name, chapter_id)')
+      .select('channel_id, content, created_at, channels!inner(name, chapter_id)')
       .eq('channels.chapter_id', chapterId!);
     if (blocked) query = query.not('sender_id', 'in', `(${blocked})`);
     const { data, error } = await query.order('created_at', { ascending: false }).limit(1);
     if (error) throw error;
-    return (data?.[0] as unknown as HomeConversation | undefined) ?? null;
+    const conversation = (data?.[0] as unknown as HomeConversation | undefined) ?? null;
+    if (!conversation) return null;
+    // Reuse the inbox's visibility contract before exposing message text. Admin
+    // management SELECT access alone does not authorize a conversation preview.
+    try {
+      const access = await supabase.rpc('is_channel_visible', {
+        p_channel_id: conversation.channel_id,
+      });
+      if (access?.data === false) return null;
+      if (access?.error || access?.data !== true) return { ...conversation, content: undefined };
+    } catch {
+      return { ...conversation, content: undefined };
+    }
+    return conversation;
   }, [chapterId, blocked]);
   const event = useSectionRead(contentScope, eventRead);
   const jobs = useSectionRead(contentScope, jobsRead);

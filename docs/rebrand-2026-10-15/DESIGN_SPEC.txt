@@ -1,0 +1,134 @@
+GREEK TIES / DESIGN SYSTEM v1
+2026-10-15 / approved blue-and-gold direction, expanded implementation proposal
+
+01. IDENTITY
+Your chapter, beyond college.
+A welcoming, verified community that makes relationships useful over a lifetime.
+Students return for conversation and plans; alumni return for people, shared
+history and meaningful ways to help. Neither a party-only app nor an employment
+dashboard. Private does not mean secretive or elitist.
+
+Take from Partiful: event-first visual hierarchy, strong covers, immediate RSVP,
+clear logistics, thoughtful hosting, and easy distribution.
+Take from GroupMe: compact readable inbox, obvious groups, predictable composer,
+low interaction cost. Do not reproduce logos, proprietary assets or unsupported
+feature menus. No sparkles, texture overlays, floating bars covering content,
+decorative status metrics, fabricated presence or algorithmic feed.
+
+02. PALETTE (CANONICAL HEX VALUES IN tokens.json)
+Royal blue #123FA0: primary buttons, links, own-message fills, selected icon color.
+Navy #142743: readable text and editorial headings, never the whole app canvas.
+Prominent gold #E9BD52: chapter/count band, date blocks, selected chips, key accents.
+Pale gold #FCF2D6: consent/context panels and selected navigation background.
+White #FFFFFF: main surfaces. Cool porcelain #F6F8FC: quiet secondary canvas.
+Muted ink #526176. Border #D8DEE8. Error #A12332. Success #1B6B4A.
+
+Blue and gold must both be recognizable in the first viewport. Gold is not merely
+a hairline. Use substantial gold membership/date/selection areas, not gold body
+text on white. Use navy text on gold. White text on royal blue. Never use gold as
+the only signal for pending, unread, selection, warning, success or consent.
+No gradients in the default shell. The user's blue/gold preference is not license
+to reintroduce an unverified historical gradient. Dark mode is a separate design
+pass; do not silently recolor this approved light direction with the OS setting.
+
+03. TYPOGRAPHY
+Editorial serif for wordmark and primary page/event/profile headings.
+Prototype: Georgia. Native: use Georgia on iOS if available; Android serif is a
+fallback, not a claim of pixel parity. A cross-platform bundled serif would need
+license verification and a separate explicit font asset decision, not a dependency
+upgrade hidden inside styling. Preserve the current app's supported font loading.
+Sans-serif for metadata, labels, buttons and all conversations. Native system font.
+Sizes at default scale: display 35/39; page 27/30; section 22/27; body 15/23;
+message 14/21 in this preview, prefer 15-16 native after device comparison;
+metadata 12/18; supplemental 11/16; nav 10-12. Letter spacing 0 throughout.
+Do not scale fonts with viewport width. Honor platform accessibility scaling.
+At large text, headings wrap, action groups stack and content scrolls. Never
+silently disable allowFontScaling to force a screenshot match.
+
+04. SPACING AND SHAPE
+4-point base: 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40.
+Mobile horizontal inset 20. Compact conversation inset 18. Standard row 70 minimum.
+Touch targets 44x44 iOS; use 48 minimum on Android. Text buttons are real controls.
+Repeated event cards radius 8; inputs/buttons 6; chips 5; message bubbles 8.
+Bottom sheets may have 16-point top corners. Phone frame in prototype is not app UI.
+Avoid cards inside cards. Sections are full-width bands or plain divided layouts.
+No oversized rounded KPI tiles. Counts use a shared gold band, with each number
+and label opening the correctly filtered directory.
+
+05. NAVIGATION
+Home / Chats / Events / Network / Me. Exactly five member tabs.
+Network is a proposed visible rename of People. Keep /(tabs)/people and existing
+deep links stable; do not invent a conflicting route for app/network.tsx.
+Map and Opportunities live inside Network. Admin lives inside Me and is role-gated.
+Auth/invitation/pending/detail/composer flows have explicit back destinations.
+Do not show bottom tabs on creation forms, onboarding, conversation or deep detail
+screens where they compete with the primary dock. Respect router history and an
+appropriate safe fallback when entered through a link.
+
+06. COMPONENT CONTRACTS
+ChapterIdentityBand: blue background, gold foundation, organization + university.
+MembershipBand: gold background, exact approved active/alumni counts, labelled
+filters. Active is membership_type=active; it NEVER means currently online.
+EventCard: optional authorized cover, category, title, timezone-aware date/location,
+real attendee state. No fake photos or avatar counts. If no cover capability exists,
+use the approved no-media variant described below.
+NoMediaEvent: gold date block + title/category/logistics on white; blue title links.
+Never repeat an unrelated generic reunion photo across all actual chapter events.
+ConversationRow: avatar/initials, name, preview, timestamp, supported unread state.
+Message: author where needed, content, accessible timestamp independently of any
+action button, existing reactions where supported. Preserve copy/report/delete rules.
+MemberRow: name/year, career/city, supported opt-in mentorship/hiring signal.
+MemberCount: total and matching result count are distinct; paginate completely.
+PrimaryButton: blue/white; pending disables duplicate action and has explicit label.
+GoldButton: navy/gold, limited to distinct selected/creation emphasis.
+ContextNotice: pale gold, navy text; not a dismissible warning masquerading as consent.
+RSVPDock: in normal layout outside scrollable content; content never hides behind it.
+Composer: keyboard-avoiding, autosizing with bounded height; 44/48 send target.
+BottomSheet: modal semantics, focus trap on web, clear close/Cancel, backdrop not
+the sole dismissal route. Native accessibility focus returns to trigger.
+Existing Ionicons are preferred in the native app. Local Lucide is prototype-only.
+Do not add an icon library or hand-draw a parallel system for this rebrand.
+
+07. MEDIA
+Event artwork should make a real gathering tangible. Standard list ratio 1.65:1;
+detail cover 1.55:1, full-width, object-position from a stored focal point if supported.
+No text baked into event photographs. Useful alt text, not a duplicate title.
+Missing/loading/rejected media has a layout-stable date/category fallback.
+App avatar initials remain acceptable and honest. Never fabricate member faces.
+No auto-importing LinkedIn photos, career details, location, or social graphs.
+Keep current app icon/splash until a separate icon review. GT tile is a temporary
+typographic lockup, not approval to replace the installed app's identity assets.
+
+08. PRIVACY AS DESIGN
+Map sharing starts off; legacy/unformed consent remains off. Approved alumni only
+under the current app contract. City chosen by the member, not GPS background
+collection. The proposed map groups at city level, never real-time person tracking.
+Explain audience, granularity and revocation before the unchecked opt-in.
+Profile city and map visibility are separate. Changing a city cannot opt a member in.
+Permission denied/revoked clears conclusively restricted cached content even if
+another unrelated request fails. Never leave searchable private previews behind.
+Invites disclose only fields returned by the existing server-safe resolver. The
+prototype's scene image is generic illustrative artwork, not a private event photo.
+No private event title/location/guest list in anonymous link previews. No automatic
+contacts import, SMS/email invitations, external publishing or public links.
+No account-deletion success fiction. Preserve the QA disabled/deferred state.
+
+09. CONTENT VOICE
+Warm, clear, short. "Open to mentor", "Request mentorship", "Your request is with
+your chapter", "Your city is not shared". No "network intelligence activated" or
+fake "verified" badges. Show exact error recovery without blaming the user.
+Invitations invite belonging, not prestige. Avoid ranking alumni by status, wealth,
+donor likelihood or inferred personal traits. AI suggestions are a future, separately
+permissioned capability, not decorative content on the current home screen.
+
+10. RESPONSIVE / ACCESSIBLE
+Design at 375/390/440 points; at least 320 logical width must remain navigable.
+Use safe-area insets, not a baked 9:41 status bar from this prototype.
+Large text: single-column actions and fields; no fixed-height text containers.
+Long names wrap; compact previews may truncate with full accessible labels.
+Focus indicators stay visible; semantic headings/buttons/labels; errors associate
+with their fields; live announcements are limited to meaningful state changes.
+No horizontal page scrolling. Only intentional chip/tab overflow may scroll.
+Respect reduced motion; no mandatory animation or haptics for confirmation.
+Web prototype checks do not establish VoiceOver, TalkBack, keyboard-inset,
+native map, or lifecycle behavior. Validate those separately before release.

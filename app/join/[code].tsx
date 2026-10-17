@@ -15,7 +15,8 @@ import type { PendingInvite } from '@/lib/pending-invite';
 import { Wordmark } from '@/components/Wordmark';
 import { Button } from '@/components/Button';
 import { SUPPORT_EMAIL } from '@/lib/legal';
-import { colors, radius, spacing, typography } from '@/theme';
+import { radius, spacing } from '@/theme';
+import { colors, typography } from '@/theme/account';
 
 export default function JoinScreen() {
   const params = useLocalSearchParams<{ code: string }>();
@@ -167,16 +168,18 @@ function InviteFlow({ input }: { input: string }) {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Wordmark size={28} />
+        <Wordmark tone="home" size={28} />
         {chapter && (
           <View style={styles.card}>
             <Text style={styles.invitedTo}>You’re invited to join</Text>
-            <Text style={styles.chapterName}>{chapter.name}</Text>
+            <Text accessibilityRole="header" style={styles.chapterName}>
+              {chapter.name}
+            </Text>
             {!!chapter.designation && <Text style={styles.university}>{chapter.designation}</Text>}
             {!!chapter.university && <Text style={styles.university}>{chapter.university}</Text>}
           </View>
         )}
-        {checking && <ActivityIndicator color={colors.gold} />}
+        {checking && <ActivityIndicator color={colors.blue} />}
         {!!warning && (
           <Text style={styles.invalid} accessibilityRole="alert">
             {warning}
@@ -198,7 +201,7 @@ function InviteFlow({ input }: { input: string }) {
             <Text style={styles.invalid}>
               We couldn’t check this invitation right now. It is saved for retry.
             </Text>
-            <Button label="Retry invitation" onPress={() => setRetry((n) => n + 1)} />
+            <Button tone="home" label="Retry invitation" onPress={() => setRetry((n) => n + 1)} />
           </>
         )}
         {(profileError || unknownProfile) && (
@@ -207,6 +210,7 @@ function InviteFlow({ input }: { input: string }) {
               We couldn’t check your membership. Try again before joining.
             </Text>
             <Button
+              tone="home"
               label="Retry membership check"
               onPress={() => void (authError ? retrySession() : refreshProfile())}
             />
@@ -239,6 +243,7 @@ function InviteFlow({ input }: { input: string }) {
           !removed &&
           !pending && (
             <Button
+              tone="home"
               label={
                 approved ? 'Continue to chapter' : session ? 'Join chapter' : 'Sign up to join'
               }
@@ -249,18 +254,21 @@ function InviteFlow({ input }: { input: string }) {
           )}
         {!session && code && (
           <Button
+            tone="home"
             label="Already have an account? Log in"
             variant="secondary"
             onPress={() => router.replace({ pathname: '/login', params: { code } })}
           />
         )}
         <Button
+          tone="home"
           label="Paste another invitation"
           variant="secondary"
           onPress={() => router.push('/onboarding/enter-code')}
           disabled={joining || canceling}
         />
         <Button
+          tone="home"
           label="Cancel invitation"
           variant="ghost"
           onPress={leave}
@@ -269,6 +277,7 @@ function InviteFlow({ input }: { input: string }) {
         />
         {session && (
           <Button
+            tone="home"
             label="Membership and account help"
             variant="secondary"
             onPress={() => router.push('/membership')}
@@ -276,6 +285,7 @@ function InviteFlow({ input }: { input: string }) {
         )}
         {session && (
           <Button
+            tone="home"
             label="Sign out"
             variant="ghost"
             onPress={async () => {
@@ -303,21 +313,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.lg,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: 20,
   },
   content: {
     flexGrow: 1,
     paddingVertical: spacing.xl,
     justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: 20,
     gap: spacing.lg,
   },
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.goldLight,
+    borderTopWidth: 6,
+    borderTopColor: colors.gold,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.lg,
-    padding: spacing.xl,
+    padding: 20,
     alignItems: 'center',
   },
   invitedTo: {
@@ -327,10 +339,11 @@ const styles = StyleSheet.create({
   },
   chapterName: {
     ...typography.h1,
-    color: colors.textPrimary,
+    color: colors.blue,
     textAlign: 'center',
   },
   university: {
+    textAlign: 'center',
     ...typography.body,
     color: colors.textSecondary,
     marginTop: spacing.xs,

@@ -1,0 +1,38 @@
+ASSETS / 2026-10-15
+
+assets/reunion.png
+Built-in image generation tool; new photorealistic-natural image generated in this
+design chat. Fictional university reunion scene, not an actual chapter or members.
+Original:
+/Users/pkarakala/.codex/generated_images/019f115e-772f-73d1-96ee-1f98ea063b41/exec-bd29f651-971a-4f99-9ab4-9c26536011ab.png
+Prompt: Create a wide 3:2 editorial photograph for a private university alumni
+community app called Greek Ties. An authentic relaxed afternoon reunion on a coastal
+California university lawn with Spanish-style campus architecture in the background.
+Small mixed group of adults aged 22 to 60, varied ethnicities and genders, casually
+smart clothing in natural white, blue, ochre accents, talking with genuine warmth,
+realistic imperfections and candid composition. Sunlight, visible green lawn and
+blue sky, clear faces at medium distance, no alcohol, no brands, no Greek letters,
+no signage, no words, no logos, no text. Warm social energy but professional and
+welcoming, not a luxury secret society, not stock-photo posed handshake. Fictional
+concept photography, not a real chapter. Keep important subjects in central 70%
+to allow responsive crops. High quality natural photography, no overlays or frames.
+
+references/exec-f4b780b0-5c9c-490f-a07f-da2f0b92a9c9.png
+Earlier blue/gold core-app generated board, chosen for direction. Lower priority
+than current tokens, contracts and deterministic screens. Generated counts/text may
+be inconsistent and should not be copied literally.
+
+references/exec-0ca6895a-8038-4515-a4de-ec9a147bd841.png
+Earlier blue/gold invitation/onboarding generated board. Same provenance/limitations.
+Originals preserved under the same generated_images thread directory above.
+
+assets/lucide.min.js
+Prototype-only Lucide 0.468.0 UMD distribution, downloaded from:
+https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js
+Distribution header retains its license reference. Full license stored beside it.
+Use the native repository's existing Ionicons in implementation, not a new library.
+
+Fonts: local Georgia and Arial/system fallbacks in the HTML. No font files copied.
+No real private member avatars, names, addresses or conversation text used.
+No Figma-source license or actual editable .fig file was supplied. User-provided
+Figma screenshots and Partiful examples are inspiration, not assets to ship.

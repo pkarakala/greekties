@@ -1,5 +1,7 @@
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
+import { homeColors } from '@/theme/home';
+import { eventColors } from '@/theme/events';
 import { colors, typography } from '@/theme';
 
 type Size = 'xs' | 'sm' | 'md' | 'lg';
@@ -10,6 +12,7 @@ interface AvatarProps {
   uri?: string | null;
   name?: string | null;
   size?: Size;
+  tone?: 'default' | 'events' | 'home';
 }
 
 function initials(name?: string | null): string {
@@ -20,7 +23,7 @@ function initials(name?: string | null): string {
   return (first + last).toUpperCase() || '?';
 }
 
-export function Avatar({ uri, name, size = 'md' }: AvatarProps) {
+export function Avatar({ uri, name, size = 'md', tone = 'default' }: AvatarProps) {
   const { fontScale } = useWindowDimensions();
   const dim = SIZES[size];
   const fallbackDim = dim * Math.max(1, fontScale);
@@ -34,10 +37,21 @@ export function Avatar({ uri, name, size = 'md' }: AvatarProps) {
     <View
       style={[
         styles.fallback,
+        tone === 'events' && { backgroundColor: eventColors.soft },
+        tone === 'home' && { backgroundColor: homeColors.goldLight },
         { width: fallbackDim, height: fallbackDim, borderRadius: fallbackDim / 2 },
       ]}
     >
-      <Text style={[styles.initials, { fontSize: dim * 0.36 }]}>{initials(name)}</Text>
+      <Text
+        style={[
+          styles.initials,
+          tone === 'events' && { color: eventColors.accent },
+          tone === 'home' && { color: homeColors.navy },
+          { fontSize: dim * 0.36 },
+        ]}
+      >
+        {initials(name)}
+      </Text>
     </View>
   );
 }

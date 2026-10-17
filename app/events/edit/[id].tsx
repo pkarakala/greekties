@@ -19,7 +19,8 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { TextField } from '@/components/TextField';
 import { Button } from '@/components/Button';
 import { Chip } from '@/components/Chip';
-import { colors, spacing, typography } from '@/theme';
+import { spacing, typography } from '@/theme';
+import { eventColors as colors } from '@/theme/events-rebrand';
 import type { EventCategory } from '@/lib/types';
 
 export default function EventFormScreen() {
@@ -35,6 +36,10 @@ export default function EventFormScreen() {
 function EditEventForm() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  function returnFromForm() {
+    if (router.canGoBack()) router.back();
+    else router.replace({ pathname: '/events/[id]', params: { id } });
+  }
   const { session, profile: me, blockedIds } = useAuth();
   const myUserId = session?.user?.id ?? null;
 
@@ -131,21 +136,21 @@ function EditEventForm() {
       setError(err);
       return;
     }
-    router.back();
+    returnFromForm();
   }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="Edit event" onBack={() => router.back()} />
+      <ScreenHeader tone="home" title="Edit event" onBack={returnFromForm} />
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={colors.gold} />
+          <ActivityIndicator color={colors.action} />
         </View>
       ) : !event ? (
         <View style={styles.center}>
           <Text style={styles.muted}>{loadError ?? 'This event is removed or unavailable.'}</Text>
-          {!!loadError && <Button label="Retry" onPress={reload} />}
+          {!!loadError && <Button tone="home" label="Retry" onPress={reload} />}
         </View>
       ) : !allowed ? (
         <View style={styles.center}>
@@ -161,7 +166,11 @@ function EditEventForm() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
+            <View style={styles.intro}>
+              <Text style={styles.introText}>Your chapter, together.</Text>
+            </View>
             <TextField
+              tone="home"
               label="Title"
               value={title}
               onChangeText={setTitle}
@@ -172,6 +181,7 @@ function EditEventForm() {
             <View style={styles.chips}>
               {EVENT_CATEGORIES.map((cat) => (
                 <Chip
+                  tone="home"
                   key={cat.value}
                   label={cat.label}
                   selected={category === cat.value}
@@ -181,6 +191,7 @@ function EditEventForm() {
             </View>
 
             <EventDateInput
+              tone="home"
               timeZone={entryZone}
               label="Start"
               date={date}
@@ -192,6 +203,7 @@ function EditEventForm() {
               original={event.starts_at}
             />
             <EventDateInput
+              tone="home"
               timeZone={entryZone}
               label="End (optional)"
               optional
@@ -208,12 +220,14 @@ function EditEventForm() {
               chat.
             </Text>
             <TextField
+              tone="home"
               label="Location"
               value={location}
               onChangeText={setLocation}
               placeholder="Chapter house"
             />
             <TextField
+              tone="home"
               label="Description"
               value={description}
               onChangeText={setDescription}
@@ -223,9 +237,13 @@ function EditEventForm() {
               style={styles.multiline}
             />
 
-            {!!error && <Text style={styles.error}>{error}</Text>}
+            {!!error && (
+              <Text accessibilityRole="alert" style={styles.error}>
+                {error}
+              </Text>
+            )}
 
-            <Button label="Save changes" onPress={submit} loading={submitting} />
+            <Button tone="home" label="Save changes" onPress={submit} loading={submitting} />
           </ScrollView>
         </KeyboardAvoidingView>
       )}
@@ -234,8 +252,16 @@ function EditEventForm() {
 }
 
 const styles = StyleSheet.create({
-  mutedNote: { ...typography.bodySmall, color: colors.textSecondary, marginBottom: spacing.lg },
-  safe: { flex: 1, backgroundColor: colors.background },
+  intro: {
+    backgroundColor: colors.action,
+    borderBottomWidth: 8,
+    borderBottomColor: colors.accent,
+    padding: 20,
+    marginBottom: 24,
+  },
+  introText: { fontSize: 15, lineHeight: 23, color: colors.onAction },
+  mutedNote: { ...typography.bodySmall, color: colors.muted, marginBottom: spacing.lg },
+  safe: { flex: 1, backgroundColor: colors.canvas },
   flex: { flex: 1 },
   center: {
     flex: 1,
@@ -243,14 +269,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,
   },
-  muted: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  scroll: { padding: spacing.xl, paddingBottom: spacing.xxxl },
+  muted: { ...typography.body, color: colors.muted, textAlign: 'center' },
+  scroll: {
+    padding: 20,
+    maxWidth: 760,
+    width: '100%',
+    alignSelf: 'center',
+    paddingBottom: spacing.xxxl,
+  },
   chipsLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
+    fontSize: 15,
+    lineHeight: 23,
+    fontWeight: '600',
+    color: colors.text,
     marginBottom: spacing.sm,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0,
   },
   chips: {
     flexDirection: 'row',
@@ -258,6 +291,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginBottom: spacing.lg,
   },
-  multiline: { height: 110, textAlignVertical: 'top' },
-  error: { ...typography.bodySmall, color: colors.red, marginBottom: spacing.lg },
+  multiline: { minHeight: 110, textAlignVertical: 'top' },
+  error: { ...typography.bodySmall, color: colors.error, marginBottom: spacing.lg },
 });

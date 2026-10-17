@@ -13,6 +13,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
+import { memberScope } from '@/lib/home';
 import { findRequestBetween, createMentorshipRequest } from '@/lib/mentorship';
 import { blockUser, canShowActorContent, reportContent } from '@/lib/moderation';
 import { openExternalUrl } from '@/lib/url';
@@ -21,18 +22,34 @@ import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { TextField } from '@/components/TextField';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { colors, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
+import { colors, typography } from '@/theme/network';
 import type { MentorshipRequest, Profile } from '@/lib/types';
 
 export default function ProfileScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { session, profile, blockedIds } = useAuth();
+  const scope = memberScope(profile, session?.user.id ?? null);
+  return (
+    <ProfileContent
+      key={JSON.stringify([id, scope, [...blockedIds].sort()])}
+      authorized={!!scope}
+    />
+  );
+}
+
+function ProfileContent({ authorized }: { authorized: boolean }) {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { session, profile: me, blockedIds } = useAuth();
   const myUserId = session?.user?.id ?? null;
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(authorized);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [existing, setExisting] = useState<MentorshipRequest | null>(null);
+
+  const [loadError, setLoadError] = useState(false);
+  const [revision, setRevision] = useState(0);
 
   // Mentorship request composer.
   const [composing, setComposing] = useState(false);
@@ -47,35 +64,45 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
-      if (!mounted) return;
-      const fetched = (data as Profile) ?? null;
-      const p =
-        fetched && canShowActorContent(fetched.user_id, blockedIds) ? fetched : null;
-      setProfile(p);
-      setExisting(null);
-
-      if (p && myUserId && p.user_id !== myUserId) {
-        setExisting(await findRequestBetween(myUserId, p.user_id));
-      }
-      if (mounted) setLoading(false);
-    })();
+    if (authorized)
+      void (async () => {
+        try {
+          const { data, error: readError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', id)
+            .maybeSingle();
+          if (!mounted) return;
+          if (readError) throw new Error('Profile unavailable');
+          const fetched = (data as Profile) ?? null;
+          const p = fetched && canShowActorContent(fetched.user_id, blockedIds) ? fetched : null;
+          setProfile(p);
+          setExisting(null);
+          if (p && myUserId && p.user_id !== myUserId) {
+            const request = await findRequestBetween(myUserId, p.user_id);
+            if (!mounted) return;
+            setExisting(request);
+          }
+        } catch {
+          if (mounted) {
+            setProfile(null);
+            setExisting(null);
+            setLoadError(true);
+          }
+        } finally {
+          if (mounted) setLoading(false);
+        }
+      })();
     return () => {
       mounted = false;
     };
-  }, [id, myUserId, blockedIds]);
+  }, [id, myUserId, blockedIds, revision, authorized]);
 
   const isSelf = !!profile && profile.user_id === myUserId;
-  const isBlockedProfile =
-    !!profile && !canShowActorContent(profile.user_id, blockedIds);
+  const isBlockedProfile = !!profile && !canShowActorContent(profile.user_id, blockedIds);
 
   async function submitRequest() {
-    if (!profile || !myUserId || !me?.chapter_id) return;
+    if (!profile || !myUserId || !me?.chapter_id || submitting) return;
     if (!message.trim()) {
       setError('Add a short intro message.');
       return;
@@ -173,6 +200,7 @@ export default function ProfileScreen() {
       if (existing.status === 'accepted') {
         return (
           <Button
+            tone="home"
             label="Open conversation"
             onPress={() =>
               router.push({ pathname: '/inbox/[requestId]', params: { requestId: existing.id } })
@@ -183,6 +211,7 @@ export default function ProfileScreen() {
       if (existing.status === 'pending') {
         return (
           <Button
+            tone="home"
             label="Request pending"
             variant="secondary"
             onPress={() =>
@@ -197,12 +226,13 @@ export default function ProfileScreen() {
     if (!profile.open_to_mentor) return null;
 
     if (!composing) {
-      return <Button label="Request mentorship" onPress={() => setComposing(true)} />;
+      return <Button tone="home" label="Request mentorship" onPress={() => setComposing(true)} />;
     }
 
     return (
       <View style={styles.composer}>
         <TextField
+          tone="home"
           label="Intro message"
           value={message}
           onChangeText={setMessage}
@@ -211,9 +241,13 @@ export default function ProfileScreen() {
           numberOfLines={3}
           style={styles.multiline}
         />
-        {!!error && <Text style={styles.error}>{error}</Text>}
-        <Button label="Send request" onPress={submitRequest} loading={submitting} />
-        <Button label="Cancel" variant="ghost" onPress={() => setComposing(false)} />
+        {!!error && (
+          <Text accessibilityRole="alert" style={styles.error}>
+            {error}
+          </Text>
+        )}
+        <Button tone="home" label="Send request" onPress={submitRequest} loading={submitting} />
+        <Button tone="home" label="Cancel" variant="ghost" onPress={() => setComposing(false)} />
       </View>
     );
   }
@@ -221,11 +255,16 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenHeader
+        tone="home"
         title=""
         onBack={() => router.back()}
         right={
           !isSelf && profile && !isBlockedProfile
-            ? { icon: 'ellipsis-horizontal', onPress: showModerationMenu }
+            ? {
+                accessibilityLabel: 'Member options',
+                icon: 'ellipsis-horizontal',
+                onPress: showModerationMenu,
+              }
             : undefined
         }
       />
@@ -236,22 +275,39 @@ export default function ProfileScreen() {
         </View>
       ) : !profile || isBlockedProfile ? (
         <View style={styles.center}>
-          <Text style={styles.muted}>This member couldn’t be found.</Text>
+          <Text style={styles.muted}>
+            {loadError
+              ? 'Couldn’t load this member. Please retry.'
+              : 'This member couldn’t be found.'}
+          </Text>
+          {loadError && (
+            <Button
+              tone="home"
+              label="Retry profile"
+              onPress={() => {
+                setLoading(true);
+                setLoadError(false);
+                setRevision((value) => value + 1);
+              }}
+            />
+          )}
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <View style={styles.identity}>
-            <Avatar uri={profile.avatar_url} name={profile.name} size="lg" />
-            <Text style={styles.name}>{profile.name ?? 'Member'}</Text>
+            <Avatar tone="home" uri={profile.avatar_url} name={profile.name} size="lg" />
+            <Text accessibilityRole="header" style={styles.name}>
+              {profile.name ?? 'Member'}
+            </Text>
             {!!(profile.job_title || profile.company) && (
               <Text style={styles.role}>
                 {[profile.job_title, profile.company].filter(Boolean).join(' at ')}
               </Text>
             )}
             <View style={styles.badges}>
-              {profile.open_to_mentor && <Badge label="Mentor" tone="gold" />}
-              {profile.is_hiring && <Badge label="Hiring" tone="green" />}
-              {profile.membership_type === 'alumni' && <Badge label="Alumni" />}
+              {profile.open_to_mentor && <Badge appearance="home" label="Mentor" tone="gold" />}
+              {profile.is_hiring && <Badge appearance="home" label="Hiring" tone="green" />}
+              {profile.membership_type === 'alumni' && <Badge appearance="home" label="Alumni" />}
             </View>
           </View>
 
@@ -260,6 +316,7 @@ export default function ProfileScreen() {
           {reporting && (
             <View style={styles.composer}>
               <TextField
+                tone="home"
                 label="Report reason"
                 value={reportReason}
                 onChangeText={setReportReason}
@@ -269,16 +326,23 @@ export default function ProfileScreen() {
                 style={styles.multiline}
               />
               <Button
+                tone="home"
                 label="Submit report"
                 onPress={() => void submitReport(reportReason)}
                 loading={reportSubmitting}
               />
-              <Button label="Cancel" variant="ghost" onPress={() => setReporting(false)} />
+              <Button
+                tone="home"
+                label="Cancel"
+                variant="ghost"
+                onPress={() => setReporting(false)}
+              />
             </View>
           )}
 
           {!!profile.linkedin_url && (
             <Button
+              tone="home"
               label="View LinkedIn"
               variant="secondary"
               onPress={() => void openExternalUrl(profile.linkedin_url)}
@@ -324,15 +388,30 @@ function Fact({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  center: { padding: 20, flex: 1, alignItems: 'center', justifyContent: 'center' },
   muted: { ...typography.body, color: colors.textSecondary },
-  scroll: { padding: spacing.xl, gap: spacing.lg },
-  identity: { alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
-  name: { ...typography.h1, color: colors.textPrimary, marginTop: spacing.sm },
-  role: { ...typography.body, color: colors.textSecondary },
-  badges: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
-  composer: { gap: spacing.sm },
-  multiline: { height: 96, textAlignVertical: 'top' },
+  scroll: { padding: 20, gap: spacing.lg },
+  identity: {
+    backgroundColor: colors.goldLight,
+    borderTopWidth: 6,
+    borderTopColor: colors.gold,
+    padding: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  name: { ...typography.h1, color: colors.blue, textAlign: 'center', marginTop: spacing.sm },
+  role: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+  badges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  composer: { gap: spacing.sm, borderLeftWidth: 4, borderLeftColor: colors.gold, paddingLeft: 12 },
+  multiline: { minHeight: 120, textAlignVertical: 'top' },
   error: { ...typography.bodySmall, color: colors.red },
   facts: { gap: spacing.md, marginTop: spacing.sm },
   fact: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
